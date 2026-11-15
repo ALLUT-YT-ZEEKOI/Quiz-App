@@ -210,6 +210,48 @@ export const QuestionBank = ({ initialOpenAdd = false, onCloseAdd = () => {} }) 
         </div>
       </div>
 
+      {/* Quick Horizontal Subject Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <button
+          type="button"
+          onClick={() => setSelectedSubject('All')}
+          className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all ${
+            selectedSubject === 'All'
+              ? 'bg-navy-900 text-white dark:bg-blue-600 shadow-sm'
+              : 'bg-white dark:bg-surface-darkCard text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          All Subjects ({questions.length})
+        </button>
+        {subjects.map((sub) => {
+          const subCount = questions.filter((q) => q.subjectId === sub.id).length;
+          return (
+            <button
+              key={sub.id}
+              type="button"
+              onClick={() => setSelectedSubject(sub.id)}
+              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                selectedSubject === sub.id
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-white dark:bg-surface-darkCard text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sub.color }} />
+              <span>{sub.name}</span>
+              <span
+                className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                  selectedSubject === sub.id
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                }`}
+              >
+                {subCount}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Questions Listing */}
       <div className="space-y-3.5">
         {filteredQuestions.length === 0 ? (

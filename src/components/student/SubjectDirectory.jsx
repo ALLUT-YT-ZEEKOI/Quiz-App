@@ -16,12 +16,18 @@ import {
   Award,
   ChevronRight,
   Play,
-  Search
+  Search,
+  HelpCircle,
+  X,
+  CheckCircle2,
+  Check,
+  Sparkles
 } from 'lucide-react';
 
 export const SubjectDirectory = () => {
-  const { subjects, quizzes, setActiveView, setActiveQuizForAttempt, currentUser } = useApp();
+  const { subjects, quizzes, questions, setActiveView, setActiveQuizForAttempt, currentUser } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSubjectModal, setSelectedSubjectModal] = useState(null);
 
   // Icon mapper helper
   const renderSubjectIcon = (iconName) => {
@@ -69,6 +75,11 @@ export const SubjectDirectory = () => {
     }
   };
 
+  // Get questions specific to selected subject
+  const modalSubjectQuestions = selectedSubjectModal
+    ? questions.filter((q) => q.subjectId === selectedSubjectModal.id)
+    : [];
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
@@ -83,7 +94,7 @@ export const SubjectDirectory = () => {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Complete syllabus breakdown, faculty allocations, topic learning paths, and associated quizzes.
+            Each subject features 10 curated questions & answers aligned with IS 456, IS 800, and IRC standards.
           </p>
         </div>
 
@@ -106,6 +117,7 @@ export const SubjectDirectory = () => {
           const matchingQuizzes = quizzes.filter(
             (q) => q.subjectId === sub.id && q.status === 'Published'
           );
+          const subjectQuestions = questions.filter((q) => q.subjectId === sub.id);
           const studentProgress =
             (currentUser?.subjectProgress && currentUser.subjectProgress[sub.id]) ||
             Math.round(sub.studentAvg);
@@ -120,7 +132,7 @@ export const SubjectDirectory = () => {
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform"
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform shrink-0"
                       style={{ backgroundColor: sub.color }}
                     >
                       {renderSubjectIcon(sub.icon)}
@@ -141,7 +153,7 @@ export const SubjectDirectory = () => {
                     </div>
                   </div>
 
-                  <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono">
+                  <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono shrink-0">
                     {sub.credits} Credits
                   </span>
                 </div>
@@ -188,25 +200,180 @@ export const SubjectDirectory = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-xs text-slate-500 font-medium">
-                    {matchingQuizzes.length} Assessment Available
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    {subjectQuestions.length} Questions & Solutions
                   </span>
 
-                  <button
-                    onClick={() => handleStartQuizForSubject(sub.id)}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600 text-white font-bold text-xs transition-colors shadow-sm"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>Launch Quiz</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedSubjectModal(sub)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition-colors"
+                      title="View questions and verified answers for this subject"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Study Q&A</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleStartQuizForSubject(sub.id)}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-sm active:scale-95"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>Take Quiz</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* ============================================================ */}
+      {/* SUBJECT QUESTIONS & SOLUTIONS MODAL                          */}
+      {/* ============================================================ */}
+      {selectedSubjectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-navy-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-3xl bg-white dark:bg-surface-darkCard rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-md shrink-0"
+                  style={{ backgroundColor: selectedSubjectModal.color }}
+                >
+                  {renderSubjectIcon(selectedSubjectModal.icon)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">
+                      {selectedSubjectModal.name}
+                    </h3>
+                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold">
+                      {selectedSubjectModal.code}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Faculty: {selectedSubjectModal.faculty} • {modalSubjectQuestions.length} Questions & Verified Solutions
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedSubjectModal(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Questions List (Scrollable) */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
+              <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 pb-1 border-b border-slate-100 dark:border-slate-800">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>All questions below are strictly authored for <strong>{selectedSubjectModal.name}</strong> with IS code benchmarks.</span>
+              </div>
+
+              {modalSubjectQuestions.map((q, idx) => (
+                <div
+                  key={q.id}
+                  className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 space-y-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-lg border border-blue-200/60 dark:border-blue-900/50">
+                      Question {idx + 1} ({q.id})
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        q.difficulty === 'Easy'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : q.difficulty === 'Medium'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                          : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                      }`}
+                    >
+                      {q.difficulty} • {q.marks} Mark
+                    </span>
+                  </div>
+
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white leading-relaxed">
+                    {q.questionText}
+                  </p>
+
+                  {/* 4 MCQ Options */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    {q.options.map((opt, optIdx) => {
+                      const isCorrect = optIdx === q.correctAnswer;
+                      return (
+                        <div
+                          key={optIdx}
+                          className={`p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all ${
+                            isCorrect
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-bold'
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span
+                              className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-mono font-bold shrink-0 ${
+                                isCorrect
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                              }`}
+                            >
+                              {String.fromCharCode(65 + optIdx)}
+                            </span>
+                            <span>{opt}</span>
+                          </span>
+                          {isCorrect && (
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                              <Check className="w-3.5 h-3.5" /> Correct
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Verified Explanation */}
+                  {q.explanation && (
+                    <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-xs text-slate-700 dark:text-slate-300">
+                      <span className="font-bold text-blue-700 dark:text-blue-300 block mb-0.5">
+                        Technical Solution & IS-Code Rationale:
+                      </span>
+                      <p className="leading-relaxed">{q.explanation}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 flex items-center justify-between gap-3 shrink-0">
+              <button
+                onClick={() => setSelectedSubjectModal(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Close Window
+              </button>
+
+              <button
+                onClick={() => {
+                  const subId = selectedSubjectModal.id;
+                  setSelectedSubjectModal(null);
+                  handleStartQuizForSubject(subId);
+                }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/25 active:scale-95 transition-all"
+              >
+                <Play className="w-3.5 h-3.5 fill-white" />
+                <span>Start Timed Quiz on {selectedSubjectModal.name}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-

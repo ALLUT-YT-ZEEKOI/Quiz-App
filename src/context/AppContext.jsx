@@ -5,20 +5,46 @@ import { INITIAL_QUIZZES, INITIAL_ATTEMPTS, INITIAL_NOTIFICATIONS } from '../dat
 
 const AppContext = createContext();
 
+const CURRENT_DATA_VERSION = 'qsap_v3_civil_100_questions_all_subjects';
+
 export const AppProvider = ({ children }) => {
+  // Check if saved data matches latest schema version with all 100 technical questions
+  const needsDataReset = (() => {
+    try {
+      const savedVer = localStorage.getItem('qsap_data_version');
+      const savedQ = localStorage.getItem('qsap_questions');
+      if (savedVer !== CURRENT_DATA_VERSION || !savedQ) return true;
+      const parsedQ = JSON.parse(savedQ);
+      return !Array.isArray(parsedQ) || parsedQ.length < 100;
+    } catch (e) {
+      return true;
+    }
+  })();
+
+  if (needsDataReset) {
+    try {
+      localStorage.setItem('qsap_data_version', CURRENT_DATA_VERSION);
+      localStorage.setItem('qsap_questions', JSON.stringify(QUESTIONS_BANK));
+      localStorage.setItem('qsap_quizzes', JSON.stringify(INITIAL_QUIZZES));
+      localStorage.setItem('qsap_students', JSON.stringify(STUDENTS));
+      localStorage.setItem('qsap_attempts', JSON.stringify(INITIAL_ATTEMPTS));
+    } catch (e) {
+      console.warn('LocalStorage initialization notice:', e);
+    }
+  }
+
   // Theme state
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('qsap_dark_mode') === 'true';
   });
 
   // Auth / Role state: default starts logged in as Dr. Rajesh Sharma (teacher)
-  // Options for role: 'teacher', 'student', 'guest'
   const [currentRole, setCurrentRole] = useState(() => {
-    return localStorage.getItem('qsap_role') || 'teacher';
+    return localStorage.getItem('qsap_role') || 'student';
   });
 
   const [currentUserId, setCurrentUserId] = useState(() => {
-    return localStorage.getItem('qsap_user_id') || 'T001';
+    return localStorage.getItem('qsap_user_id') || 'STU001';
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -34,6 +60,7 @@ export const AppProvider = ({ children }) => {
 
   // Core Data States (persisted in localStorage)
   const [students, setStudents] = useState(() => {
+    if (needsDataReset) return STUDENTS;
     const saved = localStorage.getItem('qsap_students');
     return saved ? JSON.parse(saved) : STUDENTS;
   });
@@ -42,16 +69,19 @@ export const AppProvider = ({ children }) => {
   const [subjects] = useState(SUBJECTS);
 
   const [questions, setQuestions] = useState(() => {
+    if (needsDataReset) return QUESTIONS_BANK;
     const saved = localStorage.getItem('qsap_questions');
     return saved ? JSON.parse(saved) : QUESTIONS_BANK;
   });
 
   const [quizzes, setQuizzes] = useState(() => {
+    if (needsDataReset) return INITIAL_QUIZZES;
     const saved = localStorage.getItem('qsap_quizzes');
     return saved ? JSON.parse(saved) : INITIAL_QUIZZES;
   });
 
   const [attempts, setAttempts] = useState(() => {
+    if (needsDataReset) return INITIAL_ATTEMPTS;
     const saved = localStorage.getItem('qsap_attempts');
     return saved ? JSON.parse(saved) : INITIAL_ATTEMPTS;
   });
