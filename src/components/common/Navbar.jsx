@@ -147,10 +147,10 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                 <GraduationCap className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
               )}
               <span className="hidden sm:inline">
-                {currentRole === 'teacher' ? 'Faculty Portal' : 'Student Portal'}
+                {currentRole === 'teacher' ? 'Admin Portal' : 'Student Portal'}
               </span>
               <span className="sm:hidden">
-                {currentRole === 'teacher' ? 'Faculty' : 'Student'}
+                {currentRole === 'teacher' ? 'Admin' : 'Student'}
               </span>
               <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
             </button>
@@ -212,11 +212,11 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                             <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                               Dr. Rajesh Sharma
                               <span className="text-[10px] font-semibold px-1.5 py-0.2 bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 rounded">
-                                Faculty
+                                Admin / Faculty
                               </span>
                             </div>
                             <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                              HOD Structural Engineering
+                              HOD Structural • ID: admin (Pass: admin)
                             </div>
                           </div>
                         </div>
@@ -252,7 +252,7 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                               </span>
                             </div>
                             <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                              Semester 6 • CE-2022-001
+                              Semester 6 • ID: student (Pass: student)
                             </div>
                           </div>
                         </div>
@@ -333,9 +333,9 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                         <Shield className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-semibold">Teacher / Faculty</div>
+                        <div className="text-xs font-semibold">Admin / Faculty Dashboard</div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                          Dr. Rajesh Sharma (HOD)
+                          Dr. Rajesh Sharma • ID: admin (Pass: admin)
                         </div>
                       </div>
                     </div>
@@ -359,9 +359,9 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                         <GraduationCap className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-semibold">Student Account</div>
+                        <div className="text-xs font-semibold">Student Dashboard</div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                          Adithyan S. (CE-2022-001)
+                          Adithyan S. • ID: student (Pass: student)
                         </div>
                       </div>
                     </div>

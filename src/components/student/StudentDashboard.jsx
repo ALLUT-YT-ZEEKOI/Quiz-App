@@ -55,7 +55,8 @@ export const StudentDashboard = () => {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-300 mb-1.5">
-              <span>Department of Civil Engineering</span>
+              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              <span>Student Academic Portal</span>
               <span>•</span>
               <span className="font-mono">{currentUser?.semester || 'S6'} ({currentUser?.batch || '2022-2026'})</span>
             </div>

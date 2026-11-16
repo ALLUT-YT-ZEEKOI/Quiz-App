@@ -70,10 +70,10 @@ export const TeacherDashboard = ({ onOpenAddQuestion, onOpenAddQuiz, onOpenAddSt
         <div>
           <div className="flex items-center gap-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-blue-300 mb-1">
             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            Faculty Academic Portal • 2024–2025
+            Admin & Faculty Portal • Civil Engineering Suite
           </div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
-            Teacher Dashboard & Analytics
+            Admin Dashboard & Analytics
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
             Real-time monitoring of Civil Engineering students, IS-code aligned assessments, and performance benchmarks.

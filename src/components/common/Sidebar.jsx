@@ -21,7 +21,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
   const { currentRole, activeView, setActiveView, logout, quizzes, students } = useApp();
 
   const teacherNavItems = [
-    { id: 'dashboard', label: 'Teacher Dashboard', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Admin Dashboard', icon: LayoutDashboard },
     {
       id: 'students',
       label: 'Student Directory',
