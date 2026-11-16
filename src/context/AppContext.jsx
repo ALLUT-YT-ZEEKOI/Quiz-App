@@ -173,7 +173,7 @@ export const AppProvider = ({ children }) => {
   // Logout handler
   const logout = () => {
     setIsAuthenticated(false);
-    showToast('Logged out of QSAP', 'info');
+    showToast('Logged out of CohesionTech', 'info');
   };
 
   // Student CRUD
@@ -365,7 +365,7 @@ export const AppProvider = ({ children }) => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `QSAP_Students_Directory_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `CohesionTech_Students_Directory_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -387,7 +387,7 @@ export const AppProvider = ({ children }) => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `QSAP_Assessment_Results_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `CohesionTech_Assessment_Results_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

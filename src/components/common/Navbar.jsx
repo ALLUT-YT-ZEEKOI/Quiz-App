@@ -81,12 +81,12 @@ export const Navbar = ({ onMobileMenuToggle }) => {
             className="flex items-center gap-2 cursor-pointer select-none group"
           >
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-navy-900 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform shrink-0">
-              <span className="font-extrabold text-base sm:text-lg tracking-wider">Q</span>
+              <span className="font-extrabold text-base sm:text-lg tracking-wider">C</span>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-base sm:text-lg tracking-tight text-navy-900 dark:text-white">
-                  QSAP
+                  CohesionTech
                 </span>
                 {/* Clean, non-wrapping badge hidden on small mobile, visible on sm+ */}
                 <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 whitespace-nowrap">

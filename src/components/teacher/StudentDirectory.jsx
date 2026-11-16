@@ -650,7 +650,7 @@ export const StudentDirectory = () => {
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Are you sure you want to remove <strong>{deleteConfirmStudent.name}</strong> (
-                {deleteConfirmStudent.studentId}) from the QSAP system? All quiz logs associated with
+                {deleteConfirmStudent.studentId}) from the CohesionTech platform? All quiz logs associated with
                 this student will be archived.
               </p>
             </div>

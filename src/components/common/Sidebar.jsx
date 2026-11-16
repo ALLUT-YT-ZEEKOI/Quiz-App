@@ -76,10 +76,10 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
             {!collapsed && (
               <div>
                 <div className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                  Civil Engineering
+                  CohesionTech
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                  Assessment Portal
+                  Civil Engineering Portal
                 </div>
               </div>
             )}
@@ -162,7 +162,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
               </span>
             </div>
             <div className="text-xs font-semibold leading-snug">
-              QSAP Civil Engineering Suite
+              CohesionTech Civil Suite
             </div>
             <div className="text-[10px] text-slate-300 leading-normal">
               IS 456:2000 • IS 800 • IRC:73 Standards Embedded

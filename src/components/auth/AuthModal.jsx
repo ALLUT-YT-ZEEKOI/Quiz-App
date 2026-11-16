@@ -140,7 +140,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
                 <HardHat className="w-7 h-7 text-white" />
               </div>
               <div>
-                <span className="font-extrabold text-2xl tracking-tight text-white">QSAP</span>
+                <span className="font-extrabold text-2xl tracking-tight text-white">CohesionTech</span>
                 <span className="block text-xs uppercase tracking-wider text-blue-300 font-semibold">
                   Civil Engineering Suite
                 </span>
@@ -246,7 +246,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">
-                        QSAP
+                        CohesionTech
                       </span>
                       <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-md">
                         CIVIL PRO
@@ -542,7 +542,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-center text-[10px] text-slate-400 dark:text-slate-500">
-            Civil Engineering Assessment Suite • Admin & Student Dashboards
+            CohesionTech Assessment Suite • Admin & Student Dashboards
           </div>
         </div>
       </div>
