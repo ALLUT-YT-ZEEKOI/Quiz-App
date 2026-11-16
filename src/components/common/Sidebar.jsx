@@ -14,7 +14,6 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  HardHat,
   ShieldCheck
 } from 'lucide-react';
 
@@ -86,8 +85,8 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
         {/* Sidebar Header / Department Badge */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className={`flex items-center gap-2.5 overflow-hidden ${collapsed ? 'justify-center w-full' : ''}`}>
-            <div className="w-9 h-9 rounded-xl bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
-              <HardHat className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 flex-shrink-0 shadow-xs">
+              <img src="/logo.jpg" alt="CohesionTech Logo" className="w-full h-full object-contain" />
             </div>
             {!collapsed && (
               <div>

@@ -7,7 +7,6 @@ import {
   User,
   Lock,
   ArrowRight,
-  HardHat,
   CheckCircle,
   Eye,
   EyeOff,
@@ -192,8 +191,8 @@ export const AuthModal = ({ isOpen, onClose }) => {
           {/* Logo & Header */}
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <HardHat className="w-7 h-7 text-white" />
+              <div className="w-12 h-12 rounded-2xl overflow-hidden bg-white border border-white/20 flex items-center justify-center p-1 shadow-lg shadow-blue-500/30">
+                <img src="/logo.jpg" alt="CohesionTech" className="w-full h-full object-contain" />
               </div>
               <div>
                 <span className="font-extrabold text-2xl tracking-tight text-white">CohesionTech</span>
@@ -332,8 +331,8 @@ export const AuthModal = ({ isOpen, onClose }) => {
             <div className="md:hidden mb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-navy-900 flex items-center justify-center shadow-md shadow-blue-500/20">
-                    <HardHat className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 shadow-md shadow-blue-500/10">
+                    <img src="/logo.jpg" alt="CohesionTech" className="w-full h-full object-contain" />
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">

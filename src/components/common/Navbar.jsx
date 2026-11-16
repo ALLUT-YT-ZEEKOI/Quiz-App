@@ -83,8 +83,8 @@ export const Navbar = ({ onMobileMenuToggle }) => {
             onClick={() => setActiveView('dashboard')}
             className="flex items-center gap-2 cursor-pointer select-none group"
           >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-navy-900 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform shrink-0">
-              <span className="font-extrabold text-base sm:text-lg tracking-wider">C</span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 shadow-sm group-hover:scale-105 transition-transform shrink-0">
+              <img src="/logo.jpg" alt="CohesionTech Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
