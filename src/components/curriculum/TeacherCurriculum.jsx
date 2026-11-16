@@ -21,9 +21,11 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Camera,
-  FileText
+  FileText,
+  Sliders
 } from 'lucide-react';
 import { BulkQuestionUploadModal } from './BulkQuestionUploadModal';
+import { EditDifficultyModal } from './EditDifficultyModal';
 
 const PRESET_SUBJECT_COVERS = [
   {
@@ -65,7 +67,11 @@ export const TeacherCurriculum = () => {
     addCurriculumQuestion,
     addCurriculumQuestionsBulk,
     deleteCurriculumQuestion,
-    showToast
+    showToast,
+    difficultyLevels,
+    getDifficultyMeta,
+    getDifficultyLabel,
+    matchesDifficulty
   } = useApp();
 
   // Navigation hierarchy: null = Subjects list; object = selected subject
@@ -81,6 +87,7 @@ export const TeacherCurriculum = () => {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [difficultyModalOpen, setDifficultyModalOpen] = useState(false);
 
   // Subject form state (includes thumbnail cover image and price rate)
   const [newSubject, setNewSubject] = useState({
@@ -256,8 +263,8 @@ export const TeacherCurriculum = () => {
     const filteredQuestions =
       questionDifficultyFilter === 'All'
         ? currentModule.questions || []
-        : (currentModule.questions || []).filter(
-            (q) => q.difficulty.toLowerCase() === questionDifficultyFilter.toLowerCase()
+        : (currentModule.questions || []).filter((q) =>
+            matchesDifficulty(q.difficulty, questionDifficultyFilter)
           );
 
     return (
@@ -457,30 +464,53 @@ export const TeacherCurriculum = () => {
         {/* TAB 2: QUESTIONS & ANSWERS LIST */}
         {activeModuleTab === 'questions' && (
           <div className="space-y-4">
-            {/* Difficulty Filter Tabs */}
+            {/* Difficulty Filter Tabs & Customization Button */}
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200/60 dark:border-slate-800 text-xs font-bold">
-                {['All', 'Easy', 'Medium', 'Hard'].map((diff) => (
-                  <button
-                    key={diff}
-                    onClick={() => setQuestionDifficultyFilter(diff)}
-                    className={`px-3 py-1.5 rounded-lg transition-all ${
-                      questionDifficultyFilter === diff
-                        ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    {diff === 'Easy' && '🟢 '}
-                    {diff === 'Medium' && '🟡 '}
-                    {diff === 'Hard' && '🔴 '}
-                    {diff}
-                  </button>
-                ))}
+                <button
+                  onClick={() => setQuestionDifficultyFilter('All')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    questionDifficultyFilter === 'All'
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  All
+                </button>
+                {difficultyLevels.map((lvl) => {
+                  const isActive =
+                    questionDifficultyFilter === lvl.label || questionDifficultyFilter === lvl.id;
+                  return (
+                    <button
+                      key={lvl.id}
+                      onClick={() => setQuestionDifficultyFilter(lvl.label)}
+                      className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      <span>{lvl.dot}</span>
+                      <span>{lvl.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              <span className="text-xs text-slate-400">
-                Showing <strong>{filteredQuestions.length}</strong> questions
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDifficultyModalOpen(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 border border-amber-200 dark:border-amber-800/60 shadow-2xs transition-all active:scale-95"
+                  title="Customize difficulty labels: Easy, Medium, Tough"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Edit Labels</span>
+                </button>
+                <span className="text-xs text-slate-400">
+                  Showing <strong>{filteredQuestions.length}</strong> questions
+                </span>
+              </div>
             </div>
 
             {filteredQuestions.length === 0 ? (
@@ -511,10 +541,11 @@ export const TeacherCurriculum = () => {
             ) : (
               <div className="space-y-3">
                 {filteredQuestions.map((q, idx) => {
+                  const diffMeta = getDifficultyMeta(q.difficulty);
                   const difficultyColor =
-                    q.difficulty?.toLowerCase() === 'easy'
+                    diffMeta.color === 'emerald'
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                      : q.difficulty?.toLowerCase() === 'hard'
+                      : diffMeta.color === 'red'
                       ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border-red-200 dark:border-red-800'
                       : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800';
 
@@ -531,7 +562,7 @@ export const TeacherCurriculum = () => {
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${difficultyColor}`}
                           >
-                            {q.difficulty} Mode
+                            {diffMeta.label} Mode
                           </span>
                         </div>
 
@@ -759,33 +790,42 @@ export const TeacherCurriculum = () => {
               <form onSubmit={handleCreateQuestion} className="space-y-3.5">
                 {/* Difficulty Mode Selector */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Question Difficulty Mode *
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Question Difficulty Mode *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setDifficultyModalOpen(true)}
+                      className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+                    >
+                      <Sliders className="w-3 h-3" />
+                      <span>Edit Mode Labels</span>
+                    </button>
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
-                    {['Easy', 'Medium', 'Hard'].map((diff) => (
-                      <button
-                        type="button"
-                        key={diff}
-                        onClick={() => setNewQuestion({ ...newQuestion, difficulty: diff })}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
-                          newQuestion.difficulty === diff
-                            ? diff === 'Easy'
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                              : diff === 'Hard'
-                              ? 'bg-red-600 text-white border-red-600 shadow-sm'
-                              : 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                            : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-                        }`}
-                      >
-                        <span>
-                          {diff === 'Easy' && '🟢'}
-                          {diff === 'Medium' && '🟡'}
-                          {diff === 'Hard' && '🔴'}
-                        </span>
-                        <span>{diff} Mode</span>
-                      </button>
-                    ))}
+                    {difficultyLevels.map((lvl) => {
+                      const isSelected = matchesDifficulty(newQuestion.difficulty, lvl.id);
+                      return (
+                        <button
+                          type="button"
+                          key={lvl.id}
+                          onClick={() => setNewQuestion({ ...newQuestion, difficulty: lvl.label })}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                            isSelected
+                              ? lvl.color === 'emerald'
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                : lvl.color === 'red'
+                                ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                                : 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                              : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          <span>{lvl.dot}</span>
+                          <span>{lvl.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -887,6 +927,12 @@ export const TeacherCurriculum = () => {
           onImport={(questions) => {
             addCurriculumQuestionsBulk(currentSubject.id, currentModule.id, questions);
           }}
+        />
+
+        {/* MODAL: CUSTOMIZE DIFFICULTY LABELS */}
+        <EditDifficultyModal
+          isOpen={difficultyModalOpen}
+          onClose={() => setDifficultyModalOpen(false)}
         />
       </div>
     );
@@ -1018,17 +1064,24 @@ export const TeacherCurriculum = () => {
 
                       {/* Difficulty Badges */}
                       {totalQuestions > 0 && (
-                        <div className="flex items-center gap-1.5 mt-2.5 text-[10px] font-semibold text-slate-500">
+                        <div className="flex items-center gap-1.5 mt-2.5 text-[10px] font-semibold text-slate-500 flex-wrap">
                           <span>Modes:</span>
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
-                            {easyCount} Easy
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300">
-                            {medCount} Medium
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300">
-                            {hardCount} Hard
-                          </span>
+                          {difficultyLevels.map((lvl) => {
+                            const count = (mod.questions || []).filter((q) =>
+                              matchesDifficulty(q.difficulty, lvl.id)
+                            ).length;
+                            const badgeColor =
+                              lvl.color === 'emerald'
+                                ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
+                                : lvl.color === 'red'
+                                ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300'
+                                : 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300';
+                            return (
+                              <span key={lvl.id} className={`px-1.5 py-0.5 rounded ${badgeColor}`}>
+                                {count} {lvl.label}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

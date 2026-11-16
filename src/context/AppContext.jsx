@@ -6,6 +6,12 @@ import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS, INITIAL_SUBSCRIPTIONS 
 
 const AppContext = createContext();
 
+export const DEFAULT_DIFFICULTY_LEVELS = [
+  { id: 'easy', label: 'Easy', color: 'emerald', dot: '🟢' },
+  { id: 'medium', label: 'Medium', color: 'amber', dot: '🟡' },
+  { id: 'hard', label: 'Hard', color: 'red', dot: '🔴' }
+];
+
 const CURRENT_DATA_VERSION = 'qsap_v3_civil_100_questions_all_subjects';
 
 export const AppProvider = ({ children }) => {
@@ -184,6 +190,71 @@ export const AppProvider = ({ children }) => {
       localStorage.setItem('cohesion_subscriptions', JSON.stringify(subscriptions));
     } catch (e) {}
   }, [subscriptions]);
+
+  // Dynamic Difficulty Levels (e.g. Easy, Medium, Tough)
+  const [difficultyLevels, setDifficultyLevels] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_difficulty_levels');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= 3) return parsed;
+      }
+    } catch (e) {
+      console.warn('Difficulty levels parse notice:', e);
+    }
+    return DEFAULT_DIFFICULTY_LEVELS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cohesion_difficulty_levels', JSON.stringify(difficultyLevels));
+    } catch (e) {}
+  }, [difficultyLevels]);
+
+  const updateDifficultyLevels = (newLevels) => {
+    setDifficultyLevels(newLevels);
+    showToast('Difficulty mode labels updated successfully!', 'success');
+  };
+
+  const resetDifficultyLevels = () => {
+    setDifficultyLevels(DEFAULT_DIFFICULTY_LEVELS);
+    showToast('Difficulty labels reset to defaults (Easy, Medium, Hard)', 'info');
+  };
+
+  // Helper to resolve question difficulty label & meta
+  const getDifficultyMeta = (difficultyValue) => {
+    if (!difficultyValue) return difficultyLevels[1] || DEFAULT_DIFFICULTY_LEVELS[1];
+    const val = String(difficultyValue).trim().toLowerCase();
+
+    for (const lvl of difficultyLevels) {
+      if (lvl.id === val || lvl.label.toLowerCase() === val) {
+        return lvl;
+      }
+    }
+
+    if (['easy', 'simple', 'beginner', 'basic', 'level 1'].includes(val)) {
+      return difficultyLevels.find((l) => l.id === 'easy') || difficultyLevels[0];
+    }
+    if (['medium', 'moderate', 'intermediate', 'normal', 'average', 'level 2'].includes(val)) {
+      return difficultyLevels.find((l) => l.id === 'medium') || difficultyLevels[1];
+    }
+    if (['hard', 'tough', 'advanced', 'difficult', 'expert', 'level 3'].includes(val)) {
+      return difficultyLevels.find((l) => l.id === 'hard') || difficultyLevels[2];
+    }
+
+    return difficultyLevels[1] || DEFAULT_DIFFICULTY_LEVELS[1];
+  };
+
+  const getDifficultyLabel = (difficultyValue) => {
+    return getDifficultyMeta(difficultyValue).label;
+  };
+
+  const matchesDifficulty = (questionDifficulty, filterValue) => {
+    if (!filterValue || filterValue === 'All') return true;
+    const qMeta = getDifficultyMeta(questionDifficulty);
+    const filterMeta = getDifficultyMeta(filterValue);
+    return qMeta.id === filterMeta.id;
+  };
 
   // Toast Notification state
   const [toasts, setToasts] = useState([]);
@@ -879,7 +950,13 @@ export const AppProvider = ({ children }) => {
         approveSubscription,
         rejectSubscription,
         checkEnrollmentStatus,
-        pendingSubscriptionsCount
+        pendingSubscriptionsCount,
+        difficultyLevels,
+        updateDifficultyLevels,
+        resetDifficultyLevels,
+        getDifficultyMeta,
+        getDifficultyLabel,
+        matchesDifficulty
       }}
     >
       {children}

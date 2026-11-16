@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { useApp } from '../../context/AppContext';
 import {
   X,
   FileText,
@@ -120,10 +121,10 @@ export function parseA4Questions(text) {
         line = line.replace(/^(?:Q(?:uestion)?\s*\d+[\.\:\)]|\d+[\.\)])\s+/i, '').trim();
       }
 
-      // Check difficulty / mode / level
-      const diffMatch = line.match(/^(?:difficulty|mode|level)\s*[:=\-]\s*(easy|medium|hard)/i);
+      // Check difficulty / mode / level (matches Easy, Medium, Hard, Tough, Moderate, etc.)
+      const diffMatch = line.match(/^(?:difficulty|mode|level)\s*[:=\-]\s*([a-zA-Z0-9\s]+)$/i);
       if (diffMatch) {
-        difficulty = diffMatch[1].charAt(0).toUpperCase() + diffMatch[1].slice(1).toLowerCase();
+        difficulty = diffMatch[1].trim();
         readingQuestion = false;
         continue;
       }
@@ -190,7 +191,7 @@ export function parseA4Questions(text) {
       question,
       options: paddedOptions.slice(0, 4),
       correctAnswer: correctAnswer >= 0 && correctAnswer < 4 ? correctAnswer : 0,
-      difficulty: ['Easy', 'Medium', 'Hard'].includes(difficulty) ? difficulty : 'Medium',
+      difficulty: difficulty || 'Medium',
       explanation
     };
   });
@@ -203,6 +204,7 @@ export const BulkQuestionUploadModal = ({
   moduleName,
   onImport
 }) => {
+  const { difficultyLevels = [], matchesDifficulty = () => false } = useApp();
   const [inputText, setInputText] = useState('');
   const [activeTab, setActiveTab] = useState('paste'); // 'paste' | 'preview'
   const [copiedTemplate, setCopiedTemplate] = useState(false);
@@ -584,23 +586,27 @@ export const BulkQuestionUploadModal = ({
 
                             {/* Difficulty Selector */}
                             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[10px] font-bold">
-                              {['Easy', 'Medium', 'Hard'].map((diff) => (
-                                <button
-                                  key={diff}
-                                  onClick={() => handleUpdateDifficulty(qIndex, diff)}
-                                  className={`px-2 py-0.5 rounded-md transition-all ${
-                                    q.difficulty === diff
-                                      ? diff === 'Easy'
-                                        ? 'bg-emerald-600 text-white'
-                                        : diff === 'Hard'
-                                        ? 'bg-red-600 text-white'
-                                        : 'bg-amber-500 text-white'
-                                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
-                                  }`}
-                                >
-                                  {diff}
-                                </button>
-                              ))}
+                              {difficultyLevels.map((lvl) => {
+                                const isSelected = matchesDifficulty(q.difficulty, lvl.id);
+                                return (
+                                  <button
+                                    key={lvl.id}
+                                    type="button"
+                                    onClick={() => handleUpdateDifficulty(qIndex, lvl.label)}
+                                    className={`px-2 py-0.5 rounded-md transition-all ${
+                                      isSelected
+                                        ? lvl.color === 'emerald'
+                                          ? 'bg-emerald-600 text-white'
+                                          : lvl.color === 'red'
+                                          ? 'bg-red-600 text-white'
+                                          : 'bg-amber-500 text-white'
+                                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
+                                    }`}
+                                  >
+                                    {lvl.label}
+                                  </button>
+                                );
+                              })}
                             </div>
 
                             {/* Validity Status */}

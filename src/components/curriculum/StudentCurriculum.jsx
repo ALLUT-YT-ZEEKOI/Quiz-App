@@ -37,7 +37,11 @@ export const StudentCurriculum = () => {
     showToast,
     checkEnrollmentStatus,
     submitSubscriptionRequest,
-    subscriptions
+    subscriptions,
+    difficultyLevels,
+    getDifficultyMeta,
+    getDifficultyLabel,
+    matchesDifficulty
   } = useApp();
 
   // Navigation hierarchy: null = Subjects list; object = selected subject
@@ -133,7 +137,7 @@ export const StudentCurriculum = () => {
   // Filter questions for quiz based on selected difficulty mode
   const quizQuestions = (currentModule?.questions || []).filter((q) => {
     if (quizDifficulty === 'All') return true;
-    return q.difficulty?.toLowerCase() === quizDifficulty.toLowerCase();
+    return matchesDifficulty(q.difficulty, quizDifficulty);
   });
 
   // Start / Retake Quiz handler
@@ -178,7 +182,8 @@ export const StudentCurriculum = () => {
       subjectName: currentSubject.name,
       moduleId: currentModule.id,
       moduleTitle: currentModule.title,
-      difficultyMode: quizDifficulty === 'All' ? 'All Questions' : `${quizDifficulty} Mode`,
+      difficultyMode:
+        quizDifficulty === 'All' ? 'All Questions' : `${getDifficultyLabel(quizDifficulty)} Mode`,
       totalQuestions: quizQuestions.length,
       correctCount,
       scorePct,
@@ -440,22 +445,33 @@ export const StudentCurriculum = () => {
             <div className="bg-white dark:bg-surface-darkCard p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1 text-xs">
                 <span className="text-slate-400 font-semibold mr-1">Practice Mode:</span>
-                {['All', 'Easy', 'Medium', 'Hard'].map((diff) => (
-                  <button
-                    key={diff}
-                    onClick={() => handleStartQuiz(diff)}
-                    className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-                      quizDifficulty === diff
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                    }`}
-                  >
-                    {diff === 'Easy' && '🟢 '}
-                    {diff === 'Medium' && '🟡 '}
-                    {diff === 'Hard' && '🔴 '}
-                    {diff}
-                  </button>
-                ))}
+                <button
+                  onClick={() => handleStartQuiz('All')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                    quizDifficulty === 'All'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  All
+                </button>
+                {difficultyLevels.map((lvl) => {
+                  const isActive = quizDifficulty === lvl.label || quizDifficulty === lvl.id;
+                  return (
+                    <button
+                      key={lvl.id}
+                      onClick={() => handleStartQuiz(lvl.label)}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span>{lvl.dot}</span>
+                      <span>{lvl.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <span className="text-xs text-slate-400">
@@ -536,7 +552,7 @@ export const StudentCurriculum = () => {
                       >
                         <div className="flex items-center justify-between text-xs mb-2">
                           <span className="font-bold text-slate-600 dark:text-slate-300">
-                            Question {idx + 1} ({q.difficulty} Mode)
+                            Question {idx + 1} ({getDifficultyLabel(q.difficulty)} Mode)
                           </span>
                           <span
                             className={`font-bold flex items-center gap-1 ${
@@ -620,7 +636,7 @@ export const StudentCurriculum = () => {
                       Question {currentQuestionIndex + 1} of {quizQuestions.length}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      {quizQuestions[currentQuestionIndex].difficulty} Mode
+                      {getDifficultyLabel(quizQuestions[currentQuestionIndex].difficulty)} Mode
                     </span>
                   </div>
                   <span className="text-slate-400">
