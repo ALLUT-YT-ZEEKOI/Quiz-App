@@ -16,8 +16,39 @@ import {
   PlayCircle,
   Check,
   AlertCircle,
-  X
+  X,
+  Upload,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Camera
 } from 'lucide-react';
+
+const PRESET_SUBJECT_COVERS = [
+  {
+    label: 'Malayalam / Lit',
+    url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
+  },
+  {
+    label: 'English / Grammar',
+    url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=600'
+  },
+  {
+    label: 'Mathematics',
+    url: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&q=80&w=600'
+  },
+  {
+    label: 'Civil & Eng.',
+    url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186156f?auto=format&fit=crop&q=80&w=600'
+  },
+  {
+    label: 'Physics & Science',
+    url: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&q=80&w=600'
+  },
+  {
+    label: 'Computer & Tech',
+    url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=600'
+  }
+];
 
 export const TeacherCurriculum = () => {
   const {
@@ -42,11 +73,12 @@ export const TeacherCurriculum = () => {
 
   // Modals state
   const [subjectModalOpen, setSubjectModalOpen] = useState(false);
+  const [editingSubjectId, setEditingSubjectId] = useState(null);
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
 
-  // New Subject form state
+  // Subject form state (includes thumbnail cover image)
   const [newSubject, setNewSubject] = useState({
     name: '',
     code: '',
@@ -90,15 +122,67 @@ export const TeacherCurriculum = () => {
     ? currentSubject.modules.find((m) => m.id === selectedModule.id) || selectedModule
     : null;
 
-  // Handlers
+  // Handlers for Subject Image & Form
+  const handleOpenAddSubject = () => {
+    setEditingSubjectId(null);
+    setNewSubject({
+      name: '',
+      code: '',
+      category: 'General',
+      description: '',
+      color: '#2563EB',
+      thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
+    });
+    setSubjectModalOpen(true);
+  };
+
+  const handleOpenEditSubject = (sub) => {
+    setEditingSubjectId(sub.id);
+    setNewSubject({
+      name: sub.name || '',
+      code: sub.code || '',
+      category: sub.category || 'General',
+      description: sub.description || '',
+      color: sub.color || '#2563EB',
+      thumbnail: sub.thumbnail || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
+    });
+    setSubjectModalOpen(true);
+  };
+
+  const handleImageFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file (PNG, JPG, WebP)', 'warning');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Url = event.target?.result;
+      if (base64Url) {
+        setNewSubject((prev) => ({ ...prev, thumbnail: base64Url }));
+        showToast('Subject image uploaded successfully!', 'success');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleCreateSubject = (e) => {
     e.preventDefault();
     if (!newSubject.name.trim()) {
       showToast('Subject name is required', 'warning');
       return;
     }
-    addSubject(newSubject);
+    if (editingSubjectId) {
+      updateSubject(editingSubjectId, newSubject);
+      showToast(`Subject "${newSubject.name}" updated`, 'success');
+    } else {
+      addSubject(newSubject);
+    }
     setSubjectModalOpen(false);
+    setEditingSubjectId(null);
     setNewSubject({
       name: '',
       code: '',
@@ -1034,7 +1118,7 @@ export const TeacherCurriculum = () => {
         </div>
 
         <button
-          onClick={() => setSubjectModalOpen(true)}
+          onClick={handleOpenAddSubject}
           className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-blue-500/25 active:scale-95 transition-all self-start md:self-auto shrink-0"
         >
           <Plus className="w-5 h-5" />
@@ -1067,6 +1151,10 @@ export const TeacherCurriculum = () => {
                     src={sub.thumbnail}
                     alt={sub.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
                   <div className="absolute top-3 left-3">
@@ -1116,6 +1204,16 @@ export const TeacherCurriculum = () => {
               {/* Action Buttons */}
               <div className="p-4 pt-0 flex items-center justify-between gap-2">
                 <button
+                  type="button"
+                  onClick={() => handleOpenEditSubject(sub)}
+                  className="p-2.5 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                  title="Edit Subject & Image"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => deleteSubject(sub.id)}
                   className="p-2.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                   title="Delete Subject"
@@ -1124,6 +1222,7 @@ export const TeacherCurriculum = () => {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setSelectedSubject(sub)}
                   className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 active:scale-95 transition-all"
                 >
@@ -1136,10 +1235,10 @@ export const TeacherCurriculum = () => {
         })}
       </div>
 
-      {/* MODAL: ADD SUBJECT */}
+      {/* MODAL: ADD / EDIT SUBJECT WITH COVER IMAGE */}
       {subjectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs overflow-y-auto">
+          <div className="w-full max-w-lg bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 my-auto max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center">
@@ -1147,7 +1246,7 @@ export const TeacherCurriculum = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                    Add New Subject
+                    {editingSubjectId ? 'Edit Subject & Cover Image' : 'Add New Subject'}
                   </h3>
                   <p className="text-xs text-slate-400">
                     e.g. Malayalam, English, Mathematics, Civil
@@ -1204,12 +1303,102 @@ export const TeacherCurriculum = () => {
                 </div>
               </div>
 
+              {/* Subject Cover Image Section */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Subject Cover Image</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">Device upload or URL</span>
+                </div>
+
+                {/* Live Preview Box */}
+                <div className="relative w-full aspect-[21/9] rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-inner">
+                  {newSubject.thumbnail ? (
+                    <img
+                      src={newSubject.thumbnail}
+                      alt="Subject Cover Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-500">
+                      <ImageIcon className="w-8 h-8" />
+                    </div>
+                  )}
+                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
+                    <Camera className="w-3 h-3 text-blue-400" />
+                    <span>Cover Preview</span>
+                  </div>
+                </div>
+
+                {/* Upload or URL Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-dashed border-blue-400 dark:border-blue-600 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-xs font-bold hover:bg-blue-50 dark:hover:bg-slate-700/80 cursor-pointer transition-all shadow-2xs">
+                    <Upload className="w-4 h-4" />
+                    <span>Upload from Device</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageFileUpload}
+                    />
+                  </label>
+
+                  <div className="relative">
+                    <LinkIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="url"
+                      placeholder="Or paste image URL"
+                      value={newSubject.thumbnail}
+                      onChange={(e) => setNewSubject({ ...newSubject, thumbnail: e.target.value })}
+                      className="w-full pl-8 pr-3 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                </div>
+
+                {/* 1-Click Quick Presets */}
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold block mb-1 uppercase tracking-wider">
+                    Or Pick a Preset Cover:
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {PRESET_SUBJECT_COVERS.map((preset, pIdx) => {
+                      const isSelected = newSubject.thumbnail === preset.url;
+                      return (
+                        <button
+                          type="button"
+                          key={pIdx}
+                          onClick={() => setNewSubject({ ...newSubject, thumbnail: preset.url })}
+                          className={`p-1.5 rounded-xl border text-[10px] font-semibold flex items-center gap-1.5 transition-all truncate text-left ${
+                            isSelected
+                              ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/30'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <img
+                            src={preset.url}
+                            alt=""
+                            className="w-5 h-5 rounded-md object-cover shrink-0"
+                          />
+                          <span className="truncate">{preset.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Description
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   placeholder="Overview of curriculum and objectives"
                   value={newSubject.description}
                   onChange={(e) => setNewSubject({ ...newSubject, description: e.target.value })}
@@ -1227,9 +1416,9 @@ export const TeacherCurriculum = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md shadow-blue-500/20"
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md shadow-blue-500/20 active:scale-95 transition-all"
                 >
-                  Create Subject
+                  {editingSubjectId ? 'Update Subject' : 'Create Subject'}
                 </button>
               </div>
             </form>

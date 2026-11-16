@@ -828,6 +828,10 @@ export const StudentCurriculum = () => {
                     src={sub.thumbnail}
                     alt={sub.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
                   <div className="absolute top-3 left-3">
