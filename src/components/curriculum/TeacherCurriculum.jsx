@@ -20,8 +20,10 @@ import {
   Upload,
   Image as ImageIcon,
   Link as LinkIcon,
-  Camera
+  Camera,
+  FileText
 } from 'lucide-react';
+import { BulkQuestionUploadModal } from './BulkQuestionUploadModal';
 
 const PRESET_SUBJECT_COVERS = [
   {
@@ -61,6 +63,7 @@ export const TeacherCurriculum = () => {
     addVideo,
     deleteVideo,
     addCurriculumQuestion,
+    addCurriculumQuestionsBulk,
     deleteCurriculumQuestion,
     showToast
   } = useApp();
@@ -77,6 +80,7 @@ export const TeacherCurriculum = () => {
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   // Subject form state (includes thumbnail cover image and price rate)
   const [newSubject, setNewSubject] = useState({
@@ -320,13 +324,24 @@ export const TeacherCurriculum = () => {
                 <span>Add Video</span>
               </button>
             ) : (
-              <button
-                onClick={() => setQuestionModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Question</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setBulkModalOpen(true)}
+                  className="px-3 sm:px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 border border-slate-700/80 shadow-xs active:scale-95 transition-all"
+                  title="Bulk upload questions from A4 format"
+                >
+                  <FileText className="w-4 h-4 text-emerald-400" />
+                  <span className="hidden sm:inline">Bulk A4 Upload</span>
+                  <span className="sm:hidden">Bulk</span>
+                </button>
+                <button
+                  onClick={() => setQuestionModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Question</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -477,12 +492,21 @@ export const TeacherCurriculum = () => {
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">
                   Add questions with Easy, Medium, and Hard difficulty modes so students can practice effectively.
                 </p>
-                <button
-                  onClick={() => setQuestionModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold inline-flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" /> Add Question
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <button
+                    onClick={() => setBulkModalOpen(true)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold inline-flex items-center gap-2 border border-slate-700/80 shadow-xs active:scale-95 transition-all"
+                  >
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <span>Bulk Upload (A4 Format)</span>
+                  </button>
+                  <button
+                    onClick={() => setQuestionModalOpen(true)}
+                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs active:scale-95 transition-all"
+                  >
+                    <Plus className="w-4 h-4" /> Add Single Question
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -692,7 +716,7 @@ export const TeacherCurriculum = () => {
         {questionModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs overflow-y-auto">
             <div className="w-full max-w-xl bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 my-auto max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center">
                     <HelpCircle className="w-5 h-5" />
@@ -711,6 +735,24 @@ export const TeacherCurriculum = () => {
                   className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
                 >
                   <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Shortcut to Bulk A4 Upload */}
+              <div className="mb-4 p-2.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800 flex items-center justify-between text-xs">
+                <span className="text-emerald-900 dark:text-emerald-200 font-medium">
+                  Have multiple questions in an A4 paper or Word file?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuestionModalOpen(false);
+                    setBulkModalOpen(true);
+                  }}
+                  className="font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1 shrink-0"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Bulk Upload (A4) ↗</span>
                 </button>
               </div>
 
@@ -834,6 +876,18 @@ export const TeacherCurriculum = () => {
             </div>
           </div>
         )}
+        {/* ================================================================= */}
+        {/* MODAL: BULK UPLOAD QUESTIONS (A4 FORMAT COPY / PASTE)             */}
+        {/* ================================================================= */}
+        <BulkQuestionUploadModal
+          isOpen={bulkModalOpen}
+          onClose={() => setBulkModalOpen(false)}
+          subjectName={currentSubject?.name}
+          moduleName={currentModule?.title}
+          onImport={(questions) => {
+            addCurriculumQuestionsBulk(currentSubject.id, currentModule.id, questions);
+          }}
+        />
       </div>
     );
   }

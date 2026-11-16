@@ -470,6 +470,33 @@ export const AppProvider = ({ children }) => {
     showToast(`Added Question (${newQuestion.difficulty} Mode)`, 'success');
   };
 
+  const addCurriculumQuestionsBulk = (subjectId, moduleId, questionsArray) => {
+    if (!questionsArray || questionsArray.length === 0) return;
+    const formattedQuestions = questionsArray.map((q, idx) => ({
+      ...q,
+      id: q.id || `q-${Date.now()}-${idx}`
+    }));
+
+    setCurriculumSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? {
+              ...s,
+              modules: (s.modules || []).map((m) =>
+                m.id === moduleId
+                  ? {
+                      ...m,
+                      questions: [...(m.questions || []), ...formattedQuestions]
+                    }
+                  : m
+              )
+            }
+          : s
+      )
+    );
+    showToast(`Bulk imported ${formattedQuestions.length} questions successfully!`, 'success');
+  };
+
   const deleteCurriculumQuestion = (subjectId, moduleId, questionId) => {
     setCurriculumSubjects((prev) =>
       prev.map((s) =>
@@ -844,6 +871,7 @@ export const AppProvider = ({ children }) => {
         addVideo,
         deleteVideo,
         addCurriculumQuestion,
+        addCurriculumQuestionsBulk,
         deleteCurriculumQuestion,
         recordCurriculumAttempt,
         subscriptions,
