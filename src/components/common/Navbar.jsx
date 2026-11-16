@@ -17,7 +17,9 @@ import {
   BookOpen,
   X,
   Check,
-  Sparkles
+  Sparkles,
+  Link2,
+  Copy
 } from 'lucide-react';
 
 export const Navbar = ({ onMobileMenuToggle }) => {
@@ -33,7 +35,8 @@ export const Navbar = ({ onMobileMenuToggle }) => {
     logout,
     setActiveView,
     setGlobalSearchOpen,
-    students
+    students,
+    copyPortalUrl
   } = useApp();
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -304,6 +307,58 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                         ))}
                       </div>
                     </div>
+
+                    {/* Direct Dashboard URLs with Copy buttons (Mobile) */}
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-3 mt-3">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <Link2 className="w-3.5 h-3.5 text-blue-500" />
+                          Dedicated Dashboard URLs
+                        </span>
+                        <span className="text-[9px] text-blue-500 font-semibold">1-Click Copy</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/60">
+                          <div className="flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <div>
+                              <div className="text-xs font-bold text-slate-900 dark:text-white">Admin Dashboard</div>
+                              <code className="text-[10px] text-amber-700 dark:text-amber-300 font-mono">/admin (admin / admin)</code>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyPortalUrl('teacher');
+                            }}
+                            className="px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700/80 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/50 flex items-center gap-1 shadow-2xs"
+                          >
+                            <Copy className="w-3 h-3" /> Copy
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-800/60">
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                            <div>
+                              <div className="text-xs font-bold text-slate-900 dark:text-white">Student Dashboard</div>
+                              <code className="text-[10px] text-blue-700 dark:text-blue-300 font-mono">/student (student / student)</code>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyPortalUrl('student');
+                            }}
+                            className="px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700/80 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/50 flex items-center gap-1 shadow-2xs"
+                          >
+                            <Copy className="w-3 h-3" /> Copy
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -393,6 +448,48 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                           <span className="text-[10px] text-slate-400 font-mono">{st.semester}</span>
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Direct URLs Card (Desktop) */}
+                  <div className="border-t border-slate-100 dark:border-slate-800 my-1 pt-2 px-1">
+                    <div className="text-[10px] text-slate-400 pb-1.5 font-bold uppercase tracking-wider flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <Link2 className="w-3 h-3 text-blue-500" /> Dedicated URLs
+                      </span>
+                      <span className="text-[9px] text-blue-500 font-medium">Direct Links</span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between p-1.5 px-2 rounded-lg bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/50 text-[11px]">
+                        <span className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1">
+                          <Shield className="w-3 h-3 text-amber-600" /> /admin
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyPortalUrl('teacher');
+                          }}
+                          className="px-2 py-0.5 text-[10px] font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Copy className="w-2.5 h-2.5" /> Copy
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between p-1.5 px-2 rounded-lg bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/50 text-[11px]">
+                        <span className="font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1">
+                          <GraduationCap className="w-3 h-3 text-blue-600" /> /student
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyPortalUrl('student');
+                          }}
+                          className="px-2 py-0.5 text-[10px] font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Copy className="w-2.5 h-2.5" /> Copy
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

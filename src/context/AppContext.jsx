@@ -33,18 +33,51 @@ export const AppProvider = ({ children }) => {
     }
   }
 
+  // Parse initial URL role & view
+  const parseInitialUrl = () => {
+    try {
+      if (typeof window === 'undefined') return { role: null, view: null };
+      const path = window.location.pathname.toLowerCase();
+      const search = window.location.search.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+
+      let role = null;
+      let view = null;
+
+      if (path.startsWith('/admin') || search.includes('role=admin') || hash.includes('admin')) {
+        role = 'teacher';
+      } else if (path.startsWith('/student') || search.includes('role=student') || hash.includes('student')) {
+        role = 'student';
+      }
+
+      const parts = path.split('/').filter(Boolean);
+      if (parts.length >= 2) {
+        view = parts[1];
+      }
+
+      return { role, view };
+    } catch (e) {
+      return { role: null, view: null };
+    }
+  };
+
+  const initialRoute = parseInitialUrl();
+
   // Theme state
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('qsap_dark_mode') === 'true';
   });
 
-  // Auth / Role state: default starts logged in as Dr. Rajesh Sharma (teacher)
+  // Auth / Role state
   const [currentRole, setCurrentRole] = useState(() => {
-    return localStorage.getItem('qsap_role') || 'student';
+    if (initialRoute.role) return initialRoute.role;
+    return localStorage.getItem('qsap_role') || 'teacher';
   });
 
   const [currentUserId, setCurrentUserId] = useState(() => {
-    return localStorage.getItem('qsap_user_id') || 'STU001';
+    if (initialRoute.role === 'teacher') return 'T001';
+    if (initialRoute.role === 'student') return 'STU001';
+    return localStorage.getItem('qsap_user_id') || 'T001';
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -52,7 +85,9 @@ export const AppProvider = ({ children }) => {
   });
 
   // Active navigation view
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState(() => {
+    return initialRoute.view || 'dashboard';
+  });
   const [activeQuizForAttempt, setActiveQuizForAttempt] = useState(null);
   const [lastQuizResult, setLastQuizResult] = useState(null);
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState(null);
@@ -147,6 +182,64 @@ export const AppProvider = ({ children }) => {
     ? teachers.find((t) => t.id === currentUserId) || teachers[0]
     : students.find((s) => s.id === currentUserId) || students[0];
 
+  // Get direct portal URL
+  const getPortalUrl = (role) => {
+    if (typeof window === 'undefined') return '';
+    const origin = window.location.origin;
+    return `${origin}/${role === 'teacher' || role === 'admin' ? 'admin' : 'student'}`;
+  };
+
+  // Copy portal URL to clipboard with user toast feedback
+  const copyPortalUrl = (role) => {
+    const url = getPortalUrl(role);
+    const roleLabel = (role === 'teacher' || role === 'admin') ? 'Admin' : 'Student';
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(url)
+        .then(() => {
+          showToast(`Copied ${roleLabel} URL: ${url}`, 'success');
+        })
+        .catch(() => {
+          showToast(`URL: ${url}`, 'info');
+        });
+    } else {
+      showToast(`URL: ${url}`, 'info');
+    }
+  };
+
+  // Keep browser URL synchronized with role and activeView
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const basePath = currentRole === 'teacher' ? '/admin' : '/student';
+    let targetPath = basePath;
+    if (activeView && activeView !== 'dashboard') {
+      targetPath = `${basePath}/${activeView}`;
+    }
+
+    if (window.location.pathname !== targetPath) {
+      window.history.replaceState({ role: currentRole, view: activeView }, '', targetPath);
+    }
+  }, [currentRole, activeView]);
+
+  // Handle browser back / forward navigation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePopState = () => {
+      const route = parseInitialUrl();
+      if (route.role && route.role !== currentRole) {
+        setCurrentRole(route.role);
+        setCurrentUserId(route.role === 'teacher' ? 'T001' : 'STU001');
+      }
+      if (route.view) {
+        setActiveView(route.view);
+      } else {
+        setActiveView('dashboard');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentRole]);
+
   // Role Switching Helper
   const switchRole = (newRole, newUserId) => {
     setCurrentRole(newRole);
@@ -158,7 +251,7 @@ export const AppProvider = ({ children }) => {
     setIsAuthenticated(true);
     setActiveView('dashboard');
     setActiveQuizForAttempt(null);
-    showToast(`Switched to ${newRole === 'teacher' ? 'Teacher' : 'Student'} mode`, 'info');
+    showToast(`Switched to ${newRole === 'teacher' ? 'Admin' : 'Student'} Dashboard`, 'info');
   };
 
   // Login handler
@@ -442,7 +535,9 @@ export const AppProvider = ({ children }) => {
         resetDemoData,
         markNotificationsRead,
         exportStudentsCSV,
-        exportResultsCSV
+        exportResultsCSV,
+        getPortalUrl,
+        copyPortalUrl
       }}
     >
       {children}
