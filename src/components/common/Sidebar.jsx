@@ -18,39 +18,46 @@ import {
 } from 'lucide-react';
 
 export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) => {
-  const { currentRole, activeView, setActiveView, logout, quizzes, students } = useApp();
+  const {
+    currentRole,
+    currentUser,
+    activeView,
+    setActiveView,
+    logout,
+    curriculumSubjects,
+    curriculumAttempts
+  } = useApp();
 
   const teacherNavItems = [
-    { id: 'dashboard', label: 'Admin Dashboard', icon: LayoutDashboard },
     {
-      id: 'students',
-      label: 'Student Directory',
-      icon: Users,
-      badge: students.length
+      id: 'subjects',
+      label: 'Subjects & Curriculum',
+      icon: BookOpen,
+      badge: curriculumSubjects?.length || 0
     },
-    { id: 'questions', label: 'Question Bank (100+)', icon: HelpCircle },
     {
-      id: 'quizzes',
-      label: 'Quiz Management',
-      icon: FileQuestion,
-      badge: quizzes.length
-    },
-    { id: 'results', label: 'Results & Analytics', icon: BarChart3 },
-    { id: 'subjects', label: 'Civil Eng. Subjects', icon: BookOpen }
+      id: 'results',
+      label: 'Quiz Submissions',
+      icon: BarChart3,
+      badge: curriculumAttempts?.length || 0
+    }
   ];
 
   const studentNavItems = [
-    { id: 'dashboard', label: 'Student Dashboard', icon: LayoutDashboard },
-    { id: 'subjects', label: '10 Civil Subjects', icon: BookOpen },
     {
-      id: 'quizzes',
-      label: 'Available Quizzes',
-      icon: Award,
-      badge: quizzes.filter((q) => q.status === 'Published').length
+      id: 'subjects',
+      label: 'My Subjects & Modules',
+      icon: BookOpen,
+      badge: curriculumSubjects?.length || 0
     },
-    { id: 'results', label: 'My Quiz Results', icon: BarChart3 },
-    { id: 'leaderboard', label: 'Class Leaderboard', icon: Trophy },
-    { id: 'profile', label: 'My Academic Profile', icon: User }
+    {
+      id: 'results',
+      label: 'My Quiz Results',
+      icon: Award,
+      badge: (curriculumAttempts || []).filter(
+        (a) => a.studentId === (currentUser?.id || 'STU001')
+      ).length
+    }
   ];
 
   const navItems = currentRole === 'teacher' ? teacherNavItems : studentNavItems;
@@ -115,7 +122,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
 
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeView === item.id;
+            const isActive = activeView === item.id || (item.id === 'subjects' && activeView === 'dashboard');
 
             return (
               <button

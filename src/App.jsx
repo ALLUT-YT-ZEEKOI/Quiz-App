@@ -7,129 +7,41 @@ import { GlobalSearchModal } from './components/common/GlobalSearchModal';
 import { MobileBottomNav } from './components/common/MobileBottomNav';
 import { AuthModal } from './components/auth/AuthModal';
 
-// Teacher Views
-import { TeacherDashboard } from './components/teacher/TeacherDashboard';
-import { StudentDirectory } from './components/teacher/StudentDirectory';
-import { QuestionBank } from './components/teacher/QuestionBank';
-import { QuizManagement } from './components/teacher/QuizManagement';
-import { TeacherResults } from './components/teacher/TeacherResults';
-
-// Student Views
-import { StudentDashboard } from './components/student/StudentDashboard';
-import { SubjectDirectory } from './components/student/SubjectDirectory';
-import { StudentQuizzes } from './components/student/StudentQuizzes';
-import { StudentLeaderboard } from './components/student/StudentLeaderboard';
-
-// Exam & Result Views
-import { QuizAttemptScreen } from './components/quiz/QuizAttemptScreen';
-import { QuizResultScreen } from './components/quiz/QuizResultScreen';
-
-// Profile
-import { ProfileManagement } from './components/profile/ProfileManagement';
+// Streamlined Curriculum Components (Subjects -> Modules -> Videos & Q&A)
+import { TeacherCurriculum } from './components/curriculum/TeacherCurriculum';
+import { StudentCurriculum } from './components/curriculum/StudentCurriculum';
+import { CurriculumResults } from './components/curriculum/CurriculumResults';
 
 const AppContent = () => {
   const {
     currentRole,
     activeView,
     setActiveView,
-    isAuthenticated,
-    activeQuizForAttempt
+    isAuthenticated
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  // Modal triggers from dashboard quick actions
-  const [triggerAddQuestion, setTriggerAddQuestion] = useState(false);
-  const [triggerAddQuiz, setTriggerAddQuiz] = useState(false);
-  const [triggerAddStudent, setTriggerAddStudent] = useState(false);
 
   // If user is logged out, show the login modal / portal
   if (!isAuthenticated) {
     return <AuthModal isOpen={true} />;
   }
 
-  // If currently taking an active assessment, display the distraction-free exam HUD
-  if (activeView === 'quiz-attempt' && activeQuizForAttempt) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-surface-darkBg text-slate-800 dark:text-slate-100 flex flex-col">
-        <main className="flex-1 p-3 sm:p-6 max-w-7xl w-full mx-auto">
-          <QuizAttemptScreen />
-        </main>
-        <ToastContainer />
-      </div>
-    );
-  }
-
-  // Render view router based on role and activeView
+  // Streamlined view router: Focused exclusively on Subjects -> Modules -> Videos & Q&A + Results
   const renderCurrentView = () => {
-    // Shared / Universal views
-    if (activeView === 'quiz-result') {
-      return <QuizResultScreen />;
-    }
-    if (activeView === 'profile') {
-      return <ProfileManagement />;
-    }
-    if (activeView === 'subjects') {
-      return <SubjectDirectory />;
+    // If Results view
+    if (activeView === 'results') {
+      return <CurriculumResults />;
     }
 
-    // Teacher Portal Views
+    // Default & Subjects view for Teacher
     if (currentRole === 'teacher') {
-      switch (activeView) {
-        case 'dashboard':
-          return (
-            <TeacherDashboard
-              onOpenAddQuestion={() => {
-                setActiveView('questions');
-                setTriggerAddQuestion(true);
-              }}
-              onOpenAddQuiz={() => {
-                setActiveView('quizzes');
-                setTriggerAddQuiz(true);
-              }}
-              onOpenAddStudent={() => {
-                setActiveView('students');
-                setTriggerAddStudent(true);
-              }}
-            />
-          );
-        case 'students':
-          return <StudentDirectory />;
-        case 'questions':
-          return (
-            <QuestionBank
-              initialOpenAdd={triggerAddQuestion}
-              onCloseAdd={() => setTriggerAddQuestion(false)}
-            />
-          );
-        case 'quizzes':
-          return (
-            <QuizManagement
-              initialOpenCreate={triggerAddQuiz}
-              onCloseCreate={() => setTriggerAddQuiz(false)}
-            />
-          );
-        case 'results':
-          return <TeacherResults />;
-        default:
-          return <TeacherDashboard />;
-      }
+      return <TeacherCurriculum />;
     }
 
-    // Student Portal Views
-    switch (activeView) {
-      case 'dashboard':
-        return <StudentDashboard />;
-      case 'quizzes':
-        return <StudentQuizzes />;
-      case 'results':
-        return <QuizResultScreen />;
-      case 'leaderboard':
-        return <StudentLeaderboard />;
-      default:
-        return <StudentDashboard />;
-    }
+    // Default & Subjects view for Student
+    return <StudentCurriculum />;
   };
 
   return (

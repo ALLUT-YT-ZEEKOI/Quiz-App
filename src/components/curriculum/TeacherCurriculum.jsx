@@ -1,0 +1,1241 @@
+import React, { useState } from 'react';
+import { useApp } from '../../context/AppContext';
+import {
+  BookOpen,
+  Plus,
+  Video,
+  HelpCircle,
+  Trash2,
+  Edit3,
+  ChevronRight,
+  ArrowLeft,
+  Clock,
+  CheckCircle2,
+  Layers,
+  Sparkles,
+  PlayCircle,
+  Check,
+  AlertCircle,
+  X
+} from 'lucide-react';
+
+export const TeacherCurriculum = () => {
+  const {
+    curriculumSubjects,
+    addSubject,
+    updateSubject,
+    deleteSubject,
+    addModule,
+    deleteModule,
+    addVideo,
+    deleteVideo,
+    addCurriculumQuestion,
+    deleteCurriculumQuestion,
+    showToast
+  } = useApp();
+
+  // Navigation hierarchy: null = Subjects list; object = selected subject
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [selectedModule, setSelectedModule] = useState(null);
+  const [activeModuleTab, setActiveModuleTab] = useState('videos'); // 'videos' or 'questions'
+  const [questionDifficultyFilter, setQuestionDifficultyFilter] = useState('All');
+
+  // Modals state
+  const [subjectModalOpen, setSubjectModalOpen] = useState(false);
+  const [moduleModalOpen, setModuleModalOpen] = useState(false);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [questionModalOpen, setQuestionModalOpen] = useState(false);
+
+  // New Subject form state
+  const [newSubject, setNewSubject] = useState({
+    name: '',
+    code: '',
+    category: 'General',
+    description: '',
+    color: '#2563EB',
+    thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
+  });
+
+  // New Module form state
+  const [newModule, setNewModule] = useState({
+    title: '',
+    description: '',
+    duration: '45 mins'
+  });
+
+  // New Video form state
+  const [newVideo, setNewVideo] = useState({
+    title: '',
+    duration: '15:00',
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    description: '',
+    notes: ''
+  });
+
+  // New Question form state
+  const [newQuestion, setNewQuestion] = useState({
+    question: '',
+    difficulty: 'Medium',
+    options: ['', '', '', ''],
+    correctAnswer: 0,
+    explanation: ''
+  });
+
+  // Keep selected subject and module in sync with updated context state
+  const currentSubject = selectedSubject
+    ? curriculumSubjects.find((s) => s.id === selectedSubject.id) || selectedSubject
+    : null;
+
+  const currentModule = currentSubject && selectedModule
+    ? currentSubject.modules.find((m) => m.id === selectedModule.id) || selectedModule
+    : null;
+
+  // Handlers
+  const handleCreateSubject = (e) => {
+    e.preventDefault();
+    if (!newSubject.name.trim()) {
+      showToast('Subject name is required', 'warning');
+      return;
+    }
+    addSubject(newSubject);
+    setSubjectModalOpen(false);
+    setNewSubject({
+      name: '',
+      code: '',
+      category: 'General',
+      description: '',
+      color: '#2563EB',
+      thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
+    });
+  };
+
+  const handleCreateModule = (e) => {
+    e.preventDefault();
+    if (!newModule.title.trim() || !currentSubject) {
+      showToast('Module title is required', 'warning');
+      return;
+    }
+    addModule(currentSubject.id, newModule);
+    setModuleModalOpen(false);
+    setNewModule({ title: '', description: '', duration: '45 mins' });
+  };
+
+  const handleCreateVideo = (e) => {
+    e.preventDefault();
+    if (!newVideo.title.trim() || !currentSubject || !currentModule) {
+      showToast('Video title is required', 'warning');
+      return;
+    }
+    addVideo(currentSubject.id, currentModule.id, newVideo);
+    setVideoModalOpen(false);
+    setNewVideo({
+      title: '',
+      duration: '15:00',
+      videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+      description: '',
+      notes: ''
+    });
+  };
+
+  const handleCreateQuestion = (e) => {
+    e.preventDefault();
+    if (!newQuestion.question.trim()) {
+      showToast('Question text is required', 'warning');
+      return;
+    }
+    if (newQuestion.options.some((opt) => !opt.trim())) {
+      showToast('All 4 options must be filled', 'warning');
+      return;
+    }
+    addCurriculumQuestion(currentSubject.id, currentModule.id, newQuestion);
+    setQuestionModalOpen(false);
+    setNewQuestion({
+      question: '',
+      difficulty: 'Medium',
+      options: ['', '', '', ''],
+      correctAnswer: 0,
+      explanation: ''
+    });
+  };
+
+  // =========================================================================
+  // VIEW 3: MODULE DETAIL (Manage Videos & Q&A)
+  // =========================================================================
+  if (currentSubject && currentModule) {
+    const filteredQuestions =
+      questionDifficultyFilter === 'All'
+        ? currentModule.questions || []
+        : (currentModule.questions || []).filter(
+            (q) => q.difficulty.toLowerCase() === questionDifficultyFilter.toLowerCase()
+          );
+
+    return (
+      <div className="space-y-5 animate-in fade-in duration-200">
+        {/* Breadcrumb Navigation */}
+        <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+          <button
+            onClick={() => {
+              setSelectedSubject(null);
+              setSelectedModule(null);
+            }}
+            className="hover:text-blue-600 font-semibold"
+          >
+            Subjects
+          </button>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <button
+            onClick={() => setSelectedModule(null)}
+            className="hover:text-blue-600 font-semibold"
+          >
+            {currentSubject.name}
+          </button>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <span className="font-bold text-slate-900 dark:text-white truncate">
+            {currentModule.title}
+          </span>
+        </div>
+
+        {/* Module Header Card */}
+        <div className="bg-white dark:bg-surface-darkCard p-5 sm:p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <button
+              onClick={() => setSelectedModule(null)}
+              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shrink-0"
+              title="Back to Modules"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                  {currentSubject.code || currentSubject.name}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-slate-400">
+                  <Clock className="w-3.5 h-3.5" /> {currentModule.duration}
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
+                {currentModule.title}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {currentModule.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+            {activeModuleTab === 'videos' ? (
+              <button
+                onClick={() => setVideoModalOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Video</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setQuestionModalOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Question</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tab Switcher: Videos vs Questions */}
+        <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-1">
+          <button
+            onClick={() => setActiveModuleTab('videos')}
+            className={`flex items-center gap-2 pb-3 px-3 text-sm font-bold border-b-2 transition-all ${
+              activeModuleTab === 'videos'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Video className="w-4 h-4" />
+            <span>Lesson Videos ({currentModule.videos?.length || 0})</span>
+          </button>
+          <button
+            onClick={() => setActiveModuleTab('questions')}
+            className={`flex items-center gap-2 pb-3 px-3 text-sm font-bold border-b-2 transition-all ${
+              activeModuleTab === 'questions'
+                ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>Questions & Answers ({currentModule.questions?.length || 0})</span>
+          </button>
+        </div>
+
+        {/* TAB 1: VIDEOS LIST */}
+        {activeModuleTab === 'videos' && (
+          <div className="space-y-4">
+            {(currentModule.videos || []).length === 0 ? (
+              <div className="p-10 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+                <Video className="w-12 h-12 text-slate-300 mx-auto" />
+                <h3 className="font-bold text-slate-700 dark:text-slate-300 text-base">
+                  No Videos Added Yet
+                </h3>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Add video lectures or embed links so students can watch module lessons before attempting the quiz.
+                </p>
+                <button
+                  onClick={() => setVideoModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold inline-flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Add First Video
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {currentModule.videos.map((vid, idx) => (
+                  <div
+                    key={vid.id || idx}
+                    className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm flex flex-col justify-between hover:border-blue-400 transition-all"
+                  >
+                    <div>
+                      {/* Video Player Preview or Mock Container */}
+                      <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-900 mb-3 border border-slate-800">
+                        {vid.videoUrl?.includes('youtube.com') || vid.videoUrl?.includes('youtu.be') ? (
+                          <iframe
+                            src={vid.videoUrl}
+                            title={vid.title}
+                            className="w-full h-full border-0"
+                            allowFullScreen
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-white bg-gradient-to-br from-slate-900 to-navy-950 p-4 text-center">
+                            <PlayCircle className="w-12 h-12 text-blue-400 mb-2 opacity-90" />
+                            <span className="text-xs font-semibold">{vid.title}</span>
+                            <span className="text-[10px] text-slate-400 mt-1">{vid.duration}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                        <span className="font-bold text-blue-600">Lesson {idx + 1}</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {vid.duration}
+                        </span>
+                      </div>
+
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-snug">
+                        {vid.title}
+                      </h4>
+                      {vid.description && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                          {vid.description}
+                        </p>
+                      )}
+                      {vid.notes && (
+                        <div className="mt-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 text-[11px] text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
+                          <strong>Study Notes:</strong> {vid.notes}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                      <button
+                        onClick={() => deleteVideo(currentSubject.id, currentModule.id, vid.id)}
+                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs flex items-center gap-1 font-semibold transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete Video
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: QUESTIONS & ANSWERS LIST */}
+        {activeModuleTab === 'questions' && (
+          <div className="space-y-4">
+            {/* Difficulty Filter Tabs */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200/60 dark:border-slate-800 text-xs font-bold">
+                {['All', 'Easy', 'Medium', 'Hard'].map((diff) => (
+                  <button
+                    key={diff}
+                    onClick={() => setQuestionDifficultyFilter(diff)}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      questionDifficultyFilter === diff
+                        ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {diff === 'Easy' && '🟢 '}
+                    {diff === 'Medium' && '🟡 '}
+                    {diff === 'Hard' && '🔴 '}
+                    {diff}
+                  </button>
+                ))}
+              </div>
+
+              <span className="text-xs text-slate-400">
+                Showing <strong>{filteredQuestions.length}</strong> questions
+              </span>
+            </div>
+
+            {filteredQuestions.length === 0 ? (
+              <div className="p-10 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+                <HelpCircle className="w-12 h-12 text-slate-300 mx-auto" />
+                <h3 className="font-bold text-slate-700 dark:text-slate-300 text-base">
+                  No {questionDifficultyFilter !== 'All' ? questionDifficultyFilter : ''} Questions
+                </h3>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Add questions with Easy, Medium, and Hard difficulty modes so students can practice effectively.
+                </p>
+                <button
+                  onClick={() => setQuestionModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold inline-flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Add Question
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredQuestions.map((q, idx) => {
+                  const difficultyColor =
+                    q.difficulty?.toLowerCase() === 'easy'
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                      : q.difficulty?.toLowerCase() === 'hard'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border-red-200 dark:border-red-800'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+
+                  return (
+                    <div
+                      key={q.id || idx}
+                      className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-xs"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
+                            Q{idx + 1}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${difficultyColor}`}
+                          >
+                            {q.difficulty} Mode
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() =>
+                            deleteCurriculumQuestion(currentSubject.id, currentModule.id, q.id)
+                          }
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                          title="Delete Question"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <h4 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white mt-2 leading-relaxed">
+                        {q.question}
+                      </h4>
+
+                      {/* 4 Options Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                        {q.options?.map((opt, oIdx) => {
+                          const isCorrect = oIdx === q.correctAnswer;
+                          return (
+                            <div
+                              key={oIdx}
+                              className={`p-2.5 rounded-xl text-xs flex items-center gap-2 border transition-colors ${
+                                isCorrect
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/80 font-bold text-emerald-950 dark:text-emerald-200'
+                                  : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200/70 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <span
+                                className={`w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-bold shrink-0 ${
+                                  isCorrect
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                }`}
+                              >
+                                {String.fromCharCode(65 + oIdx)}
+                              </span>
+                              <span className="flex-1 truncate">{opt}</span>
+                              {isCorrect && (
+                                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {q.explanation && (
+                        <div className="mt-3 p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 text-[11px] text-blue-900 dark:text-blue-200 border border-blue-200/60 dark:border-blue-900/50">
+                          <strong>Explanation:</strong> {q.explanation}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* MODAL: ADD VIDEO                                                  */}
+        {/* ================================================================= */}
+        {videoModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs">
+            <div className="w-full max-w-lg bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center">
+                    <Video className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                      Add Lesson Video
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Module: {currentModule.title}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setVideoModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateVideo} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Video Lesson Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Lesson 1: Introduction to Grammar Rules"
+                    value={newVideo.title}
+                    onChange={(e) => setNewVideo({ ...newVideo, title: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Duration
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 15:30"
+                      value={newVideo.duration}
+                      onChange={(e) => setNewVideo({ ...newVideo, duration: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Video Embed / YouTube URL
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://www.youtube.com/embed/..."
+                      value={newVideo.videoUrl}
+                      onChange={(e) => setNewVideo({ ...newVideo, videoUrl: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Lesson Summary
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="What will students learn in this video?"
+                    value={newVideo.description}
+                    onChange={(e) => setNewVideo({ ...newVideo, description: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Important Notes & Formulae
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Key takeaway notes for students"
+                    value={newVideo.notes}
+                    onChange={(e) => setNewVideo({ ...newVideo, notes: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setVideoModalOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md shadow-blue-500/20"
+                  >
+                    Save Video
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* MODAL: ADD QUESTION WITH EASY / MEDIUM / HARD DIFFICULTY          */}
+        {/* ================================================================= */}
+        {questionModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs overflow-y-auto">
+            <div className="w-full max-w-xl bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 my-auto max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center">
+                    <HelpCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                      Add Assessment Question
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Module: {currentModule.title}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setQuestionModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateQuestion} className="space-y-3.5">
+                {/* Difficulty Mode Selector */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Question Difficulty Mode *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['Easy', 'Medium', 'Hard'].map((diff) => (
+                      <button
+                        type="button"
+                        key={diff}
+                        onClick={() => setNewQuestion({ ...newQuestion, difficulty: diff })}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                          newQuestion.difficulty === diff
+                            ? diff === 'Easy'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                              : diff === 'Hard'
+                              ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                              : 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                            : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <span>
+                          {diff === 'Easy' && '🟢'}
+                          {diff === 'Medium' && '🟡'}
+                          {diff === 'Hard' && '🔴'}
+                        </span>
+                        <span>{diff} Mode</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Question Text *
+                  </label>
+                  <textarea
+                    rows={2}
+                    required
+                    placeholder="Enter the question clearly (supports Malayalam, English, or Technical equations)"
+                    value={newQuestion.question}
+                    onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Four Multiple Choice Options (Select the correct radio) *
+                  </label>
+                  <div className="space-y-2">
+                    {newQuestion.options.map((opt, oIdx) => (
+                      <div key={oIdx} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="correctOption"
+                          checked={newQuestion.correctAnswer === oIdx}
+                          onChange={() => setNewQuestion({ ...newQuestion, correctAnswer: oIdx })}
+                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                          title="Mark this as the correct answer"
+                        />
+                        <span className="text-xs font-bold text-slate-500 w-5">
+                          {String.fromCharCode(65 + oIdx)}.
+                        </span>
+                        <input
+                          type="text"
+                          required
+                          placeholder={`Option ${String.fromCharCode(65 + oIdx)} text`}
+                          value={opt}
+                          onChange={(e) => {
+                            const updated = [...newQuestion.options];
+                            updated[oIdx] = e.target.value;
+                            setNewQuestion({ ...newQuestion, options: updated });
+                          }}
+                          className={`flex-1 px-3 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border ${
+                            newQuestion.correctAnswer === oIdx
+                              ? 'border-emerald-500 ring-1 ring-emerald-500/30'
+                              : 'border-slate-200 dark:border-slate-800'
+                          } focus:outline-none`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Explanation / Solution
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Provide detailed explanation displayed after the student answers"
+                    value={newQuestion.explanation}
+                    onChange={(e) =>
+                      setNewQuestion({ ...newQuestion, explanation: e.target.value })
+                    }
+                    className="w-full px-3.5 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setQuestionModalOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-md shadow-emerald-500/20"
+                  >
+                    Save Question
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: SUBJECT DETAIL (Manage Modules)
+  // =========================================================================
+  if (currentSubject) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        {/* Breadcrumb Navigation */}
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <button
+            onClick={() => setSelectedSubject(null)}
+            className="hover:text-blue-600 font-semibold"
+          >
+            Subjects
+          </button>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <span className="font-bold text-slate-900 dark:text-white truncate">
+            {currentSubject.name}
+          </span>
+        </div>
+
+        {/* Subject Header Banner */}
+        <div className="bg-white dark:bg-surface-darkCard p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <button
+              onClick={() => setSelectedSubject(null)}
+              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shrink-0"
+              title="Back to All Subjects"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                  {currentSubject.code || 'CODE'}
+                </span>
+                <span className="text-xs text-slate-400 font-medium">
+                  {currentSubject.category}
+                </span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+                {currentSubject.name}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+                {currentSubject.description}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setModuleModalOpen(true)}
+            className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-blue-500/25 active:scale-95 transition-all self-start md:self-auto shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Module / Lesson</span>
+          </button>
+        </div>
+
+        {/* Modules List */}
+        <div>
+          <h3 className="font-extrabold text-lg text-slate-900 dark:text-white mb-3 flex items-center justify-between">
+            <span>Modules in this Subject ({currentSubject.modules?.length || 0})</span>
+            <span className="text-xs font-normal text-slate-400">Click a module to manage its videos and questions</span>
+          </h3>
+
+          {(currentSubject.modules || []).length === 0 ? (
+            <div className="p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+              <Layers className="w-12 h-12 text-slate-300 mx-auto" />
+              <h4 className="font-bold text-slate-700 dark:text-slate-300 text-base">
+                No Modules Added Yet
+              </h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                Create your first module (e.g. Module 1: Basics) to start adding video lectures and Q&A assessments.
+              </p>
+              <button
+                onClick={() => setModuleModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Add First Module
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {currentSubject.modules.map((mod, idx) => {
+                const totalVideos = mod.videos?.length || 0;
+                const totalQuestions = mod.questions?.length || 0;
+                const easyCount = (mod.questions || []).filter((q) => q.difficulty === 'Easy').length;
+                const medCount = (mod.questions || []).filter((q) => q.difficulty === 'Medium').length;
+                const hardCount = (mod.questions || []).filter((q) => q.difficulty === 'Hard').length;
+
+                return (
+                  <div
+                    key={mod.id || idx}
+                    className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:border-blue-400 transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                          Module {idx + 1}
+                        </span>
+                        <div className="flex items-center gap-1 text-slate-400 text-xs">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>{mod.duration}</span>
+                        </div>
+                      </div>
+
+                      <h4 className="font-bold text-base text-slate-900 dark:text-white">
+                        {mod.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                        {mod.description}
+                      </p>
+
+                      {/* Content Counts */}
+                      <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                        <div className="flex items-center gap-2 p-2 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200">
+                          <Video className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span className="font-bold">{totalVideos} Videos</span>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200">
+                          <HelpCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="font-bold">{totalQuestions} Questions</span>
+                        </div>
+                      </div>
+
+                      {/* Difficulty Badges */}
+                      {totalQuestions > 0 && (
+                        <div className="flex items-center gap-1.5 mt-2.5 text-[10px] font-semibold text-slate-500">
+                          <span>Modes:</span>
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
+                            {easyCount} Easy
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300">
+                            {medCount} Medium
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300">
+                            {hardCount} Hard
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <button
+                        onClick={() => deleteModule(currentSubject.id, mod.id)}
+                        className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        title="Delete Module"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedModule(mod);
+                          setActiveModuleTab('videos');
+                        }}
+                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all"
+                      >
+                        <span>Manage Videos & Q&A</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* MODAL: ADD MODULE */}
+        {moduleModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs">
+            <div className="w-full max-w-md bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                      Add New Module
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Subject: {currentSubject.name}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setModuleModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateModule} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Module Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Module 1: Grammar & Sandhi"
+                    value={newModule.title}
+                    onChange={(e) => setNewModule({ ...newModule, title: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Duration
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 45 mins"
+                    value={newModule.duration}
+                    onChange={(e) => setNewModule({ ...newModule, duration: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Module Description
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Briefly describe what this module covers"
+                    value={newModule.description}
+                    onChange={(e) => setNewModule({ ...newModule, description: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModuleModalOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md shadow-blue-500/20"
+                  >
+                    Create Module
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 1: SUBJECTS DIRECTORY (Root Studio)
+  // =========================================================================
+  return (
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Studio Header */}
+      <div className="bg-white dark:bg-surface-darkCard p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
+              Admin & Teacher Studio
+            </span>
+            <span className="text-xs text-slate-400 font-medium">
+              Curriculum Manager
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+            Subject & Curriculum Manager
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+            Add subjects (e.g. Malayalam, English), create lesson modules, upload videos, and set up Easy, Medium, and Hard Q&A assessments.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setSubjectModalOpen(true)}
+          className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-blue-500/25 active:scale-95 transition-all self-start md:self-auto shrink-0"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Add New Subject</span>
+        </button>
+      </div>
+
+      {/* Subjects Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {curriculumSubjects.map((sub) => {
+          const totalModules = sub.modules?.length || 0;
+          const totalVideos = (sub.modules || []).reduce(
+            (acc, m) => acc + (m.videos?.length || 0),
+            0
+          );
+          const totalQuestions = (sub.modules || []).reduce(
+            (acc, m) => acc + (m.questions?.length || 0),
+            0
+          );
+
+          return (
+            <div
+              key={sub.id}
+              className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+            >
+              <div>
+                {/* Banner Thumbnail */}
+                <div className="h-32 w-full relative overflow-hidden bg-slate-900">
+                  <img
+                    src={sub.thumbnail}
+                    alt={sub.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                  <div className="absolute top-3 left-3">
+                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/90 text-slate-900 backdrop-blur-xs">
+                      {sub.code || 'CODE'}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <h3 className="font-extrabold text-base text-white truncate drop-shadow-sm">
+                      {sub.name}
+                    </h3>
+                    <span className="text-[11px] text-blue-200 font-medium">
+                      {sub.category}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Content info */}
+                <div className="p-4 space-y-3">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                    {sub.description}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                      <span className="block text-xs font-black text-slate-900 dark:text-white">
+                        {totalModules}
+                      </span>
+                      <span className="text-[10px] text-slate-400">Modules</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                      <span className="block text-xs font-black text-blue-600">
+                        {totalVideos}
+                      </span>
+                      <span className="text-[10px] text-slate-400">Videos</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                      <span className="block text-xs font-black text-emerald-600">
+                        {totalQuestions}
+                      </span>
+                      <span className="text-[10px] text-slate-400">Q&A</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-4 pt-0 flex items-center justify-between gap-2">
+                <button
+                  onClick={() => deleteSubject(sub.id)}
+                  className="p-2.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                  title="Delete Subject"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => setSelectedSubject(sub)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 active:scale-95 transition-all"
+                >
+                  <span>Manage Modules ({totalModules})</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* MODAL: ADD SUBJECT */}
+      {subjectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    Add New Subject
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    e.g. Malayalam, English, Mathematics, Civil
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSubjectModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubject} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Subject Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Malayalam or English Grammar"
+                  value={newSubject.name}
+                  onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Subject Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. MAL-101"
+                    value={newSubject.code}
+                    onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Category
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Language / Science"
+                    value={newSubject.category}
+                    onChange={(e) => setNewSubject({ ...newSubject, category: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Overview of curriculum and objectives"
+                  value={newSubject.description}
+                  onChange={(e) => setNewSubject({ ...newSubject, description: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSubjectModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md shadow-blue-500/20"
+                >
+                  Create Subject
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

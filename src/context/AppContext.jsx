@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TEACHERS, STUDENTS, SUBJECTS } from '../data/initialData';
 import { QUESTIONS_BANK } from '../data/questionsData';
 import { INITIAL_QUIZZES, INITIAL_ATTEMPTS, INITIAL_NOTIFICATIONS } from '../data/quizzesData';
+import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS } from '../data/curriculumData';
 
 const AppContext = createContext();
 
@@ -125,6 +126,45 @@ export const AppProvider = ({ children }) => {
     const saved = localStorage.getItem('qsap_notifications');
     return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
   });
+
+  // Streamlined Curriculum state: Subjects -> Modules -> Videos & Questions (Easy/Medium/Hard)
+  const [curriculumSubjects, setCurriculumSubjects] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_curriculum');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Curriculum parse notice:', e);
+    }
+    return INITIAL_CURRICULUM;
+  });
+
+  const [curriculumAttempts, setCurriculumAttempts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_curriculum_attempts');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('Curriculum attempts parse notice:', e);
+    }
+    return INITIAL_CURRICULUM_ATTEMPTS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cohesion_curriculum', JSON.stringify(curriculumSubjects));
+    } catch (e) {}
+  }, [curriculumSubjects]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cohesion_curriculum_attempts', JSON.stringify(curriculumAttempts));
+    } catch (e) {}
+  }, [curriculumAttempts]);
 
   // Toast Notification state
   const [toasts, setToasts] = useState([]);
@@ -267,6 +307,174 @@ export const AppProvider = ({ children }) => {
   const logout = () => {
     setIsAuthenticated(false);
     showToast('Logged out of CohesionTech', 'info');
+  };
+
+  // =========================================================================
+  // STREAMLINED CURRICULUM CRUD: SUBJECTS -> MODULES -> VIDEOS & QUESTIONS
+  // =========================================================================
+
+  // Subject CRUD
+  const addSubject = (subjectData) => {
+    const newSubject = {
+      ...subjectData,
+      id: `sub-${Date.now()}`,
+      modules: []
+    };
+    setCurriculumSubjects((prev) => [newSubject, ...prev]);
+    showToast(`Subject "${newSubject.name}" created`, 'success');
+  };
+
+  const updateSubject = (id, updatedFields) => {
+    setCurriculumSubjects((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, ...updatedFields } : s))
+    );
+    showToast('Subject updated', 'success');
+  };
+
+  const deleteSubject = (id) => {
+    setCurriculumSubjects((prev) => prev.filter((s) => s.id !== id));
+    showToast('Subject removed', 'info');
+  };
+
+  // Module CRUD
+  const addModule = (subjectId, moduleData) => {
+    const newModule = {
+      ...moduleData,
+      id: `mod-${Date.now()}`,
+      videos: [],
+      questions: []
+    };
+    setCurriculumSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? { ...s, modules: [...(s.modules || []), newModule] }
+          : s
+      )
+    );
+    showToast(`Module "${newModule.title}" created`, 'success');
+  };
+
+  const updateModule = (subjectId, moduleId, updatedFields) => {
+    setCurriculumSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? {
+              ...s,
+              modules: (s.modules || []).map((m) =>
+                m.id === moduleId ? { ...m, ...updatedFields } : m
+              )
+            }
+          : s
+      )
+    );
+    showToast('Module updated', 'success');
+  };
+
+  const deleteModule = (subjectId, moduleId) => {
+    setCurriculumSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? {
+              ...s,
+              modules: (s.modules || []).filter((m) => m.id !== moduleId)
+            }
+          : s
+      )
+    );
+    showToast('Module removed', 'info');
+  };
+
+  // Video CRUD
+  const addVideo = (subjectId, moduleId, videoData) => {
+    const newVideo = {
+      ...videoData,
+      id: `vid-${Date.now()}`
+    };
+    setCurriculumSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? {
+              ...s,
+              modules: (s.modules || []).map((m) =>
+                m.id === moduleId
+                  ? { ...m, videos: [...(m.videos || []), newVideo] }
+                  : m
+              )
+            }
+          : s
+      )
+    );
+    showToast(`Video lesson "${newVideo.title}" added`, 'success');
+  };
+
+  const deleteVideo = (subjectId, moduleId, videoId) => {
+    setCurriculumSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? {
+              ...s,
+              modules: (s.modules || []).map((m) =>
+                m.id === moduleId
+                  ? {
+                      ...m,
+                      videos: (m.videos || []).filter((v) => v.id !== videoId)
+                    }
+                  : m
+              )
+            }
+          : s
+      )
+    );
+    showToast('Video removed', 'info');
+  };
+
+  // Curriculum Question CRUD (Supports Easy, Medium, Hard modes)
+  const addCurriculumQuestion = (subjectId, moduleId, questionData) => {
+    const newQuestion = {
+      ...questionData,
+      id: `q-${Date.now()}`
+    };
+    setCurriculumSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? {
+              ...s,
+              modules: (s.modules || []).map((m) =>
+                m.id === moduleId
+                  ? { ...m, questions: [...(m.questions || []), newQuestion] }
+                  : m
+              )
+            }
+          : s
+      )
+    );
+    showToast(`Added Question (${newQuestion.difficulty} Mode)`, 'success');
+  };
+
+  const deleteCurriculumQuestion = (subjectId, moduleId, questionId) => {
+    setCurriculumSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? {
+              ...s,
+              modules: (s.modules || []).map((m) =>
+                m.id === moduleId
+                  ? {
+                      ...m,
+                      questions: (m.questions || []).filter((q) => q.id !== questionId)
+                    }
+                  : m
+              )
+            }
+          : s
+      )
+    );
+    showToast('Question removed', 'info');
+  };
+
+  // Student Curriculum Attempt
+  const recordCurriculumAttempt = (attemptData) => {
+    setCurriculumAttempts((prev) => [attemptData, ...prev]);
   };
 
   // Student CRUD
@@ -537,7 +745,20 @@ export const AppProvider = ({ children }) => {
         exportStudentsCSV,
         exportResultsCSV,
         getPortalUrl,
-        copyPortalUrl
+        copyPortalUrl,
+        curriculumSubjects,
+        curriculumAttempts,
+        addSubject,
+        updateSubject,
+        deleteSubject,
+        addModule,
+        updateModule,
+        deleteModule,
+        addVideo,
+        deleteVideo,
+        addCurriculumQuestion,
+        deleteCurriculumQuestion,
+        recordCurriculumAttempt
       }}
     >
       {children}

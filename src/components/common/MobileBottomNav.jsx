@@ -19,29 +19,23 @@ export const MobileBottomNav = () => {
   if (activeView === 'quiz-attempt') return null;
 
   const teacherItems = [
-    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-    { id: 'students', label: 'Students', icon: Users },
-    { id: 'questions', label: 'Q-Bank', icon: HelpCircle },
-    { id: 'quizzes', label: 'Quizzes', icon: FileQuestion },
-    { id: 'results', label: 'Results', icon: BarChart3 }
+    { id: 'subjects', label: 'Curriculum', icon: BookOpen },
+    { id: 'results', label: 'Quiz Results', icon: BarChart3 }
   ];
 
   const studentItems = [
-    { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
-    { id: 'subjects', label: 'Subjects', icon: BookOpen },
-    { id: 'quizzes', label: 'Tests', icon: Award },
-    { id: 'leaderboard', label: 'Rankings', icon: Trophy },
-    { id: 'profile', label: 'Profile', icon: User }
+    { id: 'subjects', label: 'My Subjects', icon: BookOpen },
+    { id: 'results', label: 'My Results', icon: Award }
   ];
 
   const navItems = currentRole === 'teacher' ? teacherItems : studentItems;
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-surface-darkCard/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2 py-1.5 transition-colors">
-      <div className="flex items-center justify-around max-w-lg mx-auto">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-surface-darkCard/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-4 py-2 transition-colors">
+      <div className="flex items-center justify-around max-w-sm mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeView === item.id;
+          const isActive = activeView === item.id || (item.id === 'subjects' && activeView === 'dashboard');
 
           return (
             <button

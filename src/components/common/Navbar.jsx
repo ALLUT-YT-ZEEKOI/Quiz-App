@@ -93,11 +93,11 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                 </span>
                 {/* Clean, non-wrapping badge hidden on small mobile, visible on sm+ */}
                 <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 whitespace-nowrap">
-                  Civil Pro
+                  Learning Suite
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden lg:block leading-none mt-0.5">
-                Civil Engineering Assessment Platform
+                Subjects, Video Modules & Question Assessments
               </p>
             </div>
           </div>
