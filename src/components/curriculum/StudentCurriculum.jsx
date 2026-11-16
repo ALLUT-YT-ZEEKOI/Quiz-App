@@ -14,7 +14,18 @@ import {
   Check,
   X,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  QrCode,
+  Lock,
+  Unlock,
+  Upload,
+  Copy,
+  CreditCard,
+  Phone,
+  User as UserIcon,
+  ShieldCheck,
+  Eye,
+  Camera
 } from 'lucide-react';
 
 export const StudentCurriculum = () => {
@@ -23,7 +34,10 @@ export const StudentCurriculum = () => {
     curriculumAttempts,
     recordCurriculumAttempt,
     currentUser,
-    showToast
+    showToast,
+    checkEnrollmentStatus,
+    submitSubscriptionRequest,
+    subscriptions
   } = useApp();
 
   // Navigation hierarchy: null = Subjects list; object = selected subject
@@ -40,6 +54,73 @@ export const StudentCurriculum = () => {
   const [selectedAnswers, setSelectedAnswers] = useState({}); // { [questionId]: optionIndex }
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quizResult, setQuizResult] = useState(null);
+
+  // Subscription & Payment Modal state
+  const [payModalSubject, setPayModalSubject] = useState(null);
+  const [payStudentName, setPayStudentName] = useState(currentUser?.name || 'Adithyan S.');
+  const [payStudentPhone, setPayStudentPhone] = useState(currentUser?.phone || '+91 98471 22334');
+  const [payScreenshot, setPayScreenshot] = useState(null);
+  const [payTransactionId, setPayTransactionId] = useState('');
+  const [pendingModalSubject, setPendingModalSubject] = useState(null);
+
+  const handleOpenPayModal = (sub) => {
+    setPayModalSubject(sub);
+    setPayStudentName(currentUser?.name || 'Adithyan S.');
+    setPayStudentPhone(currentUser?.phone || '+91 98471 22334');
+    setPayScreenshot(null);
+    setPayTransactionId('');
+  };
+
+  const handleScreenshotUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file (PNG, JPG, WebP)', 'warning');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Url = event.target?.result;
+      if (base64Url) {
+        setPayScreenshot(base64Url);
+        showToast('Payment screenshot attached!', 'success');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmitPaymentProof = (e) => {
+    e.preventDefault();
+    if (!payModalSubject) return;
+
+    if (!payScreenshot) {
+      showToast('Please upload or attach your payment screenshot proof', 'warning');
+      return;
+    }
+
+    if (!payStudentName.trim() || !payStudentPhone.trim()) {
+      showToast('Name and Phone number are required', 'warning');
+      return;
+    }
+
+    submitSubscriptionRequest({
+      subjectId: payModalSubject.id,
+      subjectName: payModalSubject.name,
+      amount: payModalSubject.price || 499,
+      screenshot: payScreenshot,
+      transactionId: payTransactionId.trim() || `UPI-${Date.now().toString().slice(-8)}`,
+      studentId: currentUser?.id || 'STU001',
+      studentName: payStudentName.trim(),
+      studentPhone: payStudentPhone.trim(),
+      studentAvatar: currentUser?.avatar || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250'
+    });
+
+    setPayModalSubject(null);
+    setPayScreenshot(null);
+    setPayTransactionId('');
+  };
 
   const currentSubject = selectedSubject
     ? curriculumSubjects.find((s) => s.id === selectedSubject.id) || selectedSubject
@@ -645,9 +726,81 @@ export const StudentCurriculum = () => {
   }
 
   // =========================================================================
-  // VIEW 2: SUBJECT DETAIL (Modules Directory for Students)
+  // VIEW 2: SUBJECT DETAIL (Modules Directory for Students - Requires Enrollment)
   // =========================================================================
   if (currentSubject) {
+    const enrollment = checkEnrollmentStatus(currentUser?.id || 'STU001', currentSubject.id);
+
+    // If locked or pending verification, show paywall / status screen
+    if (enrollment !== 'active') {
+      return (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <button
+              onClick={() => setSelectedSubject(null)}
+              className="hover:text-blue-600 font-semibold"
+            >
+              Subjects
+            </button>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="font-bold text-slate-900 dark:text-white truncate">
+              {currentSubject.name}
+            </span>
+          </div>
+
+          <div className="bg-white dark:bg-surface-darkCard rounded-3xl p-8 border border-slate-200/80 dark:border-slate-800 text-center max-w-lg mx-auto space-y-4 shadow-sm">
+            <div
+              className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center ${
+                enrollment === 'pending'
+                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-600'
+                  : 'bg-blue-100 dark:bg-blue-950/60 text-blue-600'
+              }`}
+            >
+              {enrollment === 'pending' ? (
+                <Clock className="w-8 h-8 animate-pulse" />
+              ) : (
+                <Lock className="w-8 h-8" />
+              )}
+            </div>
+
+            <div>
+              <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                {currentSubject.name}
+              </span>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white mt-2">
+                {enrollment === 'pending'
+                  ? 'Verification in Progress'
+                  : 'Subscription Required'}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
+                {enrollment === 'pending'
+                  ? 'Your payment screenshot is awaiting manual review by the Admin. Access will unlock automatically once approved.'
+                  : `To access video lessons and assessments for ${currentSubject.name}, please complete the one-time subscription payment of ₹${currentSubject.price || 499}.`}
+              </p>
+            </div>
+
+            <div className="flex justify-center gap-3 pt-2">
+              <button
+                onClick={() => setSelectedSubject(null)}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-xs hover:bg-slate-50"
+              >
+                Back to Subjects
+              </button>
+              {enrollment === 'locked' && (
+                <button
+                  onClick={() => handleOpenPayModal(currentSubject)}
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>Scan QR & Subscribe (₹{currentSubject.price || 499})</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
         {/* Breadcrumb Navigation */}
@@ -680,6 +833,9 @@ export const StudentCurriculum = () => {
               </span>
               <span className="text-xs text-slate-400 font-medium">
                 {currentSubject.category}
+              </span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                <Check className="w-3 h-3" /> Enrolled
               </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
@@ -783,7 +939,7 @@ export const StudentCurriculum = () => {
   }
 
   // =========================================================================
-  // VIEW 1: SUBJECTS DIRECTORY FOR STUDENTS
+  // VIEW 1: SUBJECTS DIRECTORY FOR STUDENTS (WITH SUBSCRIPTION STATUS)
   // =========================================================================
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -794,10 +950,10 @@ export const StudentCurriculum = () => {
             Student Learning Portal
           </span>
           <h1 className="text-2xl sm:text-3xl font-black mt-2">
-            My Subjects & Modules
+            My Subjects & Course Subscriptions
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-            Choose a subject (Malayalam, English, Civil Engineering, Mathematics), watch high-definition video lessons, and attend quizzes by Easy, Medium, and Hard difficulty modes.
+          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed">
+            Choose a subject to watch lesson videos and test with Easy, Medium, and Hard quizzes. Subscribed courses are unlocked with full access.
           </p>
         </div>
       </div>
@@ -815,11 +971,15 @@ export const StudentCurriculum = () => {
             0
           );
 
+          const enrollment = checkEnrollmentStatus(currentUser?.id || 'STU001', sub.id);
+          const isEnrolled = enrollment === 'active';
+          const isPending = enrollment === 'pending';
+          const isLocked = enrollment === 'locked';
+
           return (
             <div
               key={sub.id}
-              onClick={() => setSelectedSubject(sub)}
-              className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between group"
+              className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
             >
               <div>
                 {/* Banner Thumbnail */}
@@ -834,11 +994,31 @@ export const StudentCurriculum = () => {
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                  
+                  {/* Top Left: Code */}
                   <div className="absolute top-3 left-3">
                     <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/90 text-slate-900 backdrop-blur-xs">
                       {sub.code || 'CODE'}
                     </span>
                   </div>
+
+                  {/* Top Right: Status Badge */}
+                  <div className="absolute top-3 right-3">
+                    {isEnrolled ? (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white flex items-center gap-1 shadow-sm">
+                        <Unlock className="w-3 h-3" /> Enrolled
+                      </span>
+                    ) : isPending ? (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white flex items-center gap-1 shadow-sm animate-pulse">
+                        <Clock className="w-3 h-3" /> Pending Review
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-blue-600 text-white flex items-center gap-1 shadow-sm">
+                        <Lock className="w-3 h-3" /> ₹{sub.price || 499}
+                      </span>
+                    )}
+                  </div>
+
                   <div className="absolute bottom-3 left-3 right-3">
                     <h3 className="font-extrabold text-base text-white truncate drop-shadow-sm">
                       {sub.name}
@@ -877,19 +1057,288 @@ export const StudentCurriculum = () => {
                 </div>
               </div>
 
+              {/* Action Button: Enrolled vs Pending vs Locked */}
               <div className="p-4 pt-0">
-                <button
-                  type="button"
-                  className="w-full py-2.5 px-4 rounded-xl bg-slate-900 group-hover:bg-blue-600 dark:bg-slate-800 dark:group-hover:bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                >
-                  <span>Open Subject & Lessons</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                {isEnrolled ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubject(sub)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-blue-600 dark:bg-slate-800 dark:group-hover:bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                  >
+                    <span>Open Lessons & Quizzes</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : isPending ? (
+                  <button
+                    type="button"
+                    onClick={() => setPendingModalSubject(sub)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-amber-100 transition-all"
+                  >
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    <span>Payment Pending Admin Approval</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPayModal(sub)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-blue-200" />
+                    <span>Subscribe via UPI (₹{sub.price || 499})</span>
+                  </button>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* ================================================================= */}
+      {/* MODAL: SUBSCRIBE & PAY VIA QR CODE                                */}
+      {/* ================================================================= */}
+      {payModalSubject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md overflow-y-auto">
+          <div className="w-full max-w-lg bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 my-auto max-h-[92vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white">
+                    Unlock Course: {payModalSubject.name}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Scan UPI QR & submit payment screenshot
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPayModalSubject(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* QR Code & Payment Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-900 dark:to-blue-950/30 border border-blue-100 dark:border-blue-900/50 mb-4 text-center">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block mb-1">
+                Scan & Pay via UPI
+              </span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white">
+                ₹{payModalSubject.price || 499}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Full access to all video lessons & practice quizzes
+              </p>
+
+              {/* QR Image Box */}
+              <div className="my-3 mx-auto w-44 h-44 bg-white p-2.5 rounded-2xl shadow-md border border-slate-200/80 flex items-center justify-center relative">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=cohesiontech@upi%26pn=CohesionTech%20Education%26am=${payModalSubject.price || 499}%26cu=INR`}
+                  alt="UPI Payment QR Code"
+                  className="w-full h-full object-contain rounded-xl"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=300';
+                  }}
+                />
+              </div>
+
+              {/* UPI ID with 1-click Copy */}
+              <div className="inline-flex items-center gap-2 p-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs shadow-2xs">
+                <span className="text-slate-400">UPI ID:</span>
+                <code className="font-mono font-bold text-slate-900 dark:text-white">
+                  cohesiontech@upi
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText('cohesiontech@upi');
+                      showToast('Copied UPI ID: cohesiontech@upi', 'success');
+                    }
+                  }}
+                  className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-blue-600"
+                  title="Copy UPI ID"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="text-[10px] text-slate-400 mt-2">
+                Scan with Google Pay, PhonePe, Paytm, or BHIM UPI
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitPaymentProof} className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                {/* Pre-filled Student Name */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Student Name (Pre-filled) *
+                  </label>
+                  <div className="relative">
+                    <UserIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      required
+                      value={payStudentName}
+                      onChange={(e) => setPayStudentName(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Pre-filled Phone Number */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Phone Number (Pre-filled) *
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      required
+                      value={payStudentPhone}
+                      onChange={(e) => setPayStudentPhone(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Screenshot Attachment */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Attach Payment Screenshot Proof *
+                </label>
+
+                {payScreenshot ? (
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800">
+                    <img
+                      src={payScreenshot}
+                      alt="Attached Screenshot"
+                      className="w-12 h-12 rounded-lg object-cover border border-emerald-400"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 block truncate">
+                        Screenshot Attached
+                      </span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                        Ready to send to Admin for manual review
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPayScreenshot(null)}
+                      className="p-1 rounded-lg text-red-500 hover:bg-red-50"
+                      title="Remove"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-blue-300 dark:border-blue-700/60 bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer transition-all text-center">
+                    <Upload className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-1" />
+                    <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                      Upload Payment Screenshot
+                    </span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">
+                      JPG, PNG, WebP from GPay / PhonePe / Paytm receipt
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      required
+                      className="hidden"
+                      onChange={handleScreenshotUpload}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Transaction Ref (Optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  UPI Ref / UTR Number (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 12-digit transaction ID"
+                  value={payTransactionId}
+                  onChange={(e) => setPayTransactionId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPayModalSubject(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-xs font-bold text-white shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+                >
+                  Submit Proof to Admin ➡️
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================= */}
+      {/* MODAL: PENDING VERIFICATION INFO                                   */}
+      {/* ================================================================= */}
+      {pendingModalSubject && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setPendingModalSubject(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 mx-auto flex items-center justify-center">
+              <Clock className="w-7 h-7 animate-pulse" />
+            </div>
+
+            <div>
+              <h3 className="font-black text-lg text-slate-900 dark:text-white">
+                Payment Proof Submitted
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Your payment screenshot for <strong>{pendingModalSubject.name}</strong> has been received by the Admin.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-xs text-amber-900 dark:text-amber-200 text-left space-y-1.5">
+              <div className="font-bold flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-amber-600" />
+                Manual Verification in Progress
+              </div>
+              <p className="text-[11px] opacity-90 leading-relaxed">
+                The Admin will review your transaction screenshot and verify the payment. Once approved, the video lectures and module quizzes will unlock automatically.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setPendingModalSubject(null)}
+              className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs"
+            >
+              Got It
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

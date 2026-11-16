@@ -7,6 +7,7 @@ export const INITIAL_CURRICULUM = [
     name: 'Malayalam (മലയാളം)',
     code: 'MAL-101',
     category: 'Language & Grammar',
+    price: 499,
     description: 'Foundations of Malayalam language, alphabet (അക്ഷരമാല), sandhi (സന്ധികൾ), grammar rules, and reading comprehension.',
     color: '#059669', // Emerald
     icon: 'BookOpen',
@@ -127,6 +128,7 @@ export const INITIAL_CURRICULUM = [
     name: 'English Grammar & Composition',
     code: 'ENG-201',
     category: 'Language & Communication',
+    price: 599,
     description: 'Master English verb tenses, active vs passive voice, prepositions, direct/indirect speech, and sentence structure.',
     color: '#2563EB', // Royal Blue
     icon: 'Languages',
@@ -269,6 +271,7 @@ export const INITIAL_CURRICULUM = [
     name: 'Civil Engineering (Structural & Concrete)',
     code: 'CE-301',
     category: 'Engineering & Technology',
+    price: 999,
     description: 'Structural Analysis, IS 456 / IS 800 codal specifications, beam deflection, and concrete mix design.',
     color: '#0284C7', // Sky Blue
     icon: 'Building2',
@@ -391,6 +394,7 @@ export const INITIAL_CURRICULUM = [
     name: 'Mathematics & Engineering Calculus',
     code: 'MATH-101',
     category: 'Applied Mathematics',
+    price: 499,
     description: 'Calculus, differential equations, matrix eigenvalues, and statistical distributions for engineers.',
     color: '#8B5CF6', // Purple
     icon: 'Calculator',
@@ -498,5 +502,53 @@ export const INITIAL_CURRICULUM_ATTEMPTS = [
     status: 'Passed',
     timeTaken: '02:40',
     date: '2026-11-16 20:45'
+  }
+];
+
+export const INITIAL_SUBSCRIPTIONS = [
+  {
+    id: 'sub-req-001',
+    studentId: 'STU001',
+    studentName: 'Adithyan S.',
+    studentPhone: '+91 98471 22334',
+    studentAvatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250',
+    subjectId: 'sub-english',
+    subjectName: 'English Grammar & Composition',
+    amount: 599,
+    screenshot: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=600',
+    transactionId: 'UPI-29482947192',
+    status: 'approved',
+    requestedAt: '2026-11-16 18:20',
+    reviewedAt: '2026-11-16 18:45'
+  },
+  {
+    id: 'sub-req-002',
+    studentId: 'STU001',
+    studentName: 'Adithyan S.',
+    studentPhone: '+91 98471 22334',
+    studentAvatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250',
+    subjectId: 'sub-malayalam',
+    subjectName: 'Malayalam (മലയാളം)',
+    amount: 499,
+    screenshot: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=600',
+    transactionId: 'UPI-83920194821',
+    status: 'pending',
+    requestedAt: '2026-11-16 21:10',
+    reviewedAt: null
+  },
+  {
+    id: 'sub-req-003',
+    studentId: 'STU002',
+    studentName: 'Meera Nambiar',
+    studentPhone: '+91 97451 99887',
+    studentAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+    subjectId: 'sub-civil',
+    subjectName: 'Civil Engineering (Structural & Concrete)',
+    amount: 999,
+    screenshot: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=600',
+    transactionId: 'UPI-99482910394',
+    status: 'pending',
+    requestedAt: '2026-11-16 21:30',
+    reviewedAt: null
   }
 ];

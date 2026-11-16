@@ -14,7 +14,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  HardHat
+  HardHat,
+  ShieldCheck
 } from 'lucide-react';
 
 export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) => {
@@ -25,7 +26,8 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     setActiveView,
     logout,
     curriculumSubjects,
-    curriculumAttempts
+    curriculumAttempts,
+    pendingSubscriptionsCount
   } = useApp();
 
   const teacherNavItems = [
@@ -34,6 +36,13 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       label: 'Subjects & Curriculum',
       icon: BookOpen,
       badge: curriculumSubjects?.length || 0
+    },
+    {
+      id: 'subscriptions',
+      label: 'Payment Approvals',
+      icon: ShieldCheck,
+      badge: pendingSubscriptionsCount || 0,
+      badgeColor: (pendingSubscriptionsCount > 0) ? 'bg-amber-500 text-white shadow-xs' : undefined
     },
     {
       id: 'results',
@@ -144,7 +153,9 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
                 {!collapsed && item.badge !== undefined && (
                   <span
                     className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-mono ${
-                      isActive
+                      item.badgeColor && !isActive
+                        ? item.badgeColor
+                        : isActive
                         ? 'bg-white/20 text-white'
                         : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                     }`}

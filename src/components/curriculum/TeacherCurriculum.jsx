@@ -78,11 +78,12 @@ export const TeacherCurriculum = () => {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
 
-  // Subject form state (includes thumbnail cover image)
+  // Subject form state (includes thumbnail cover image and price rate)
   const [newSubject, setNewSubject] = useState({
     name: '',
     code: '',
     category: 'General',
+    price: 499,
     description: '',
     color: '#2563EB',
     thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -129,6 +130,7 @@ export const TeacherCurriculum = () => {
       name: '',
       code: '',
       category: 'General',
+      price: 499,
       description: '',
       color: '#2563EB',
       thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -142,6 +144,7 @@ export const TeacherCurriculum = () => {
       name: sub.name || '',
       code: sub.code || '',
       category: sub.category || 'General',
+      price: sub.price !== undefined ? sub.price : 499,
       description: sub.description || '',
       color: sub.color || '#2563EB',
       thumbnail: sub.thumbnail || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -1162,6 +1165,11 @@ export const TeacherCurriculum = () => {
                       {sub.code || 'CODE'}
                     </span>
                   </div>
+                  <div className="absolute top-3 right-3">
+                    <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-emerald-600 text-white shadow-sm flex items-center gap-0.5">
+                      {sub.price && Number(sub.price) > 0 ? `₹${sub.price}` : 'Free'}
+                    </span>
+                  </div>
                   <div className="absolute bottom-3 left-3 right-3">
                     <h3 className="font-extrabold text-base text-white truncate drop-shadow-sm">
                       {sub.name}
@@ -1276,7 +1284,7 @@ export const TeacherCurriculum = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2.5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Subject Code
@@ -1286,7 +1294,7 @@ export const TeacherCurriculum = () => {
                     placeholder="e.g. MAL-101"
                     value={newSubject.code}
                     onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
                 <div>
@@ -1295,12 +1303,44 @@ export const TeacherCurriculum = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Language / Science"
+                    placeholder="e.g. Language"
                     value={newSubject.category}
                     onChange={(e) => setNewSubject({ ...newSubject, category: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Rate / Fee (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="499"
+                    value={newSubject.price !== undefined ? newSubject.price : 499}
+                    onChange={(e) => setNewSubject({ ...newSubject, price: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl text-xs font-bold bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Fee Presets */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] text-slate-400 font-medium">Quick Rates:</span>
+                {[0, 299, 499, 999, 1499].map((amt) => (
+                  <button
+                    type="button"
+                    key={amt}
+                    onClick={() => setNewSubject({ ...newSubject, price: amt })}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all ${
+                      Number(newSubject.price) === amt
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border-emerald-500'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-transparent hover:bg-slate-200'
+                    }`}
+                  >
+                    {amt === 0 ? 'Free (₹0)' : `₹${amt}`}
+                  </button>
+                ))}
               </div>
 
               {/* Subject Cover Image Section */}

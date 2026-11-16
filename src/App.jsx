@@ -11,6 +11,7 @@ import { AuthModal } from './components/auth/AuthModal';
 import { TeacherCurriculum } from './components/curriculum/TeacherCurriculum';
 import { StudentCurriculum } from './components/curriculum/StudentCurriculum';
 import { CurriculumResults } from './components/curriculum/CurriculumResults';
+import { AdminSubscriptions } from './components/curriculum/AdminSubscriptions';
 
 const AppContent = () => {
   const {
@@ -28,11 +29,16 @@ const AppContent = () => {
     return <AuthModal isOpen={true} />;
   }
 
-  // Streamlined view router: Focused exclusively on Subjects -> Modules -> Videos & Q&A + Results
+  // Streamlined view router: Focused exclusively on Subjects -> Modules -> Videos & Q&A + Results + Approvals
   const renderCurrentView = () => {
     // If Results view
     if (activeView === 'results') {
       return <CurriculumResults />;
+    }
+
+    // If Payment Approvals view (Admin only)
+    if (activeView === 'subscriptions') {
+      return <AdminSubscriptions />;
     }
 
     // Default & Subjects view for Teacher

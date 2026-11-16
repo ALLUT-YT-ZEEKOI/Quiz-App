@@ -9,17 +9,24 @@ import {
   BookOpen,
   Award,
   Trophy,
-  User
+  User,
+  ShieldCheck
 } from 'lucide-react';
 
 export const MobileBottomNav = () => {
-  const { currentRole, activeView, setActiveView } = useApp();
+  const { currentRole, activeView, setActiveView, pendingSubscriptionsCount } = useApp();
 
   // If inside active quiz attempt screen, don't show the bottom nav so there's zero distraction
   if (activeView === 'quiz-attempt') return null;
 
   const teacherItems = [
     { id: 'subjects', label: 'Curriculum', icon: BookOpen },
+    {
+      id: 'subscriptions',
+      label: 'Approvals',
+      icon: ShieldCheck,
+      badge: pendingSubscriptionsCount > 0 ? pendingSubscriptionsCount : null
+    },
     { id: 'results', label: 'Quiz Results', icon: BarChart3 }
   ];
 
@@ -47,14 +54,21 @@ export const MobileBottomNav = () => {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
               }`}
             >
-              <div
-                className={`p-1 rounded-xl transition-all ${
-                  isActive
-                    ? 'bg-blue-100/70 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-                    : ''
-                }`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+              <div className="relative">
+                <div
+                  className={`p-1 rounded-xl transition-all ${
+                    isActive
+                      ? 'bg-blue-100/70 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                      : ''
+                  }`}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                </div>
+                {item.badge && (
+                  <span className="absolute -top-1 -right-1.5 bg-amber-500 text-white text-[9px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center font-mono shadow-xs">
+                    {item.badge}
+                  </span>
+                )}
               </div>
               <span className="text-[10px] tracking-tight mt-0.5 leading-tight">
                 {item.label}

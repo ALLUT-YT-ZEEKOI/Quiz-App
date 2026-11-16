@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TEACHERS, STUDENTS, SUBJECTS } from '../data/initialData';
 import { QUESTIONS_BANK } from '../data/questionsData';
 import { INITIAL_QUIZZES, INITIAL_ATTEMPTS, INITIAL_NOTIFICATIONS } from '../data/quizzesData';
-import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS } from '../data/curriculumData';
+import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS, INITIAL_SUBSCRIPTIONS } from '../data/curriculumData';
 
 const AppContext = createContext();
 
@@ -154,6 +154,19 @@ export const AppProvider = ({ children }) => {
     return INITIAL_CURRICULUM_ATTEMPTS;
   });
 
+  const [subscriptions, setSubscriptions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_subscriptions');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('Subscriptions parse notice:', e);
+    }
+    return INITIAL_SUBSCRIPTIONS;
+  });
+
   useEffect(() => {
     try {
       localStorage.setItem('cohesion_curriculum', JSON.stringify(curriculumSubjects));
@@ -165,6 +178,12 @@ export const AppProvider = ({ children }) => {
       localStorage.setItem('cohesion_curriculum_attempts', JSON.stringify(curriculumAttempts));
     } catch (e) {}
   }, [curriculumAttempts]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cohesion_subscriptions', JSON.stringify(subscriptions));
+    } catch (e) {}
+  }, [subscriptions]);
 
   // Toast Notification state
   const [toasts, setToasts] = useState([]);
@@ -477,6 +496,74 @@ export const AppProvider = ({ children }) => {
     setCurriculumAttempts((prev) => [attemptData, ...prev]);
   };
 
+  // =========================================================================
+  // SUBSCRIPTION & PAYMENT APPROVAL WORKFLOW
+  // =========================================================================
+
+  const submitSubscriptionRequest = (reqData) => {
+    const newReq = {
+      ...reqData,
+      id: `sub-req-${Date.now()}`,
+      status: 'pending',
+      requestedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      reviewedAt: null
+    };
+    setSubscriptions((prev) => [newReq, ...prev]);
+    showToast('Payment proof sent to Admin! Waiting for manual approval.', 'success', 5000);
+  };
+
+  const approveSubscription = (requestId) => {
+    setSubscriptions((prev) =>
+      prev.map((s) =>
+        s.id === requestId
+          ? {
+              ...s,
+              status: 'approved',
+              reviewedAt: new Date().toISOString().replace('T', ' ').slice(0, 16)
+            }
+          : s
+      )
+    );
+    showToast('Subscription approved! Student access unlocked.', 'success');
+  };
+
+  const rejectSubscription = (requestId) => {
+    setSubscriptions((prev) =>
+      prev.map((s) =>
+        s.id === requestId
+          ? {
+              ...s,
+              status: 'rejected',
+              reviewedAt: new Date().toISOString().replace('T', ' ').slice(0, 16)
+            }
+          : s
+      )
+    );
+    showToast('Subscription request rejected.', 'info');
+  };
+
+  const checkEnrollmentStatus = (studentId, subjectId) => {
+    const sub = curriculumSubjects.find((s) => s.id === subjectId);
+    if (!sub) return 'locked';
+    if (!sub.price || Number(sub.price) === 0) {
+      return 'active'; // free course
+    }
+    const userSubs = subscriptions.filter(
+      (s) => s.studentId === studentId && s.subjectId === subjectId
+    );
+    if (userSubs.some((s) => s.status === 'approved')) {
+      return 'active';
+    }
+    if (userSubs.some((s) => s.status === 'pending')) {
+      return 'pending';
+    }
+    return 'locked';
+  };
+
+  const pendingSubscriptionsCount = subscriptions.filter(
+    (s) => s.status === 'pending'
+  ).length;
+
   // Student CRUD
   const addStudent = (studentData) => {
     const newStudent = {
@@ -758,7 +845,13 @@ export const AppProvider = ({ children }) => {
         deleteVideo,
         addCurriculumQuestion,
         deleteCurriculumQuestion,
-        recordCurriculumAttempt
+        recordCurriculumAttempt,
+        subscriptions,
+        submitSubscriptionRequest,
+        approveSubscription,
+        rejectSubscription,
+        checkEnrollmentStatus,
+        pendingSubscriptionsCount
       }}
     >
       {children}
