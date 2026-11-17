@@ -314,28 +314,28 @@ export const TeacherCurriculum = () => {
         </div>
 
         {/* Module Header Card */}
-        <div className="bg-white dark:bg-surface-darkCard p-5 sm:p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
             <button
               onClick={() => setSelectedModule(null)}
-              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shrink-0"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shrink-0"
               title="Back to Modules"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20">
                   {currentSubject.code || currentSubject.name}
                 </span>
-                <span className="flex items-center gap-1 text-xs text-slate-400">
-                  <Clock className="w-3.5 h-3.5" /> {currentModule.duration}
+                <span className="flex items-center gap-1 text-[11px] font-mono text-slate-400">
+                  <Clock className="w-3 h-3" /> {currentModule.duration || '45 mins'}
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
                 {currentModule.title}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
                 {currentModule.description}
               </p>
             </div>
@@ -345,7 +345,7 @@ export const TeacherCurriculum = () => {
             {activeModuleTab === 'videos' ? (
               <button
                 onClick={() => setVideoModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Video</span>
@@ -354,16 +354,16 @@ export const TeacherCurriculum = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setBulkModalOpen(true)}
-                  className="px-3 sm:px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 border border-slate-700/80 shadow-xs active:scale-95 transition-all"
+                  className="px-3 sm:px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-2xs transition-all active:scale-95"
                   title="Bulk upload questions from A4 format"
                 >
-                  <FileText className="w-4 h-4 text-emerald-400" />
+                  <FileText className="w-4 h-4 text-emerald-500" />
                   <span className="hidden sm:inline">Bulk A4 Upload</span>
                   <span className="sm:hidden">Bulk</span>
                 </button>
                 <button
                   onClick={() => setQuestionModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Question</span>
@@ -419,15 +419,15 @@ export const TeacherCurriculum = () => {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
                 {currentModule.videos.map((vid, idx) => (
                   <div
                     key={vid.id || idx}
-                    className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm flex flex-col justify-between hover:border-blue-400 transition-all"
+                    className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 shadow-2xs card-hover-lift hover:border-[#20B8C7]/50 transition-all flex flex-col justify-between group"
                   >
                     <div>
                       {/* Video Player Preview or Mock Container */}
-                      <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-900 mb-3 border border-slate-800">
+                      <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-900 mb-2.5 border border-slate-800">
                         {isEmbeddableVideoUrl(vid.videoUrl) ? (
                           <iframe
                             src={formatEmbedUrl(vid.videoUrl)}
@@ -437,42 +437,44 @@ export const TeacherCurriculum = () => {
                             allowFullScreen
                           />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-white bg-gradient-to-br from-slate-900 to-navy-950 p-4 text-center">
-                            <PlayCircle className="w-12 h-12 text-blue-400 mb-2 opacity-90" />
-                            <span className="text-xs font-semibold">{vid.title}</span>
-                            <span className="text-[10px] text-slate-400 mt-1">{vid.duration}</span>
+                          <div className="w-full h-full flex flex-col items-center justify-center text-white bg-gradient-to-br from-slate-900 to-[#0A262C] p-3 text-center">
+                            <PlayCircle className="w-9 h-9 text-[#20B8C7] mb-1.5 opacity-90" />
+                            <span className="text-xs font-semibold truncate max-w-full">{vid.title}</span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">{vid.duration}</span>
                           </div>
                         )}
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                        <span className="font-bold text-blue-600">Lesson {idx + 1}</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {vid.duration}
+                        <span className="font-extrabold text-[#0C4E5B] dark:text-cyan-400 text-[11px]">
+                          Lesson {idx + 1}
+                        </span>
+                        <span className="flex items-center gap-1 text-[11px] font-mono text-slate-400">
+                          <Clock className="w-3 h-3" /> {vid.duration || '15:00'}
                         </span>
                       </div>
 
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-snug">
+                      <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug truncate" title={vid.title}>
                         {vid.title}
                       </h4>
                       {vid.description && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 leading-snug" title={vid.description}>
                           {vid.description}
                         </p>
                       )}
                       {vid.notes && (
-                        <div className="mt-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 text-[11px] text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
-                          <strong>Study Notes:</strong> {vid.notes}
+                        <div className="mt-2 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 text-[10px] text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 line-clamp-1" title={vid.notes}>
+                          <strong>Notes:</strong> {vid.notes}
                         </div>
                       )}
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                    <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
                       <button
                         onClick={() => deleteVideo(currentSubject.id, currentModule.id, vid.id)}
-                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs flex items-center gap-1 font-semibold transition-colors"
+                        className="p-1 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs flex items-center gap-1 font-semibold transition-colors"
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Delete Video
+                        <Trash2 className="w-3.5 h-3.5" /> <span>Delete</span>
                       </button>
                     </div>
                   </div>
@@ -1015,28 +1017,28 @@ export const TeacherCurriculum = () => {
         </div>
 
         {/* Subject Header Banner */}
-        <div className="bg-white dark:bg-surface-darkCard p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
             <button
               onClick={() => setSelectedSubject(null)}
-              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shrink-0"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shrink-0"
               title="Back to All Subjects"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20">
                   {currentSubject.code || 'CODE'}
                 </span>
                 <span className="text-xs text-slate-400 font-medium">
                   {currentSubject.category}
                 </span>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
                 {currentSubject.name}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
                 {currentSubject.description}
               </p>
             </div>
@@ -1044,7 +1046,7 @@ export const TeacherCurriculum = () => {
 
           <button
             onClick={() => setModuleModalOpen(true)}
-            className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-blue-500/25 active:scale-95 transition-all self-start md:self-auto shrink-0"
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all self-start md:self-auto shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Add Module / Lesson</span>
@@ -1053,15 +1055,15 @@ export const TeacherCurriculum = () => {
 
         {/* Modules List */}
         <div>
-          <h3 className="font-extrabold text-lg text-slate-900 dark:text-white mb-3 flex items-center justify-between">
+          <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white mb-3 flex items-center justify-between">
             <span>Modules in this Subject ({currentSubject.modules?.length || 0})</span>
             <span className="text-xs font-normal text-slate-400">Click a module to manage its videos and questions</span>
           </h3>
 
           {(currentSubject.modules || []).length === 0 ? (
-            <div className="p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
-              <Layers className="w-12 h-12 text-slate-300 mx-auto" />
-              <h4 className="font-bold text-slate-700 dark:text-slate-300 text-base">
+            <div className="p-8 sm:p-10 text-center bg-white dark:bg-surface-darkCard rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+              <Layers className="w-10 h-10 text-slate-300 mx-auto" />
+              <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm sm:text-base">
                 No Modules Added Yet
               </h4>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
@@ -1069,13 +1071,13 @@ export const TeacherCurriculum = () => {
               </p>
               <button
                 onClick={() => setModuleModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold inline-flex items-center gap-2"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs border border-[#20B8C7]/30"
               >
                 <Plus className="w-4 h-4" /> Add First Module
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
               {currentSubject.modules.map((mod, idx) => {
                 const totalVideos = mod.videos?.length || 0;
                 const totalQuestions = mod.questions?.length || 0;
@@ -1086,54 +1088,54 @@ export const TeacherCurriculum = () => {
                 return (
                   <div
                     key={mod.id || idx}
-                    className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:border-blue-400 transition-all flex flex-col justify-between"
+                    className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 shadow-2xs card-hover-lift hover:border-[#20B8C7]/50 transition-all flex flex-col justify-between group"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        <span className="px-2 py-0.5 rounded-md bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20 text-[10px] font-extrabold tracking-wide">
                           Module {idx + 1}
                         </span>
-                        <div className="flex items-center gap-1 text-slate-400 text-xs">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>{mod.duration}</span>
+                        <div className="flex items-center gap-1 text-slate-400 text-[11px] font-mono">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          <span>{mod.duration || '45 mins'}</span>
                         </div>
                       </div>
 
-                      <h4 className="font-bold text-base text-slate-900 dark:text-white">
+                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-[#0C4E5B] dark:group-hover:text-cyan-400 transition-colors" title={mod.title}>
                         {mod.title}
                       </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
-                        {mod.description}
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 leading-snug" title={mod.description}>
+                        {mod.description || 'No description provided.'}
                       </p>
 
                       {/* Content Counts */}
-                      <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-                        <div className="flex items-center gap-2 p-2 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200">
-                          <Video className="w-4 h-4 text-blue-600 shrink-0" />
-                          <span className="font-bold">{totalVideos} Videos</span>
+                      <div className="grid grid-cols-2 gap-1.5 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                        <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 border border-blue-100 dark:border-blue-900/40">
+                          <Video className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                          <span className="font-bold truncate">{totalVideos} Videos</span>
                         </div>
-                        <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200">
-                          <HelpCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span className="font-bold">{totalQuestions} Questions</span>
+                        <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-100 dark:border-emerald-900/40">
+                          <HelpCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="font-bold truncate">{totalQuestions} Questions</span>
                         </div>
                       </div>
 
                       {/* Difficulty Badges */}
                       {totalQuestions > 0 && (
-                        <div className="flex items-center gap-1.5 mt-2.5 text-[10px] font-semibold text-slate-500 flex-wrap">
-                          <span>Modes:</span>
+                        <div className="flex items-center gap-1 mt-2 text-[9px] font-bold text-slate-500 flex-wrap">
+                          <span className="text-slate-400 font-semibold">Modes:</span>
                           {difficultyLevels.map((lvl) => {
                             const count = (mod.questions || []).filter((q) =>
                               matchesDifficulty(q.difficulty, lvl.id)
                             ).length;
                             const badgeColor =
                               lvl.color === 'emerald'
-                                ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
                                 : lvl.color === 'red'
-                                ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300'
-                                : 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300';
+                                ? 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60'
+                                : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60';
                             return (
-                              <span key={lvl.id} className={`px-1.5 py-0.5 rounded ${badgeColor}`}>
+                              <span key={lvl.id} className={`px-1.5 py-0.5 rounded font-semibold ${badgeColor}`}>
                                 {count} {lvl.label}
                               </span>
                             );
@@ -1142,13 +1144,13 @@ export const TeacherCurriculum = () => {
                       )}
                     </div>
 
-                    <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
                       <button
                         onClick={() => deleteModule(currentSubject.id, mod.id)}
-                        className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors shrink-0"
                         title="Delete Module"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
 
                       <button
@@ -1156,10 +1158,10 @@ export const TeacherCurriculum = () => {
                           setSelectedModule(mod);
                           setActiveModuleTab('videos');
                         }}
-                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all"
+                        className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center gap-1 shadow-xs border border-[#20B8C7]/30 active:scale-95 transition-all truncate"
                       >
                         <span>Manage Videos & Q&A</span>
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                       </button>
                     </div>
                   </div>
