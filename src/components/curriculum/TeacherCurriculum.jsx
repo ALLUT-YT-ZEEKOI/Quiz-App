@@ -9,6 +9,7 @@ import {
   Edit3,
   ChevronRight,
   ArrowLeft,
+  ArrowRight,
   Clock,
   CheckCircle2,
   Layers,
@@ -22,7 +23,12 @@ import {
   Link as LinkIcon,
   Camera,
   FileText,
-  Sliders
+  Sliders,
+  Home,
+  LayoutGrid,
+  List,
+  Search,
+  GraduationCap
 } from 'lucide-react';
 import { BulkQuestionUploadModal } from './BulkQuestionUploadModal';
 import { EditDifficultyModal } from './EditDifficultyModal';
@@ -88,6 +94,11 @@ export const TeacherCurriculum = () => {
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [difficultyModalOpen, setDifficultyModalOpen] = useState(false);
+
+  // Tab & search layout state
+  const [subjectTab, setSubjectTab] = useState('all'); // 'all', 'active', 'draft', 'archived'
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [layoutView, setLayoutView] = useState('grid'); // 'grid' or 'list'
 
   // Subject form state (includes thumbnail cover image and price rate)
   const [newSubject, setNewSubject] = useState({
@@ -1222,42 +1233,59 @@ export const TeacherCurriculum = () => {
     0
   );
 
+  // Filter subjects based on tab and search
+  const filteredSubjectsList = (curriculumSubjects || []).filter((sub) => {
+    if (subjectTab === 'draft') return false;
+    if (subjectTab === 'archived') return false;
+    if (!subjectSearch.trim()) return true;
+    const q = subjectSearch.toLowerCase();
+    return (
+      (sub.name || '').toLowerCase().includes(q) ||
+      (sub.code || '').toLowerCase().includes(q) ||
+      (sub.category || '').toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Studio Header */}
-      <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-surface-darkCard dark:to-slate-900/60 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
-              👑 Admin & Teacher Studio
-            </span>
-            <span className="text-[11px] text-slate-400 font-medium">
-              Curriculum & Assessment Suite
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Subject & Curriculum Manager
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+        <Home className="w-3.5 h-3.5 text-slate-400" />
+        <span>/</span>
+        <span className="font-semibold text-slate-800 dark:text-slate-200">Subjects & Curriculum</span>
+      </div>
+
+      {/* Page Header with 3D Illustration & Action Buttons */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative">
+        <div className="max-w-2xl">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            Subjects & Curriculum Manager
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl leading-relaxed">
-            Create subjects with custom fees, upload lesson videos, set up assessment questions with Easy, Medium, and Tough modes, and manage student enrollments.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+            Create and manage subjects, modules, lessons, videos and assessments for your learning programs.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 relative z-10 self-start md:self-auto shrink-0">
+        <div className="flex items-center gap-3 self-start lg:self-auto shrink-0">
+          {/* 3D Stack of books & graduation cap illustration */}
+          <div className="hidden sm:flex items-center justify-center w-16 h-16 relative shrink-0">
+            <div className="w-14 h-14 bg-gradient-to-br from-teal-500/20 via-cyan-500/10 to-blue-500/10 rounded-2xl flex items-center justify-center shadow-xs border border-teal-500/20">
+              <GraduationCap className="w-8 h-8 text-[#0E3B43] dark:text-teal-400" />
+            </div>
+          </div>
+
           <button
             onClick={() => setDifficultyModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 border border-slate-300/80 dark:border-slate-700 shadow-2xs active:scale-95 transition-all"
-            title="Customize Easy, Medium, Tough mode labels"
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-2 shadow-2xs transition-all active:scale-95"
+            title="Edit difficulty labels and layout"
           >
-            <Sliders className="w-4 h-4 text-amber-500" />
-            <span>Edit Mode Labels</span>
+            <LayoutGrid className="w-4 h-4 text-slate-500" />
+            <span>Edit Mode: Layout</span>
           </button>
 
           <button
             onClick={handleOpenAddSubject}
-            className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+            className="px-5 py-2.5 rounded-xl bg-[#0E3B43] hover:bg-[#134E59] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Subject</span>
@@ -1265,188 +1293,290 @@ export const TeacherCurriculum = () => {
         </div>
       </div>
 
-      {/* Studio KPI Metrics Bar */}
+      {/* 4 KPI Metric Cards in a Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
-          <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+        {/* Card 1: Subjects */}
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-500 flex items-center justify-center shrink-0">
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
               {grandTotalSubjects}
             </div>
-            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Subjects
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
-          <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-2xs">
+        {/* Card 2: Modules */}
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-500 flex items-center justify-center shrink-0">
             <Layers className="w-5 h-5" />
           </div>
           <div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
               {grandTotalModules}
             </div>
-            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Lesson Modules
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
-            <Video className="w-5 h-5" />
+        {/* Card 3: Videos */}
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-500 flex items-center justify-center shrink-0">
+            <PlayCircle className="w-5 h-5" />
           </div>
           <div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
               {grandTotalVideos}
             </div>
-            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Lesson Videos
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
-          <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
-            <HelpCircle className="w-5 h-5" />
+        {/* Card 4: Quiz Assessments */}
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
               {grandTotalQuestions}
             </div>
-            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Q&A Assessments
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Quiz Assessments
             </div>
           </div>
         </div>
       </div>
 
-      {/* Subjects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {curriculumSubjects.map((sub) => {
-          const totalModules = sub.modules?.length || 0;
-          const totalVideos = (sub.modules || []).reduce(
-            (acc, m) => acc + (m.videos?.length || 0),
-            0
-          );
-          const totalQuestions = (sub.modules || []).reduce(
-            (acc, m) => acc + (m.questions?.length || 0),
-            0
-          );
+      {/* Tabs and Search Bar Filter Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+          <button
+            onClick={() => setSubjectTab('all')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              subjectTab === 'all'
+                ? 'bg-[#0E3B43] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            All Subjects ({curriculumSubjects.length})
+          </button>
+          <button
+            onClick={() => setSubjectTab('active')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              subjectTab === 'active'
+                ? 'bg-[#0E3B43] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            Active ({curriculumSubjects.length})
+          </button>
+          <button
+            onClick={() => setSubjectTab('draft')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              subjectTab === 'draft'
+                ? 'bg-[#0E3B43] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            Draft (0)
+          </button>
+          <button
+            onClick={() => setSubjectTab('archived')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              subjectTab === 'archived'
+                ? 'bg-[#0E3B43] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            Archived (0)
+          </button>
+        </div>
 
-          return (
-            <div
-              key={sub.id}
-              className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs card-hover-lift flex flex-col justify-between group"
+        {/* Right Search & Grid/List View Toggles */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search subjects..."
+              value={subjectSearch}
+              onChange={(e) => setSubjectSearch(e.target.value)}
+              className="w-full pl-9 pr-3.5 py-2 rounded-xl text-xs bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-surface-darkCard rounded-xl p-1">
+            <button
+              onClick={() => setLayoutView('grid')}
+              className={`p-1.5 rounded-lg text-xs transition-colors ${
+                layoutView === 'grid'
+                  ? 'bg-[#0E3B43] text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+              title="Grid View"
             >
-              <div>
-                {/* Banner Thumbnail (Cinematic 44 Aspect) */}
-                <div className="h-44 w-full relative overflow-hidden bg-slate-900">
-                  <img
-                    src={sub.thumbnail}
-                    alt={sub.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-85"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src =
-                        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
-                  
-                  {/* Top Row: Code & Price */}
-                  <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-white/95 text-slate-900 backdrop-blur-md shadow-xs">
-                      {sub.code || 'CODE'}
-                    </span>
-                    <span className="px-3 py-1 rounded-xl text-xs font-black backdrop-blur-md bg-emerald-600/90 text-white shadow-xs border border-emerald-400/30">
-                      {sub.price && Number(sub.price) > 0 ? `₹${sub.price}` : 'Free'}
-                    </span>
-                  </div>
-
-                  {/* Bottom Title & Category */}
-                  <div className="absolute bottom-3.5 left-3.5 right-3.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block mb-0.5">
-                      {sub.category}
-                    </span>
-                    <h3 className="font-extrabold text-lg text-white truncate drop-shadow-sm">
-                      {sub.name}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Content info */}
-                <div className="p-5 space-y-3.5">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                    {sub.description}
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-center">
-                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
-                      <span className="block text-sm font-black text-slate-900 dark:text-white">
-                        {totalModules}
-                      </span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                        Modules
-                      </span>
-                    </div>
-                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
-                      <span className="block text-sm font-black text-blue-600 dark:text-blue-400">
-                        {totalVideos}
-                      </span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                        Videos
-                      </span>
-                    </div>
-                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
-                      <span className="block text-sm font-black text-emerald-600 dark:text-emerald-400">
-                        {totalQuestions}
-                      </span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                        Q&A
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="p-5 pt-0 flex items-center justify-between gap-2 border-t border-slate-50 dark:border-slate-800/50 mt-1 pt-3.5">
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEditSubject(sub)}
-                    className="p-2.5 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
-                    title="Edit Subject, Price & Cover"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteSubject(sub.id)}
-                    className="p-2.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-                    title="Delete Subject"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedSubject(sub)}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 active:scale-95 transition-all group/btn"
-                >
-                  <span>Manage Modules ({totalModules})</span>
-                  <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setLayoutView('list')}
+              className={`p-1.5 rounded-lg text-xs transition-colors ${
+                layoutView === 'list'
+                  ? 'bg-[#0E3B43] text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Subjects Grid & List */}
+      {filteredSubjectsList.length === 0 ? (
+        <div className="p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+          <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="font-bold text-slate-700 dark:text-slate-300 text-base">
+            No Subjects Found
+          </h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            No subjects match your search or filter. Click below to create your first subject.
+          </p>
+          <button
+            onClick={handleOpenAddSubject}
+            className="px-4 py-2.5 rounded-xl bg-[#0E3B43] hover:bg-[#134E59] text-white font-bold text-xs inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add New Subject
+          </button>
+        </div>
+      ) : (
+        <div className={layoutView === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" : "space-y-4"}>
+          {filteredSubjectsList.map((sub, sIdx) => {
+            const totalModules = sub.modules?.length || 0;
+            const totalVideos = (sub.modules || []).reduce(
+              (acc, m) => acc + (m.videos?.length || 0),
+              0
+            );
+            const totalQuestions = (sub.modules || []).reduce(
+              (acc, m) => acc + (m.questions?.length || 0),
+              0
+            );
+            const priceVal = sub.price !== undefined ? Number(sub.price) : 499;
+
+            return (
+              <div
+                key={sub.id || sIdx}
+                className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs card-hover-lift flex flex-col justify-between group"
+              >
+                <div>
+                  {/* Banner Thumbnail (Cinematic Aspect Ratio matching reference) */}
+                  <div className="h-44 w-full relative overflow-hidden bg-slate-900">
+                    <img
+                      src={sub.thumbnail || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'}
+                      alt={sub.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src =
+                          'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0C1E22] via-[#0C1E22]/65 to-transparent" />
+                    
+                    {/* Top Row: Code Pill (C01) & Price Pill (₹499 / Free) */}
+                    <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider bg-white/95 text-slate-800 shadow-2xs">
+                        {sub.code || `C0${sIdx + 1}`}
+                      </span>
+                      <span
+                        className={`px-3 py-1 rounded-lg text-xs font-black text-white shadow-2xs ${
+                          priceVal > 0 ? 'bg-[#00897B]' : 'bg-[#10B981]'
+                        }`}
+                      >
+                        {priceVal > 0 ? `₹${priceVal}` : 'Free'}
+                      </span>
+                    </div>
+
+                    {/* Bottom Title & Category */}
+                    <div className="absolute bottom-3.5 left-3.5 right-3.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 block mb-0.5">
+                        {sub.category || 'GENERAL'}
+                      </span>
+                      <h3 className="font-black text-base sm:text-lg text-white truncate drop-shadow-sm">
+                        {sub.name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Body Content Info */}
+                  <div className="p-4 sm:p-5 space-y-3">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                      {sub.description || sub.name}
+                    </p>
+
+                    {/* 3 Metric Boxes: Module, Video, Quiz */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                      <div className="p-2 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-semibold">
+                        <Layers className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        <span>{totalModules} {totalModules === 1 ? 'Module' : 'Module'}</span>
+                      </div>
+                      <div className="p-2 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-semibold">
+                        <Video className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                        <span>{totalVideos} {totalVideos === 1 ? 'Video' : 'Video'}</span>
+                      </div>
+                      <div className="p-2 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-semibold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span>{totalQuestions} Quiz</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Footer Actions */}
+                <div className="p-4 sm:p-5 pt-0 flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800/60 pt-3">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditSubject(sub)}
+                      className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      title="Edit Subject, Price & Cover"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteSubject(sub.id)}
+                      className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                      title="Delete Subject"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubject(sub)}
+                    className="py-2.5 px-4 rounded-xl bg-[#0E3B43] hover:bg-[#134E59] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs active:scale-95 transition-all group/btn"
+                  >
+                    <span>Manage Modules ({totalModules})</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* MODAL: ADD / EDIT SUBJECT WITH COVER IMAGE */}
       {subjectModalOpen && (

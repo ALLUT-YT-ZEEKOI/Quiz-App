@@ -1115,7 +1115,7 @@ export const StudentCurriculum = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedSubject(sub)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm shadow-blue-500/20 active:scale-95 group/btn"
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#0E3B43] hover:bg-[#134E59] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 group/btn"
                   >
                     <span>Start Learning</span>
                     <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />

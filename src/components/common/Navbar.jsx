@@ -69,11 +69,11 @@ export const Navbar = ({ onMobileMenuToggle }) => {
   return (
     <header className="sticky top-0 z-30 h-14 sm:h-16 bg-white dark:bg-surface-darkCard border-b border-slate-200 dark:border-slate-800 transition-colors shadow-xs">
       <div className="h-full px-2.5 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-4 max-w-full">
-        {/* Left: Mobile Hamburger & Logo */}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        {/* Left: Mobile Hamburger & Logo (Only on Mobile) */}
+        <div className="flex md:hidden items-center gap-1.5 sm:gap-3 shrink-0">
           <button
             onClick={onMobileMenuToggle}
-            className="md:hidden p-1.5 sm:p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Toggle navigation menu"
           >
             <Menu className="w-5 h-5" />
@@ -83,38 +83,29 @@ export const Navbar = ({ onMobileMenuToggle }) => {
             onClick={() => setActiveView('dashboard')}
             className="flex items-center gap-2 cursor-pointer select-none group"
           >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 shadow-sm group-hover:scale-105 transition-transform shrink-0">
+            <div className="w-8 h-8 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 shadow-sm group-hover:scale-105 transition-transform shrink-0">
               <img src="/logo.jpg" alt="CohesionTech Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base sm:text-lg tracking-tight text-navy-900 dark:text-white">
-                  CohesionTech
-                </span>
-                {/* Clean, non-wrapping badge hidden on small mobile, visible on sm+ */}
-                <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 whitespace-nowrap">
-                  Learning Suite
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden lg:block leading-none mt-0.5">
-                Subjects, Video Modules & Question Assessments
-              </p>
+              <span className="font-extrabold text-sm tracking-tight text-navy-900 dark:text-white">
+                CohesionTech
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Center: Desktop Global Search trigger button */}
-        <div className="flex-1 max-w-md mx-2 hidden sm:block">
+        {/* Center/Left: Desktop Global Search trigger button */}
+        <div className="flex-1 max-w-xl mx-2 hidden md:block">
           <button
             onClick={() => setGlobalSearchOpen(true)}
-            className="w-full flex items-center justify-between px-3.5 py-2 text-xs text-slate-400 dark:text-slate-500 bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-blue-400 dark:hover:border-blue-600 transition-all text-left"
+            className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all text-left shadow-2xs"
           >
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2.5">
               <Search className="w-4 h-4 text-slate-400" />
-              <span>Search subjects, quizzes, students, questions...</span>
+              <span>Search subjects, modules, lessons, or questions...</span>
             </span>
-            <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-2xs">
-              Ctrl+K
+            <kbd className="inline-block px-2 py-0.5 text-[10px] font-semibold text-slate-500 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md shadow-2xs">
+              Ctrl + K
             </kbd>
           </button>
         </div>

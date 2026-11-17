@@ -51,23 +51,23 @@ const AppContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-surface-darkBg text-slate-800 dark:text-slate-100 flex flex-col transition-colors">
-      {/* Top Navbar */}
-      <Navbar onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
+    <div className="h-screen bg-[#F4F7F8] dark:bg-surface-darkBg text-slate-800 dark:text-slate-100 flex overflow-hidden transition-colors">
+      {/* Left Desktop & Drawer Sidebar (Deep Teal #0A1A1E) */}
+      <Sidebar
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
+        collapsed={sidebarCollapsed}
+        setCollapsed={setSidebarCollapsed}
+      />
 
-      {/* Main Layout Container */}
-      <div className="flex-1 flex max-w-[1600px] w-full mx-auto">
-        {/* Left Desktop & Drawer Sidebar */}
-        <Sidebar
-          mobileOpen={mobileMenuOpen}
-          setMobileOpen={setMobileMenuOpen}
-          collapsed={sidebarCollapsed}
-          setCollapsed={setSidebarCollapsed}
-        />
+      {/* Main Right Area: Top Navbar + Content Viewport */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        <Navbar onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
 
-        {/* Content Viewport with mobile bottom safe padding */}
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto w-full max-w-full pb-24 md:pb-8">
-          {renderCurrentView()}
+          <div className="max-w-[1600px] w-full mx-auto">
+            {renderCurrentView()}
+          </div>
         </main>
       </div>
 
