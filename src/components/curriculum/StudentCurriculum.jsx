@@ -810,17 +810,17 @@ export const StudentCurriculum = () => {
     }
 
     return (
-      <div className="space-y-6 animate-in fade-in duration-200">
+      <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200 pb-16">
         {/* Breadcrumb Navigation */}
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
           <button
             onClick={() => setSelectedSubject(null)}
-            className="hover:text-blue-600 font-semibold"
+            className="hover:text-teal-600 dark:hover:text-teal-400 font-semibold px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             Subjects
           </button>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="font-bold text-slate-900 dark:text-white truncate">
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+          <span className="font-bold text-slate-900 dark:text-white truncate px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
             {currentSubject.name}
           </span>
         </div>
@@ -830,10 +830,10 @@ export const StudentCurriculum = () => {
           onBack={() => setSelectedSubject(null)}
           backLabel="Back to All Subjects"
           title={currentSubject.name}
-          subtitle={`${currentSubject.code || 'CODE'} • ${currentSubject.category} • ${currentSubject.description?.slice(0, 70)}...`}
+          subtitle={`${currentSubject.code || 'CODE'} • ${currentSubject.category} • ${currentSubject.description || 'Syllabus-aligned modules and practice assessments.'}`}
           badge={
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-teal-50 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                 {currentSubject.code || 'CODE'}
               </span>
               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/60">
@@ -843,115 +843,186 @@ export const StudentCurriculum = () => {
           }
         />
 
-        {/* Modules List */}
-        <div>
-          <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white mb-3 flex items-center justify-between">
-            <span>Lessons & Modules ({currentSubject.modules?.length || 0})</span>
-            <span className="text-xs font-normal text-slate-400">
-              Select a module to watch video lectures or attend quiz
+        {/* Quick Subject Overview Strip */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+          <div className="flex flex-col items-center justify-center py-1">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Modules
             </span>
-          </h3>
+            <span className="text-base sm:text-xl font-black text-slate-900 dark:text-white mt-0.5">
+              {currentSubject.modules?.length || 0}
+            </span>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-            {(currentSubject.modules || []).map((mod, idx) => {
-              const totalVideos = mod.videos?.length || 0;
-              const totalQuestions = mod.questions?.length || 0;
+          <div className="flex flex-col items-center justify-center py-1 border-x border-slate-100 dark:border-slate-800">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Videos
+            </span>
+            <span className="text-base sm:text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">
+              {(currentSubject.modules || []).reduce((acc, m) => acc + (m.videos?.length || 0), 0)}
+            </span>
+          </div>
 
-              // Check if student has already attended this module's quiz
-              const pastAttempt = (curriculumAttempts || []).find(
-                (a) => a.moduleId === mod.id && a.studentId === (currentUser?.id || 'STU001')
-              );
+          <div className="flex flex-col items-center justify-center py-1">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Practice Qs
+            </span>
+            <span className="text-base sm:text-xl font-black text-teal-600 dark:text-teal-400 mt-0.5">
+              {(currentSubject.modules || []).reduce((acc, m) => acc + (m.questions?.length || 0), 0)}
+            </span>
+          </div>
+        </div>
 
-              return (
-                <div
-                  key={mod.id || idx}
-                  className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 shadow-2xs hover:border-[#20B8C7]/50 card-hover-lift transition-all flex flex-col justify-between group"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded-md bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20 text-[10px] font-extrabold tracking-wide">
-                        Module {idx + 1}
-                      </span>
-                      {pastAttempt ? (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/60">
-                          <CheckCircle2 className="w-3 h-3" /> {pastAttempt.scorePct}%
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[11px] font-mono text-slate-400">
-                          <Clock className="w-3 h-3" /> {mod.duration || '45 mins'}
-                        </span>
+        {/* Modules List Section */}
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3.5">
+            <div>
+              <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Lessons & Modules</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 font-bold">
+                  {currentSubject.modules?.length || 0}
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Select a module to watch video lectures or attend practice quizzes
+              </p>
+            </div>
+          </div>
+
+          {(currentSubject.modules || []).length === 0 ? (
+            <div className="p-8 sm:p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <h4 className="font-extrabold text-slate-900 dark:text-white text-base">
+                No Modules Available Yet
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                The faculty is actively preparing the curriculum for this subject. Check back soon for video lectures and assessments!
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
+              {(currentSubject.modules || []).map((mod, idx) => {
+                const totalVideos = mod.videos?.length || 0;
+                const totalQuestions = mod.questions?.length || 0;
+
+                // Check if student has already attended this module's quiz
+                const pastAttempt = (curriculumAttempts || []).find(
+                  (a) => a.moduleId === mod.id && a.studentId === (currentUser?.id || 'STU001')
+                );
+
+                return (
+                  <div
+                    key={mod.id || idx}
+                    className="relative bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-teal-500/40 transition-all flex flex-col justify-between group overflow-hidden"
+                  >
+                    {/* Subtle Top Accent Glow */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 opacity-90" />
+
+                    <div>
+                      {/* Card Header: Module Number & Duration / Score */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/60 text-xs font-black flex items-center justify-center shrink-0">
+                            {String(idx + 1).padStart(2, '0')}
+                          </span>
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                            Module {idx + 1}
+                          </span>
+                        </div>
+
+                        {pastAttempt ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>{pastAttempt.scorePct}% Score</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span>{mod.duration || '45 mins'}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title */}
+                      <h4 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white leading-snug group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                        {mod.title}
+                      </h4>
+
+                      {/* Description */}
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                        {mod.description || 'Comprehensive video lectures and question pool aligned with course syllabus.'}
+                      </p>
+
+                      {/* Learning Resources Chips */}
+                      <div className="flex items-center gap-2 mt-3.5 flex-wrap">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/40 text-xs font-bold">
+                          <Video className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                          <span>{totalVideos} {totalVideos === 1 ? 'Video' : 'Videos'}</span>
+                        </div>
+
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-50/80 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border border-teal-200/50 dark:border-teal-800/40 text-xs font-bold">
+                          <HelpCircle className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                          <span>{totalQuestions} {totalQuestions === 1 ? 'Question' : 'Questions'}</span>
+                        </div>
+                      </div>
+
+                      {/* Difficulty Breakdown Tags */}
+                      {totalQuestions > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">
+                            Modes:
+                          </span>
+                          {difficultyLevels.map((lvl) => {
+                            const count = (mod.questions || []).filter((q) =>
+                              matchesDifficulty(q.difficulty, lvl.id)
+                            ).length;
+                            if (count === 0) return null;
+                            const dotColor =
+                              lvl.id === 'easy' ? 'bg-emerald-500' : lvl.id === 'hard' ? 'bg-rose-500' : 'bg-amber-500';
+                            return (
+                              <span
+                                key={lvl.id}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700"
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                                <span>{count} {lvl.label}</span>
+                              </span>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
 
-                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-[#0C4E5B] dark:group-hover:text-cyan-400 transition-colors" title={mod.title}>
-                      {mod.title}
-                    </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 leading-snug" title={mod.description}>
-                      {mod.description || 'No description provided.'}
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-1.5 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
-                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 border border-blue-100 dark:border-blue-900/40">
+                    {/* Action Buttons Footer */}
+                    <div className="grid grid-cols-2 gap-2.5 mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80">
+                      <button
+                        onClick={() => {
+                          setSelectedModule(mod);
+                          setModuleMode('videos');
+                        }}
+                        className="py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/80 dark:border-slate-700 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                      >
                         <Video className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                        <span className="font-bold truncate">{totalVideos} Videos</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-100 dark:border-emerald-900/40">
-                        <HelpCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        <span className="font-bold truncate">{totalQuestions} Questions</span>
-                      </div>
+                        <span>Watch Videos</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedModule(mod);
+                          handleStartQuiz('All');
+                        }}
+                        className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm hover:shadow-teal-500/20 active:scale-95 transition-all cursor-pointer"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5 text-cyan-200 shrink-0" />
+                        <span>Practice Quiz</span>
+                      </button>
                     </div>
-
-                    {/* Difficulty Badges for Students */}
-                    {totalQuestions > 0 && (
-                      <div className="flex items-center gap-1 mt-2 text-[9px] font-bold text-slate-500 flex-wrap">
-                        <span className="text-slate-400 font-semibold">Modes:</span>
-                        {difficultyLevels.map((lvl) => {
-                          const count = (mod.questions || []).filter((q) =>
-                            matchesDifficulty(q.difficulty, lvl.id)
-                          ).length;
-                          const badgeColor =
-                            lvl.color === 'emerald'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
-                              : lvl.color === 'red'
-                              ? 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60'
-                              : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60';
-                          return (
-                            <span key={lvl.id} className={`px-1.5 py-0.5 rounded font-semibold ${badgeColor}`}>
-                              {count} {lvl.label}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
-
-                  {/* Dual Action Buttons */}
-                  <div className="grid grid-cols-2 gap-2 mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
-                    <button
-                      onClick={() => {
-                        setSelectedModule(mod);
-                        setModuleMode('videos');
-                      }}
-                      className="py-1.5 px-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1 border border-slate-200 dark:border-slate-700 shadow-2xs active:scale-95 transition-all truncate"
-                    >
-                      <Video className="w-3.5 h-3.5 shrink-0 text-blue-500" />
-                      <span className="truncate">Videos</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedModule(mod);
-                        handleStartQuiz('All');
-                      }}
-                      className="py-1.5 px-2.5 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs border border-[#20B8C7]/30 active:scale-95 transition-all truncate"
-                    >
-                      <HelpCircle className="w-3.5 h-3.5 shrink-0 text-cyan-300" />
-                      <span className="truncate">Quiz</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     );
