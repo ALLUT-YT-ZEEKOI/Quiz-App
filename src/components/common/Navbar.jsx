@@ -46,11 +46,9 @@ export const Navbar = ({ onMobileMenuToggle }) => {
   } = useApp();
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
 
   const notifRef = useRef(null);
-  const profileRef = useRef(null);
   const roleRef = useRef(null);
 
   // Close popovers on click outside on desktop
@@ -58,9 +56,6 @@ export const Navbar = ({ onMobileMenuToggle }) => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
         setNotificationsOpen(false);
-      }
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setProfileDropdownOpen(false);
       }
       if (roleRef.current && !roleRef.current.contains(event.target)) {
         setRoleSwitcherOpen(false);
@@ -138,7 +133,6 @@ export const Navbar = ({ onMobileMenuToggle }) => {
               onClick={() => {
                 setRoleSwitcherOpen(!roleSwitcherOpen);
                 setNotificationsOpen(false);
-                setProfileDropdownOpen(false);
               }}
               className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold border transition-all whitespace-nowrap shrink-0 ${
                 currentRole === 'teacher'
@@ -505,7 +499,6 @@ export const Navbar = ({ onMobileMenuToggle }) => {
               onClick={() => {
                 setNotificationsOpen(!notificationsOpen);
                 setRoleSwitcherOpen(false);
-                setProfileDropdownOpen(false);
               }}
               className="relative p-1.5 sm:p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
               aria-label="Notifications"
@@ -731,187 +724,6 @@ export const Navbar = ({ onMobileMenuToggle }) => {
           >
             {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
-
-          {/* User Profile Avatar & Menu */}
-          <div className="relative shrink-0" ref={profileRef}>
-            <button
-              onClick={() => {
-                setProfileDropdownOpen(!profileDropdownOpen);
-                setRoleSwitcherOpen(false);
-                setNotificationsOpen(false);
-              }}
-              className="flex items-center gap-1.5 p-0.5 sm:p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
-              aria-label="User profile"
-            >
-              <img
-                src={currentUser?.avatar}
-                alt={currentUser?.name}
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl object-cover ring-2 ring-blue-500/30 shrink-0"
-              />
-              <span className="hidden lg:block text-left">
-                <span className="block text-xs font-bold text-slate-900 dark:text-white leading-tight">
-                  {currentUser?.name}
-                </span>
-                <span className="block text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize">
-                  {currentRole}
-                </span>
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden lg:block" />
-            </button>
-
-            {/* Profile Dropdown & Mobile Action Sheet */}
-            {profileDropdownOpen && (
-              <>
-                {/* Mobile Bottom Sheet for Profile Menu */}
-                <div className="sm:hidden fixed inset-0 z-50 flex flex-col justify-end">
-                  <div
-                    className="fixed inset-0 bg-navy-950/60 backdrop-blur-xs animate-in fade-in"
-                    onClick={() => setProfileDropdownOpen(false)}
-                  />
-                  <div className="relative bg-white dark:bg-surface-darkCard rounded-t-3xl shadow-2xl border-t border-slate-200 dark:border-slate-800 p-5 z-10 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom duration-200">
-                    <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-3" />
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={currentUser?.avatar}
-                          alt={currentUser?.name}
-                          className="w-11 h-11 rounded-xl object-cover ring-2 ring-blue-500/30"
-                        />
-                        <div>
-                          <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                            {currentUser?.name}
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                            {currentUser?.email}
-                          </div>
-                          <span className="inline-block mt-0.5 text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
-                            {currentRole === 'teacher' ? 'Faculty Member' : 'Student Account'}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setProfileDropdownOpen(false)}
-                        className="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <button
-                        onClick={() => {
-                          setActiveView('profile');
-                          setProfileDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 p-3 text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                      >
-                        <User className="w-4 h-4 text-blue-500" />
-                        <span className="font-semibold">My Profile & Settings</span>
-                      </button>
-
-                      <button
-                        onClick={() => setDarkMode(!darkMode)}
-                        className="w-full flex items-center justify-between p-3 text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                      >
-                        <span className="flex items-center gap-3 font-semibold">
-                          {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-400" />}
-                          <span>{darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</span>
-                        </span>
-                        <span className="text-[10px] font-mono font-bold text-slate-400">
-                          {darkMode ? 'DARK' : 'LIGHT'}
-                        </span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          resetDemoData();
-                          setProfileDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 p-3 text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                      >
-                        <RefreshCw className="w-4 h-4 text-slate-400" />
-                        <span className="font-semibold">Reset Demo Data</span>
-                      </button>
-
-                      <div className="border-t border-slate-100 dark:border-slate-800 pt-2 mt-2">
-                        <button
-                          onClick={() => {
-                            logout();
-                            setProfileDropdownOpen(false);
-                          }}
-                          className="w-full flex items-center gap-3 p-3 text-xs rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors font-bold"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span>Sign Out</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Desktop Popover */}
-                <div className="hidden sm:block absolute right-0 mt-2 w-56 sm:w-60 bg-white dark:bg-surface-darkCard rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="p-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-                    <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {currentUser?.name}
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {currentUser?.email}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setActiveView('profile');
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                  >
-                    <User className="w-4 h-4 text-slate-400" />
-                    <span>My Profile & Settings</span>
-                  </button>
-
-                  {/* Dark Mode Toggle item in menu for mobile */}
-                  <button
-                    onClick={() => setDarkMode(!darkMode)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-400" />}
-                      <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-                    </span>
-                    <span className="text-[10px] font-mono font-bold text-slate-400">
-                      {darkMode ? 'ON' : 'OFF'}
-                    </span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      resetDemoData();
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                  >
-                    <RefreshCw className="w-4 h-4 text-slate-400" />
-                    <span>Reset Demo Data</span>
-                  </button>
-
-                  <div className="border-t border-slate-100 dark:border-slate-800 my-1 pt-1">
-                    <button
-                      onClick={() => {
-                        logout();
-                        setProfileDropdownOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors font-medium"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
         </div>
       </div>
     </header>
