@@ -32,6 +32,11 @@ import {
 } from 'lucide-react';
 import { BulkQuestionUploadModal } from './BulkQuestionUploadModal';
 import { EditDifficultyModal } from './EditDifficultyModal';
+import {
+  formatEmbedUrl,
+  extractYouTubeVideoId,
+  isEmbeddableVideoUrl
+} from '../../utils/videoUtils';
 
 const PRESET_SUBJECT_COVERS = [
   {
@@ -235,7 +240,11 @@ export const TeacherCurriculum = () => {
       showToast('Video title is required', 'warning');
       return;
     }
-    addVideo(currentSubject.id, currentModule.id, newVideo);
+    const cleanUrl = formatEmbedUrl(newVideo.videoUrl);
+    addVideo(currentSubject.id, currentModule.id, {
+      ...newVideo,
+      videoUrl: cleanUrl || newVideo.videoUrl
+    });
     setVideoModalOpen(false);
     setNewVideo({
       title: '',
@@ -419,11 +428,12 @@ export const TeacherCurriculum = () => {
                     <div>
                       {/* Video Player Preview or Mock Container */}
                       <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-900 mb-3 border border-slate-800">
-                        {vid.videoUrl?.includes('youtube.com') || vid.videoUrl?.includes('youtu.be') ? (
+                        {isEmbeddableVideoUrl(vid.videoUrl) ? (
                           <iframe
-                            src={vid.videoUrl}
+                            src={formatEmbedUrl(vid.videoUrl)}
                             title={vid.title}
                             className="w-full h-full border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                             allowFullScreen
                           />
                         ) : (
@@ -696,17 +706,50 @@ export const TeacherCurriculum = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Video Embed / YouTube URL
+                      YouTube / Video URL *
                     </label>
                     <input
                       type="url"
-                      placeholder="https://www.youtube.com/embed/..."
+                      required
+                      placeholder="Paste any YouTube link (youtu.be or watch?v=...)"
                       value={newVideo.videoUrl}
-                      onChange={(e) => setNewVideo({ ...newVideo, videoUrl: e.target.value })}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const formatted = formatEmbedUrl(raw);
+                        setNewVideo({ ...newVideo, videoUrl: formatted || raw });
+                      }}
                       className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     />
+                    {extractYouTubeVideoId(newVideo.videoUrl) ? (
+                      <div className="flex items-center gap-1.5 mt-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Valid YouTube video detected & ready to play</span>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 block mt-1">
+                        Supports youtube.com, youtu.be short links, shorts, and Vimeo
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                {/* Live Preview Inside Modal */}
+                {isEmbeddableVideoUrl(newVideo.videoUrl) && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Live Player Preview:
+                    </span>
+                    <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-inner">
+                      <iframe
+                        src={formatEmbedUrl(newVideo.videoUrl)}
+                        title="Preview"
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">

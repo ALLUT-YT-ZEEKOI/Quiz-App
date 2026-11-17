@@ -28,6 +28,11 @@ import {
   Camera
 } from 'lucide-react';
 
+import {
+  formatEmbedUrl,
+  isEmbeddableVideoUrl
+} from '../../utils/videoUtils';
+
 export const StudentCurriculum = () => {
   const {
     curriculumSubjects,
@@ -311,13 +316,12 @@ export const StudentCurriculum = () => {
                   <div className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
                     {/* Responsive Video Container */}
                     <div className="relative aspect-video bg-black w-full">
-                      {activeVideo?.videoUrl?.includes('youtube.com') ||
-                      activeVideo?.videoUrl?.includes('youtu.be') ? (
+                      {isEmbeddableVideoUrl(activeVideo?.videoUrl) ? (
                         <iframe
-                          src={activeVideo.videoUrl}
+                          src={formatEmbedUrl(activeVideo.videoUrl)}
                           title={activeVideo.title}
                           className="w-full h-full border-0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                           allowFullScreen
                         />
                       ) : (

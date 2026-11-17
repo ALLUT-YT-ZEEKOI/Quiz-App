@@ -3,6 +3,7 @@ import { TEACHERS, STUDENTS, SUBJECTS } from '../data/initialData';
 import { QUESTIONS_BANK } from '../data/questionsData';
 import { INITIAL_QUIZZES, INITIAL_ATTEMPTS, INITIAL_NOTIFICATIONS } from '../data/quizzesData';
 import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS, INITIAL_SUBSCRIPTIONS } from '../data/curriculumData';
+import { formatEmbedUrl } from '../utils/videoUtils';
 
 const AppContext = createContext();
 
@@ -139,7 +140,19 @@ export const AppProvider = ({ children }) => {
       const saved = localStorage.getItem('cohesion_curriculum');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Normalize all video URLs to valid embed format
+          return parsed.map((s) => ({
+            ...s,
+            modules: (s.modules || []).map((m) => ({
+              ...m,
+              videos: (m.videos || []).map((v) => ({
+                ...v,
+                videoUrl: formatEmbedUrl(v.videoUrl)
+              }))
+            }))
+          }));
+        }
       }
     } catch (e) {
       console.warn('Curriculum parse notice:', e);
@@ -476,8 +489,10 @@ export const AppProvider = ({ children }) => {
 
   // Video CRUD
   const addVideo = (subjectId, moduleId, videoData) => {
+    const cleanUrl = formatEmbedUrl(videoData.videoUrl);
     const newVideo = {
       ...videoData,
+      videoUrl: cleanUrl || videoData.videoUrl,
       id: `vid-${Date.now()}`
     };
     setCurriculumSubjects((prev) =>
