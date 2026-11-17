@@ -514,23 +514,23 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 max-w-5xl mx-auto pb-16">
+    <div className="space-y-6 animate-in fade-in duration-300 max-w-5xl mx-auto px-2 sm:px-4 pb-16">
       {/* Top Breadcrumb & Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-slate-400">
             <span>Live Examinations</span>
             <span>/</span>
             <span className="text-teal-600 dark:text-teal-400">Create Examination</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1 tracking-tight">
             Schedule New Examination
           </h1>
         </div>
 
         <button
           onClick={onCancel}
-          className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
           title="Cancel"
         >
           <X className="w-5 h-5" />
@@ -608,7 +608,7 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
       </div>
 
       {/* Step Content Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-6">
         {/* =========================================================================
             STEP 1: BASIC INFORMATION
         ========================================================================= */}
@@ -902,7 +902,7 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
               </div>
 
               {/* Quick Select Buttons */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={selectQuick30}
@@ -1543,12 +1543,12 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
         )}
 
         {/* Wizard Footer Controls */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-5 border-t border-slate-100 dark:border-slate-800">
           {currentStep > 1 ? (
             <button
               type="button"
               onClick={handlePrev}
-              className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-2 transition-all"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-all"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Back</span>
@@ -1557,18 +1557,18 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-xs font-bold"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-xs font-bold text-center"
             >
               Cancel
             </button>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             {currentStep < 5 ? (
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white text-xs font-extrabold shadow-sm flex items-center gap-2 transition-all active:scale-95"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white text-xs font-extrabold shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 <span>Continue</span>
                 <ChevronRight className="w-4 h-4" />
@@ -1578,7 +1578,7 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                 <button
                   type="button"
                   onClick={() => handleFinalSubmit('Draft')}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all text-center"
                 >
                   Save Draft
                 </button>
@@ -1586,7 +1586,7 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                 <button
                   type="button"
                   onClick={() => handleFinalSubmit('Upcoming')}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white text-xs font-extrabold shadow-[0_4px_16px_rgba(20,184,166,0.35)] flex items-center gap-2 transition-all active:scale-95"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white text-xs font-extrabold shadow-[0_4px_16px_rgba(20,184,166,0.35)] flex items-center justify-center gap-2 transition-all active:scale-95"
                 >
                   <Sparkles className="w-4 h-4" />
                   <span>Schedule & Publish Examination</span>
@@ -1601,8 +1601,8 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
           MODAL 1: ADD SINGLE QUESTION
       ========================================================================= */}
       {singleQuestionModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
@@ -1767,8 +1767,8 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
           MODAL 2: BULK QUESTION UPLOAD (A4 / CSV / PASTE FORMAT)
       ========================================================================= */}
       {bulkModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-3xl w-full p-6 space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-3xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
@@ -1931,8 +1931,8 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
           MODAL 3: EDIT NEGATIVE MARKING MODAL
       ========================================================================= */}
       {editNegativeModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">

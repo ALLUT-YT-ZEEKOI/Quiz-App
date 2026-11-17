@@ -159,11 +159,11 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
         </div>
 
         {/* Exam Selector & Export Actions */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
           <select
             value={selectedExamId}
             onChange={(e) => setSelectedExamId(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+            className="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
           >
             {examinations.map((ex) => (
               <option key={ex.id} value={ex.id}>
@@ -172,21 +172,23 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
             ))}
           </select>
 
-          <button
-            onClick={() => exportExamResultsCSV(selectedExamId)}
-            className="px-4 py-2 rounded-xl bg-[#087F8C] hover:bg-[#0C6D7C] text-white text-xs font-extrabold flex items-center gap-2 shadow-sm transition-all active:scale-95"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Export CSV</span>
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => exportExamResultsCSV(selectedExamId)}
+              className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-[#087F8C] hover:bg-[#0C6D7C] text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Export CSV</span>
+            </button>
 
-          <button
-            onClick={handlePrint}
-            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-2 transition-all"
-          >
-            <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">Print Report</span>
-          </button>
+            <button
+              onClick={handlePrint}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-all"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden sm:inline">Print Report</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -356,7 +358,7 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
           ))}
         </div>
 
-        <div className="relative sm:w-72">
+        <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -368,8 +370,100 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
         </div>
       </div>
 
-      {/* Student Ranking & Scorecard Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
+      {/* Mobile Ranking Cards (< md) */}
+      <div className="md:hidden space-y-3">
+        {filteredRankings.map((attempt, idx) => {
+          const rank = idx + 1;
+          return (
+            <div
+              key={attempt.id}
+              className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="shrink-0">
+                    {rank === 1 ? (
+                      <span className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-extrabold flex items-center justify-center text-xs">
+                        🥇 1
+                      </span>
+                    ) : rank === 2 ? (
+                      <span className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold flex items-center justify-center text-xs">
+                        🥈 2
+                      </span>
+                    ) : rank === 3 ? (
+                      <span className="w-7 h-7 rounded-full bg-amber-200/60 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-extrabold flex items-center justify-center text-xs">
+                        🥉 3
+                      </span>
+                    ) : (
+                      <span className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 font-mono font-bold text-slate-500 text-xs flex items-center justify-center">
+                        #{rank}
+                      </span>
+                    )}
+                  </div>
+                  <img
+                    src={attempt.avatar}
+                    alt={attempt.studentName}
+                    className="w-9 h-9 rounded-xl object-cover shrink-0"
+                  />
+                  <div>
+                    <div className="font-extrabold text-sm text-slate-900 dark:text-white">
+                      {attempt.studentName}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {attempt.studentRollNo} • {attempt.batch}
+                    </div>
+                  </div>
+                </div>
+
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ${
+                    attempt.passed
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200'
+                      : 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-200'
+                  }`}
+                >
+                  {attempt.passed ? 'PASSED' : 'FAILED'}
+                </span>
+              </div>
+
+              {/* Score & Accuracy metrics */}
+              <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl text-xs">
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Score Obtained</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white font-mono text-sm">
+                    {attempt.score}
+                  </span>
+                  <span className="text-slate-400 text-[10px]"> / 30 ({attempt.percentage}%)</span>
+                </div>
+
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Breakdown</span>
+                  <div className="font-mono text-xs font-bold pt-0.5">
+                    <span className="text-emerald-600">{attempt.correctCount}C</span> /{' '}
+                    <span className="text-red-500">{attempt.incorrectCount}W</span> /{' '}
+                    <span className="text-slate-400">{attempt.unattemptedCount}U</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer action */}
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-slate-400 font-mono">Time: {attempt.timeSpentMinutes} mins</span>
+                <button
+                  type="button"
+                  onClick={() => setInspectedAttempt(attempt)}
+                  className="px-3 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-bold hover:bg-teal-100 transition-colors"
+                >
+                  View Scorecard
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Student Ranking & Scorecard Table (Desktop & Tablet >= md) */}
+      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200/80 dark:border-slate-800">
@@ -515,8 +609,8 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
 
       {/* Inspect Student Attempt Scorecard Modal */}
       {inspectedAttempt && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-3">
                 <img

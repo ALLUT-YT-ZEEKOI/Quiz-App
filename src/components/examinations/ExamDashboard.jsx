@@ -281,8 +281,8 @@ export const ExamDashboard = ({
         </div>
 
         {/* Search & Subject Dropdown Filter */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 sm:w-64">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -293,11 +293,11 @@ export const ExamDashboard = ({
             />
           </div>
 
-          <div className="relative shrink-0">
+          <div className="relative w-full sm:w-auto shrink-0">
             <select
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-              className="px-3 py-2 pr-8 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#14B8A6] cursor-pointer"
+              className="w-full sm:w-auto px-3 py-2 pr-8 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#14B8A6] cursor-pointer"
             >
               {subjectOptions.map((subj) => (
                 <option key={subj} value={subj}>

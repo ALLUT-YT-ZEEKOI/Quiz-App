@@ -58,7 +58,7 @@ export const StudentExamResult = ({ attempt, onBack }) => {
   }, [answers, filterMode]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 max-w-4xl mx-auto pb-16">
+    <div className="space-y-6 animate-in fade-in duration-300 max-w-4xl mx-auto px-2 sm:px-4 pb-16">
       {/* Top Navigation */}
       <div className="flex items-center justify-between">
         <button
@@ -75,7 +75,7 @@ export const StudentExamResult = ({ attempt, onBack }) => {
       </div>
 
       {/* Main Score Hero Card */}
-      <div className="rounded-3xl bg-gradient-to-br from-[#07242B] via-[#0A333C] to-[#0D4450] text-white p-6 sm:p-8 border border-[#145663]/80 shadow-xl relative overflow-hidden">
+      <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#07242B] via-[#0A333C] to-[#0D4450] text-white p-4 sm:p-6 lg:p-8 border border-[#145663]/80 shadow-xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <span
@@ -187,7 +187,7 @@ export const StudentExamResult = ({ attempt, onBack }) => {
           </div>
 
           {/* Filter Pills */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold overflow-x-auto scrollbar-none">
             {['All', 'Correct', 'Incorrect', 'Unanswered'].map((f) => (
               <button
                 key={f}

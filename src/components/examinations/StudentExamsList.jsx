@@ -136,7 +136,7 @@ export const StudentExamsList = ({ onStartExam, onViewResult }) => {
       </div>
 
       {/* Examinations Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
         {filteredExams.map((exam) => {
           const isLive = exam.status === 'Live Now';
           const isUpcoming = exam.status === 'Upcoming';
@@ -148,7 +148,7 @@ export const StudentExamsList = ({ onStartExam, onViewResult }) => {
           return (
             <div
               key={exam.id}
-              className={`p-6 rounded-3xl border transition-all flex flex-col justify-between space-y-5 relative overflow-hidden ${
+              className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl border transition-all flex flex-col justify-between space-y-4 sm:space-y-5 relative overflow-hidden ${
                 isLive
                   ? 'bg-gradient-to-br from-white via-white to-emerald-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 border-2 border-emerald-400/90 shadow-md ring-4 ring-emerald-500/10'
                   : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 shadow-2xs hover:shadow-md'

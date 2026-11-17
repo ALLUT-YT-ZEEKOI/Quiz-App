@@ -286,7 +286,7 @@ export const LiveMonitoring = ({ examId, onBack, onViewAnalytics }) => {
         </div>
 
         {/* Search Input */}
-        <div className="relative sm:w-72">
+        <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -298,8 +298,103 @@ export const LiveMonitoring = ({ examId, onBack, onViewAnalytics }) => {
         </div>
       </div>
 
-      {/* Live Candidates Monitoring Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
+      {/* Mobile Card View (< md) */}
+      <div className="md:hidden space-y-3">
+        {filteredSessions.map((session) => {
+          const isOnline = session.connectionStatus === 'Connected';
+          const isIdle = session.connectionStatus === 'Idle';
+
+          return (
+            <div
+              key={session.studentId}
+              className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <img
+                    src={session.avatar}
+                    alt={session.studentName}
+                    className="w-10 h-10 rounded-xl object-cover shrink-0"
+                  />
+                  <div>
+                    <div className="font-extrabold text-sm text-slate-900 dark:text-white">
+                      {session.studentName}
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono">
+                      {session.rollNo} • {session.semester}
+                    </div>
+                  </div>
+                </div>
+
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider shrink-0 ${
+                    session.status === 'In Progress'
+                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-200 border border-cyan-300 dark:border-cyan-800'
+                      : session.status === 'Submitted'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {session.status === 'In Progress' && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-ping" />
+                  )}
+                  <span>{session.status}</span>
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="space-y-1.5 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-700 dark:text-slate-300">
+                    Progress: {session.answeredCount} / {session.totalQuestions} Qs
+                  </span>
+                  <span className="text-teal-600 dark:text-teal-400 font-mono">
+                    {session.progressPct}%
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      session.status === 'Submitted'
+                        ? 'bg-emerald-500'
+                        : session.progressPct > 60
+                        ? 'bg-[#087F8C]'
+                        : 'bg-[#14B8A6]'
+                    }`}
+                    style={{ width: `${session.progressPct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Footer row: Connection & Last activity */}
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100 dark:border-slate-800 text-slate-500">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      isOnline
+                        ? 'bg-emerald-500 animate-pulse'
+                        : isIdle
+                        ? 'bg-amber-500'
+                        : 'bg-slate-300 dark:bg-slate-600'
+                    }`}
+                  />
+                  <span className="font-semibold">{session.connectionStatus}</span>
+                  {session.markedForReviewCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-[10px]">
+                      {session.markedForReviewCount} flagged
+                    </span>
+                  )}
+                </div>
+
+                <span className="text-slate-400">{session.lastActivityText}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Live Candidates Monitoring Table (Desktop & Tablet >= md) */}
+      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200/80 dark:border-slate-800">

@@ -182,17 +182,17 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
       {/* =========================================================================
           DISTRACTION-FREE EXAM HEADER
       ========================================================================= */}
-      <header className="h-16 px-4 sm:px-6 bg-[#082F3C] text-white border-b border-[#14424D] flex items-center justify-between shrink-0 z-20 shadow-sm">
+      <header className="h-16 px-3 sm:px-6 bg-[#082F3C] text-white border-b border-[#14424D] flex items-center justify-between shrink-0 z-20 shadow-sm gap-2">
         {/* Brand & Exam Info */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 max-w-[120px] xs:max-w-[160px] sm:max-w-none">
           <div className="w-8 h-8 rounded-xl bg-[#0A242B] border border-[#20B8C7]/50 p-1 flex items-center justify-center shrink-0">
             <img src="/logo.jpg" alt="CohesionTech" className="w-full h-full object-contain" />
           </div>
-          <div>
-            <h1 className="font-extrabold text-xs sm:text-sm text-white tracking-tight leading-snug line-clamp-1">
+          <div className="min-w-0">
+            <h1 className="font-extrabold text-xs sm:text-sm text-white tracking-tight leading-snug truncate">
               {exam?.title}
             </h1>
-            <p className="text-[10px] text-[#2DD4BF] font-semibold">
+            <p className="text-[10px] text-[#2DD4BF] font-semibold truncate">
               {exam?.subjectName} • {exam?.code}
             </p>
           </div>
@@ -200,13 +200,13 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
 
         {/* Center Sticky Countdown Timer */}
         <div
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl font-mono text-sm sm:text-base font-extrabold border transition-all ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-2xl font-mono text-xs sm:text-base font-extrabold border transition-all shrink-0 ${
             isTimeCritical
               ? 'bg-red-500/20 text-red-300 border-red-500 animate-pulse ring-4 ring-red-500/20'
               : 'bg-[#092B32] text-[#2DD4BF] border-[#20B8C7]/40 shadow-sm'
           }`}
         >
-          <Clock className={`w-4 h-4 ${isTimeCritical ? 'text-red-400' : 'text-[#2DD4BF]'}`} />
+          <Clock className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isTimeCritical ? 'text-red-400' : 'text-[#2DD4BF]'}`} />
           <span className="hidden sm:inline text-xs font-normal text-slate-300 font-sans mr-0.5">
             Time Left:
           </span>
@@ -214,7 +214,7 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
         </div>
 
         {/* Right Action & Palette Drawer Trigger */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-300 font-bold font-mono bg-[#0A262C] px-3 py-1.5 rounded-xl border border-teal-500/30">
             <span className="text-emerald-400">{answeredCount}</span>
             <span>/</span>
@@ -223,10 +223,11 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
 
           <button
             onClick={() => setShowSubmitModal(true)}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all active:scale-95"
+            className="px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all active:scale-95"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Submit Exam</span>
+            <span className="hidden sm:inline">Submit Exam</span>
+            <span className="sm:hidden">Submit</span>
           </button>
 
           {/* Mobile drawer button */}
@@ -235,7 +236,7 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
             className="md:hidden p-2 rounded-xl bg-[#0A262C] text-[#2DD4BF] border border-teal-500/30"
             title="Question Palette"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4.5 h-4.5" />
           </button>
         </div>
       </header>
@@ -336,20 +337,28 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
           </div>
 
           {/* Bottom Navigation & Utility Toolbar */}
-          <div className="max-w-3xl mx-auto w-full pt-6 mt-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
+          <div className="max-w-3xl mx-auto w-full pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={toggleMarkForReview}
-                className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                   markedForReview[currentQuestionIndex]
                     ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
-                <Bookmark className="w-3.5 h-3.5 fill-current" />
+                <Bookmark className="w-3.5 h-3.5 fill-current shrink-0" />
                 <span>
-                  {markedForReview[currentQuestionIndex] ? 'Marked for Review' : 'Mark for Review'}
+                  {markedForReview[currentQuestionIndex] ? (
+                    <>
+                      <span className="hidden sm:inline">Marked for </span>Review
+                    </>
+                  ) : (
+                    <>
+                      <span className="hidden sm:inline">Mark for </span>Review
+                    </>
+                  )}
                 </span>
               </button>
 
@@ -357,31 +366,31 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
                 <button
                   type="button"
                   onClick={handleClearResponse}
-                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500 text-xs font-bold flex items-center gap-1 transition-colors"
+                  className="px-2.5 sm:px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500 text-xs font-bold flex items-center gap-1 transition-colors"
                   title="Clear selected option"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Clear</span>
+                  <span className="hidden xs:inline">Clear</span>
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 disabled={currentQuestionIndex === 0}
                 onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition-all"
+                className="px-3 sm:px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>Previous</span>
+                <span className="hidden xs:inline">Prev</span>
               </button>
 
               <button
                 type="button"
                 disabled={currentQuestionIndex === totalQuestions - 1}
                 onClick={() => setCurrentQuestionIndex((prev) => Math.min(totalQuestions - 1, prev + 1))}
-                className="px-5 py-2 rounded-xl bg-[#087F8C] hover:bg-[#0C6D7C] text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm transition-all"
+                className="px-3.5 sm:px-5 py-2 rounded-xl bg-[#087F8C] hover:bg-[#0C6D7C] text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm transition-all"
               >
                 <span>Next</span>
                 <ChevronRight className="w-4 h-4" />
@@ -544,8 +553,8 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
           SUBMISSION CONFIRMATION MODAL
       ========================================================================= */}
       {showSubmitModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="text-center space-y-2">
               <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-[#087F8C] dark:text-[#2DD4BF] flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-6 h-6" />
