@@ -90,11 +90,6 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
         collapsed ? 'w-20' : 'w-64 sm:w-[268px]'
       }`}
     >
-      {/* Large Embossed CohesionTech Maze C Logo Watermark at bottom */}
-      <div className="absolute -bottom-8 -left-8 w-64 h-64 pointer-events-none opacity-[0.14] mix-blend-screen filter brightness-125 select-none">
-        <img src="/logo.jpg" alt="" className="w-full h-full object-contain" />
-      </div>
-
       <div className="relative z-10">
         {/* Brand Header */}
         <div className="p-4 sm:p-5 flex items-center justify-between border-b border-[#14424D]/60">
