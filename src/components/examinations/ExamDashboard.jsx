@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomDropdown } from '../common/CustomDropdown';
 import {
   Radio,
   Calendar,
@@ -294,17 +295,15 @@ export const ExamDashboard = ({
           </div>
 
           <div className="relative w-full sm:w-auto shrink-0">
-            <select
+            <CustomDropdown
+              options={subjectOptions.map((subj) => ({
+                value: subj,
+                label: subj === 'All' ? 'All Subjects' : subj
+              }))}
               value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 pr-8 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#14B8A6] cursor-pointer"
-            >
-              {subjectOptions.map((subj) => (
-                <option key={subj} value={subj}>
-                  {subj === 'All' ? 'All Subjects' : subj}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedSubject}
+              size="sm"
+            />
           </div>
         </div>
       </div>

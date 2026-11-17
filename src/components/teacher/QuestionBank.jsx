@@ -399,17 +399,15 @@ export const QuestionBank = ({ initialOpenAdd = false, onCloseAdd = () => {} }) 
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Subject Discipline *
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={subjects.map((s) => ({
+                      value: s.id,
+                      label: `${s.code}: ${s.name}`
+                    }))}
                     value={formData.subjectId}
-                    onChange={(e) => handleSubjectChangeInForm(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    {subjects.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.code}: {s.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => handleSubjectChangeInForm(val)}
+                  />
                 </div>
 
                 {/* Difficulty */}
@@ -417,15 +415,16 @@ export const QuestionBank = ({ initialOpenAdd = false, onCloseAdd = () => {} }) 
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Difficulty Level
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={[
+                      { value: 'Easy', label: 'Easy' },
+                      { value: 'Medium', label: 'Medium' },
+                      { value: 'Hard', label: 'Hard' }
+                    ]}
                     value={formData.difficulty}
-                    onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, difficulty: val })}
+                  />
                 </div>
               </div>
 
@@ -484,15 +483,16 @@ export const QuestionBank = ({ initialOpenAdd = false, onCloseAdd = () => {} }) 
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Question Type
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={[
+                      { value: 'mcq', label: 'Single Answer MCQ' },
+                      { value: 'true_false', label: 'True / False' },
+                      { value: 'multiple_select', label: 'Multiple Selection' }
+                    ]}
                     value={formData.questionType}
-                    onChange={(e) => setFormData({ ...formData, questionType: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="mcq">Single Answer MCQ</option>
-                    <option value="true_false">True / False</option>
-                    <option value="multiple_select">Multiple Selection</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, questionType: val })}
+                  />
                 </div>
 
                 <div>

@@ -473,32 +473,31 @@ export const QuizManagement = ({ initialOpenCreate = false, onCloseCreate = () =
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Civil Engineering Subject *
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={subjects.map((sub) => ({
+                      value: sub.id,
+                      label: `${sub.code}: ${sub.name}`
+                    }))}
                     value={formData.subjectId}
-                    onChange={(e) => handleSubjectChange(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    {subjects.map((sub) => (
-                      <option key={sub.id} value={sub.id}>
-                        {sub.code}: {sub.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => handleSubjectChange(val)}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Difficulty Level
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={[
+                      { value: 'Easy', label: 'Easy' },
+                      { value: 'Medium', label: 'Medium' },
+                      { value: 'Hard', label: 'Hard' }
+                    ]}
                     value={formData.difficulty}
-                    onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, difficulty: val })}
+                  />
                 </div>
 
                 <div>
@@ -553,14 +552,15 @@ export const QuizManagement = ({ initialOpenCreate = false, onCloseCreate = () =
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Publish Status
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={[
+                      { value: 'Published', label: 'Published Live to Students' },
+                      { value: 'Draft', label: 'Draft (Faculty Only)' }
+                    ]}
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="Published">Published Live to Students</option>
-                    <option value="Draft">Draft (Faculty Only)</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, status: val })}
+                  />
                 </div>
               </div>
 

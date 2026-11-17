@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomDropdown } from '../common/CustomDropdown';
 import {
   BarChart3,
   Download,
@@ -160,17 +161,16 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
 
         {/* Exam Selector & Export Actions */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
-          <select
+          <CustomDropdown
+            options={examinations.map((ex) => ({
+              value: ex.id,
+              label: ex.code ? `${ex.code} – ${ex.title.length > 32 ? ex.title.slice(0, 32) + '...' : ex.title}` : ex.title,
+              badge: ex.status
+            }))}
             value={selectedExamId}
-            onChange={(e) => setSelectedExamId(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-          >
-            {examinations.map((ex) => (
-              <option key={ex.id} value={ex.id}>
-                {ex.code ? `${ex.code} – ${ex.title.slice(0, 32)}...` : ex.title}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedExamId}
+            size="sm"
+          />
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button

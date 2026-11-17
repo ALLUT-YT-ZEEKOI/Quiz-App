@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomDropdown } from '../common/CustomDropdown';
 import {
   Bell,
   Megaphone,
@@ -328,16 +329,17 @@ export const AdminNotificationDashboard = () => {
             />
           </div>
 
-          <select
+          <CustomDropdown
+            options={[
+              { value: 'All', label: 'All Audiences' },
+              { value: 'all', label: 'Broadcast (All Students)' },
+              { value: 'batch', label: 'Specific Batch' },
+              { value: 'students', label: 'Targeted Individuals' }
+            ]}
             value={selectedAudience}
-            onChange={(e) => setSelectedAudience(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#14B8A6] cursor-pointer"
-          >
-            <option value="All">All Audiences</option>
-            <option value="all">Broadcast (All Students)</option>
-            <option value="batch">Specific Batch</option>
-            <option value="students">Targeted Individuals</option>
-          </select>
+            onChange={setSelectedAudience}
+            size="sm"
+          />
         </div>
       </div>
 
@@ -608,33 +610,37 @@ export const AdminNotificationDashboard = () => {
                       <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
                         Select Batch
                       </span>
-                      <select
+                      <CustomDropdown
+                        fullWidth
+                        options={[
+                          { value: '2022-2026', label: 'Batch 2022-2026 (S6)' },
+                          { value: '2021-2025', label: 'Batch 2021-2025 (S8)' },
+                          { value: '2023-2027', label: 'Batch 2023-2027 (S4)' },
+                          { value: '2024-2028', label: 'Batch 2024-2028 (S2)' }
+                        ]}
                         value={formBatch}
-                        onChange={(e) => setFormBatch(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                      >
-                        <option value="2022-2026">Batch 2022-2026 (S6)</option>
-                        <option value="2021-2025">Batch 2021-2025 (S8)</option>
-                        <option value="2023-2027">Batch 2023-2027 (S4)</option>
-                        <option value="2024-2028">Batch 2024-2028 (S2)</option>
-                      </select>
+                        onChange={setFormBatch}
+                        size="sm"
+                      />
                     </div>
 
                     <div>
                       <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
                         Select Semester
                       </span>
-                      <select
+                      <CustomDropdown
+                        fullWidth
+                        options={[
+                          { value: 'S6', label: 'Semester S6' },
+                          { value: 'S8', label: 'Semester S8' },
+                          { value: 'S4', label: 'Semester S4' },
+                          { value: 'S2', label: 'Semester S2' },
+                          { value: 'All', label: 'All Semesters' }
+                        ]}
                         value={formSemester}
-                        onChange={(e) => setFormSemester(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                      >
-                        <option value="S6">Semester S6</option>
-                        <option value="S8">Semester S8</option>
-                        <option value="S4">Semester S4</option>
-                        <option value="S2">Semester S2</option>
-                        <option value="All">All Semesters</option>
-                      </select>
+                        onChange={setFormSemester}
+                        size="sm"
+                      />
                     </div>
                   </div>
                 )}
@@ -734,16 +740,18 @@ export const AdminNotificationDashboard = () => {
                   <label className="font-bold text-slate-700 dark:text-slate-200 block mb-1">
                     Related Direct Action Link (Optional)
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={[
+                      { value: 'none', label: 'None (Plain Notice)' },
+                      { value: 'examinations', label: 'Live Examinations Dashboard' },
+                      { value: 'subjects', label: 'Subjects & Curriculum View' },
+                      { value: 'results', label: 'Assessment Results & Analytics' }
+                    ]}
                     value={formActionView}
-                    onChange={(e) => setFormActionView(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                  >
-                    <option value="none">None (Plain Notice)</option>
-                    <option value="examinations">Live Examinations Dashboard</option>
-                    <option value="subjects">Subjects & Curriculum View</option>
-                    <option value="results">Assessment Results & Analytics</option>
-                  </select>
+                    onChange={setFormActionView}
+                    size="sm"
+                  />
                 </div>
 
                 <div className="flex items-center sm:pt-6">

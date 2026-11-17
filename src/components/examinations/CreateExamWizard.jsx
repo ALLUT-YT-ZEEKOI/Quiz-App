@@ -3,6 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { QUESTIONS_BANK } from '../../data/questionsData';
 import { STUDENTS } from '../../data/initialData';
 import { parseA4Questions } from '../curriculum/BulkQuestionUploadModal';
+import { CustomDropdown } from '../common/CustomDropdown';
+import { CustomDatePicker } from '../common/CustomDatePicker';
 import {
   Check,
   ChevronRight,
@@ -641,17 +643,16 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
                   Subject / Discipline <span className="text-red-500">*</span>
                 </label>
-                <select
+                <CustomDropdown
+                  fullWidth
+                  options={subjectList.map((s) => ({
+                    value: s.id,
+                    label: s.code ? `${s.code} – ${s.name}` : s.name
+                  }))}
                   value={subjectId}
-                  onChange={(e) => setSubjectId(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-                >
-                  {subjectList.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.code ? `${s.code} – ${s.name}` : s.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSubjectId}
+                  placeholder="Select Subject / Discipline"
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -949,17 +950,15 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
 
               {/* Subject Filter Dropdown */}
               <div className="shrink-0">
-                <select
+                <CustomDropdown
+                  options={availableSubjectNames.map((subj) => ({
+                    value: subj,
+                    label: subj === 'All' ? 'All Subjects' : subj
+                  }))}
                   value={subjectFilter}
-                  onChange={(e) => setSubjectFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#14B8A6] cursor-pointer"
-                >
-                  {availableSubjectNames.map((subj) => (
-                    <option key={subj} value={subj}>
-                      {subj === 'All' ? 'All Subjects' : subj}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSubjectFilter}
+                  size="sm"
+                />
               </div>
 
               {/* Difficulty Filter Pills */}
@@ -1167,11 +1166,10 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
                   Examination Date <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="date"
+                <CustomDatePicker
                   value={examDate}
-                  onChange={(e) => setExamDate(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+                  onChange={setExamDate}
+                  placeholder="Select Exam Date"
                 />
               </div>
 
@@ -1217,31 +1215,33 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
                   Time Zone
                 </label>
-                <select
+                <CustomDropdown
+                  fullWidth
+                  options={[
+                    { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST +05:30)' },
+                    { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
+                    { value: 'America/New_York', label: 'America/New_York (EST)' },
+                    { value: 'Europe/London', label: 'Europe/London (GMT)' }
+                  ]}
                   value={timeZone}
-                  onChange={(e) => setTimeZone(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-                >
-                  <option value="Asia/Kolkata">Asia/Kolkata (IST +05:30)</option>
-                  <option value="UTC">UTC (Coordinated Universal Time)</option>
-                  <option value="America/New_York">America/New_York (EST)</option>
-                  <option value="Europe/London">Europe/London (GMT)</option>
-                </select>
+                  onChange={setTimeZone}
+                />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
                   Result Publication Mode
                 </label>
-                <select
+                <CustomDropdown
+                  fullWidth
+                  options={[
+                    { value: 'After Exam', label: 'After Exam Window Closes' },
+                    { value: 'Immediately', label: 'Immediately upon Student Submission' },
+                    { value: 'Manual', label: 'Manual Faculty Release' }
+                  ]}
                   value={resultPublication}
-                  onChange={(e) => setResultPublication(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-                >
-                  <option value="After Exam">After Exam Window Closes</option>
-                  <option value="Immediately">Immediately upon Student Submission</option>
-                  <option value="Manual">Manual Faculty Release</option>
-                </select>
+                  onChange={setResultPublication}
+                />
               </div>
             </div>
 
@@ -1359,29 +1359,31 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                 />
               </div>
 
-              <select
+              <CustomDropdown
+                options={[
+                  { value: 'All', label: 'All Batches' },
+                  { value: '2022-2026', label: 'Batch 2022-2026 (S6)' },
+                  { value: '2021-2025', label: 'Batch 2021-2025 (S8)' },
+                  { value: '2023-2027', label: 'Batch 2023-2027 (S4)' },
+                  { value: '2024-2028', label: 'Batch 2024-2028 (S2)' }
+                ]}
                 value={batchFilter}
-                onChange={(e) => setBatchFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              >
-                <option value="All">All Batches</option>
-                <option value="2022-2026">Batch 2022-2026 (S6)</option>
-                <option value="2021-2025">Batch 2021-2025 (S8)</option>
-                <option value="2023-2027">Batch 2023-2027 (S4)</option>
-                <option value="2024-2028">Batch 2024-2028 (S2)</option>
-              </select>
+                onChange={setBatchFilter}
+                size="sm"
+              />
 
-              <select
+              <CustomDropdown
+                options={[
+                  { value: 'All', label: 'All Semesters' },
+                  { value: 'S6', label: 'Semester S6' },
+                  { value: 'S4', label: 'Semester S4' },
+                  { value: 'S8', label: 'Semester S8' },
+                  { value: 'S2', label: 'Semester S2' }
+                ]}
                 value={semesterFilter}
-                onChange={(e) => setSemesterFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              >
-                <option value="All">All Semesters</option>
-                <option value="S6">Semester S6</option>
-                <option value="S4">Semester S4</option>
-                <option value="S8">Semester S8</option>
-                <option value="S2">Semester S2</option>
-              </select>
+                onChange={setSemesterFilter}
+                size="sm"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-1">
@@ -1701,15 +1703,17 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                   <label className="font-bold text-slate-700 dark:text-slate-200">
                     Difficulty Level
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={[
+                      { value: 'Easy', label: 'Easy' },
+                      { value: 'Medium', label: 'Medium' },
+                      { value: 'Hard', label: 'Hard' }
+                    ]}
                     value={singleQDiff}
-                    onChange={(e) => setSingleQDiff(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
+                    onChange={setSingleQDiff}
+                    size="sm"
+                  />
                 </div>
 
                 <div className="space-y-1.5">

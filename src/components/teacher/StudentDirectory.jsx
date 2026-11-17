@@ -549,32 +549,34 @@ export const StudentDirectory = () => {
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Semester
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={[
+                      { value: 'S2', label: 'Semester S2' },
+                      { value: 'S4', label: 'Semester S4' },
+                      { value: 'S6', label: 'Semester S6' },
+                      { value: 'S8', label: 'Semester S8' }
+                    ]}
                     value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="S2">Semester S2</option>
-                    <option value="S4">Semester S4</option>
-                    <option value="S6">Semester S6</option>
-                    <option value="S8">Semester S8</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, semester: val })}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Academic Batch
                   </label>
-                  <select
+                  <CustomDropdown
+                    fullWidth
+                    options={[
+                      { value: '2021-2025', label: '2021–2025' },
+                      { value: '2022-2026', label: '2022–2026' },
+                      { value: '2023-2027', label: '2023–2027' },
+                      { value: '2024-2028', label: '2024–2028' }
+                    ]}
                     value={formData.batch}
-                    onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="2021-2025">2021–2025</option>
-                    <option value="2022-2026">2022–2026</option>
-                    <option value="2023-2027">2023–2027</option>
-                    <option value="2024-2028">2024–2028</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, batch: val })}
+                  />
                 </div>
 
                 <div>
