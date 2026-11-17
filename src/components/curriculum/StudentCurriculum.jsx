@@ -1006,8 +1006,8 @@ export const StudentCurriculum = () => {
         </div>
       </div>
 
-      {/* Subjects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {/* Subjects Grid (Compact 4 Cards in a Row) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
         {curriculumSubjects.map((sub) => {
           const totalModules = sub.modules?.length || 0;
           const totalVideos = (sub.modules || []).reduce(
@@ -1027,11 +1027,11 @@ export const StudentCurriculum = () => {
           return (
             <div
               key={sub.id}
-              className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs card-hover-lift flex flex-col justify-between group"
+              className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs card-hover-lift flex flex-col justify-between group"
             >
               <div>
-                {/* Banner Thumbnail (Cinematic Aspect) */}
-                <div className="h-44 w-full relative overflow-hidden bg-slate-900">
+                {/* Banner Thumbnail (Compact Aspect) */}
+                <div className="h-32 w-full relative overflow-hidden bg-slate-900">
                   <img
                     src={sub.thumbnail}
                     alt={sub.name}
@@ -1042,70 +1042,70 @@ export const StudentCurriculum = () => {
                         'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#07191E] via-[#0A262C]/70 to-transparent" />
                   
                   {/* Top Left: Code */}
-                  <div className="absolute top-3.5 left-3.5">
-                    <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-white/95 text-slate-900 backdrop-blur-md shadow-xs">
+                  <div className="absolute top-2.5 left-2.5">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/95 text-slate-900 shadow-2xs">
                       {sub.code || 'CODE'}
                     </span>
                   </div>
 
                   {/* Top Right: Status Badge */}
-                  <div className="absolute top-3.5 right-3.5">
+                  <div className="absolute top-2.5 right-2.5">
                     {isEnrolled ? (
-                      <span className="px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white flex items-center gap-1 shadow-sm backdrop-blur-md border border-emerald-400/30">
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white flex items-center gap-1 shadow-2xs">
                         <Unlock className="w-3 h-3" /> Enrolled
                       </span>
                     ) : isPending ? (
-                      <span className="px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white flex items-center gap-1 shadow-sm backdrop-blur-md animate-soft-pulse border border-amber-400/30">
-                        <Clock className="w-3 h-3" /> Pending Review
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white flex items-center gap-1 shadow-2xs animate-soft-pulse">
+                        <Clock className="w-3 h-3" /> Pending
                       </span>
                     ) : (
-                      <span className="px-3 py-1 rounded-xl text-xs font-black bg-blue-600 text-white flex items-center gap-1 shadow-sm backdrop-blur-md border border-blue-400/30">
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black bg-[#00897B] text-white flex items-center gap-1 shadow-2xs">
                         <Lock className="w-3 h-3" /> ₹{sub.price || 499}
                       </span>
                     )}
                   </div>
 
                   {/* Bottom Title & Category */}
-                  <div className="absolute bottom-3.5 left-3.5 right-3.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block mb-0.5">
+                  <div className="absolute bottom-2.5 left-2.5 right-2.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-300 block leading-tight">
                       {sub.category}
                     </span>
-                    <h3 className="font-extrabold text-lg text-white truncate drop-shadow-sm">
+                    <h3 className="font-extrabold text-sm sm:text-base text-white truncate drop-shadow-sm">
                       {sub.name}
                     </h3>
                   </div>
                 </div>
 
-                <div className="p-5 space-y-3.5">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                <div className="p-3 sm:p-3.5 space-y-2">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-snug">
                     {sub.description}
                   </p>
 
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-center">
-                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
-                      <span className="block text-sm font-black text-slate-900 dark:text-white">
+                  <div className="grid grid-cols-3 gap-1.5 pt-0.5 text-center">
+                    <div className="p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 truncate">
+                      <span className="block text-xs font-black text-slate-900 dark:text-white">
                         {totalModules}
                       </span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider truncate">
                         Modules
                       </span>
                     </div>
-                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
-                      <span className="block text-sm font-black text-blue-600 dark:text-blue-400">
+                    <div className="p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 truncate">
+                      <span className="block text-xs font-black text-teal-600 dark:text-teal-400">
                         {totalVideos}
                       </span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider truncate">
                         Videos
                       </span>
                     </div>
-                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
-                      <span className="block text-sm font-black text-emerald-600 dark:text-emerald-400">
+                    <div className="p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 truncate">
+                      <span className="block text-xs font-black text-emerald-600 dark:text-emerald-400">
                         {totalQuestions}
                       </span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider truncate">
                         Practice
                       </span>
                     </div>
@@ -1114,33 +1114,33 @@ export const StudentCurriculum = () => {
               </div>
 
               {/* Action Button: Enrolled vs Pending vs Locked */}
-              <div className="p-5 pt-0 border-t border-slate-50 dark:border-slate-800/50 mt-1 pt-3.5">
+              <div className="p-3 sm:p-3.5 pt-0 border-t border-slate-100 dark:border-slate-800/60 pt-2.5">
                 {isEnrolled ? (
                   <button
                     type="button"
                     onClick={() => setSelectedSubject(sub)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-[0_4px_14px_rgba(20,184,166,0.2)] border border-[#20B8C7]/30 active:scale-95 group/btn"
+                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center justify-center gap-1 transition-all shadow-[0_4px_14px_rgba(20,184,166,0.2)] border border-[#20B8C7]/30 active:scale-95 group/btn"
                   >
                     <span>Start Learning</span>
-                    <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
                   </button>
                 ) : isPending ? (
                   <button
                     type="button"
                     onClick={() => setPendingModalSubject(sub)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all"
+                    className="w-full py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold text-[11px] flex items-center justify-center gap-1 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all truncate"
                   >
-                    <Clock className="w-4 h-4 text-amber-600" />
-                    <span>Payment Pending Admin Approval</span>
+                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="truncate">Pending Review</span>
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => handleOpenPayModal(sub)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm border border-[#20B8C7]/30 active:scale-95 transition-all truncate"
                   >
-                    <Lock className="w-3.5 h-3.5 text-blue-200" />
-                    <span>Subscribe via UPI (₹{sub.price || 499})</span>
+                    <Lock className="w-3 h-3 text-cyan-200 shrink-0" />
+                    <span className="truncate">Subscribe (₹{sub.price || 499})</span>
                   </button>
                 )}
               </div>
