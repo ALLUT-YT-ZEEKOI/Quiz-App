@@ -105,6 +105,23 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
   const [randomizeQuestions, setRandomizeQuestions] = useState(true);
   const [randomizeOptions, setRandomizeOptions] = useState(false);
 
+  // Edit Negative Marking Modal State
+  const [editNegativeModalOpen, setEditNegativeModalOpen] = useState(false);
+  const [tempNegativeEnabled, setTempNegativeEnabled] = useState(true);
+  const [tempNegativeValue, setTempNegativeValue] = useState(0.25);
+
+  const handleSaveNegativeMarking = () => {
+    setNegativeMarking(tempNegativeEnabled);
+    setNegativeMarkValue(Number(tempNegativeValue));
+    setEditNegativeModalOpen(false);
+    showToast(
+      tempNegativeEnabled
+        ? `Negative marking updated to -${tempNegativeValue} per wrong answer.`
+        : 'Negative marking disabled (0 penalty).',
+      'success'
+    );
+  };
+
   // Single Question Modal State
   const [singleQuestionModalOpen, setSingleQuestionModalOpen] = useState(false);
   const [singleQText, setSingleQText] = useState('');
@@ -777,15 +794,46 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                   />
                 </div>
 
-                <label className="flex items-center gap-1.5 bg-[#092B32] px-3 py-1.5 rounded-xl border border-teal-500/30 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={negativeMarking}
-                    onChange={(e) => setNegativeMarking(e.target.checked)}
-                    className="rounded text-teal-500 focus:ring-0"
-                  />
-                  <span className="text-slate-200 font-bold">Negative (-0.25)</span>
-                </label>
+                <div className="flex items-center gap-1.5 bg-[#092B32] px-3 py-1.5 rounded-xl border border-teal-500/30">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={negativeMarking}
+                      onChange={(e) => setNegativeMarking(e.target.checked)}
+                      className="rounded text-teal-500 focus:ring-0"
+                    />
+                    <span className="text-slate-200 font-bold">Negative:</span>
+                  </label>
+                  {negativeMarking ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-amber-400 font-bold font-mono">-</span>
+                      <input
+                        type="number"
+                        min="0.05"
+                        max="5"
+                        step="0.05"
+                        value={negativeMarkValue}
+                        onChange={(e) => setNegativeMarkValue(Number(e.target.value))}
+                        className="w-12 bg-[#061F24] px-1 py-0.5 rounded text-amber-300 font-bold font-mono text-center focus:outline-none border border-amber-500/40 text-xs"
+                        title="Enter custom deduction e.g. 0.25, 0.33, 0.5"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempNegativeEnabled(negativeMarking);
+                          setTempNegativeValue(negativeMarkValue);
+                          setEditNegativeModalOpen(true);
+                        }}
+                        className="text-[10px] text-teal-400 hover:text-teal-200 underline font-bold ml-0.5"
+                        title="Configure presets"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 font-semibold text-[11px]">Off</span>
+                  )}
+                </div>
 
                 <label className="flex items-center gap-1.5 bg-[#092B32] px-3 py-1.5 rounded-xl border border-teal-500/30 cursor-pointer">
                   <input
@@ -1419,11 +1467,31 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                   </span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[#092B32] border border-teal-500/30">
-                  <span className="text-slate-400 block text-[10px]">Negative Marking</span>
-                  <span className="text-base font-extrabold text-amber-400">
-                    {negativeMarking ? `-${negativeMarkValue}` : 'None'}
-                  </span>
+                <div
+                  onClick={() => {
+                    setTempNegativeEnabled(negativeMarking);
+                    setTempNegativeValue(negativeMarkValue);
+                    setEditNegativeModalOpen(true);
+                  }}
+                  className="p-3 rounded-xl bg-[#092B32] border border-teal-500/30 hover:border-amber-400/80 transition-all cursor-pointer group relative shadow-2xs"
+                  title="Click to edit Negative Marking"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 block text-[10px]">Negative Marking</span>
+                    <span className="text-[10px] text-teal-400 group-hover:text-amber-400 font-bold flex items-center gap-0.5">
+                      <span>✎ Edit</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-base font-extrabold text-amber-400 font-mono">
+                      {negativeMarking ? `-${negativeMarkValue}` : 'None'}
+                    </span>
+                    {negativeMarking && (
+                      <span className="text-[10px] text-slate-400">
+                        ({negativeMarkValue === 0.25 ? '1/4 mark' : negativeMarkValue === 0.33 ? '1/3 mark' : `${negativeMarkValue} ded.`})
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-[#092B32] border border-teal-500/30">
@@ -1830,6 +1898,143 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
               >
                 <Check className="w-4 h-4" />
                 <span>Import {validParsedBulk.length} Questions</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL 3: EDIT NEGATIVE MARKING MODAL
+      ========================================================================= */}
+      {editNegativeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-amber-500" />
+                  <span>Configure Negative Marking</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Set penalty deducted for each incorrect response.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditNegativeModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Enable / Disable Toggle */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div>
+                  <span className="font-extrabold text-slate-900 dark:text-white block">
+                    Enable Negative Marking
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Deduct marks for wrong answers
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setTempNegativeEnabled(!tempNegativeEnabled)}
+                  className={`w-11 h-6 rounded-full p-0.5 transition-colors ${
+                    tempNegativeEnabled ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      tempNegativeEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {tempNegativeEnabled && (
+                <div className="space-y-3 animate-in fade-in duration-150">
+                  {/* Preset Buttons */}
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 dark:text-slate-200">
+                      Standard Presets
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: '-0.25 (1/4th)', val: 0.25, desc: 'SSC / General' },
+                        { label: '-0.33 (1/3rd)', val: 0.33, desc: 'GATE / UPSC' },
+                        { label: '-0.50 (1/2)', val: 0.5, desc: 'Strict Half' },
+                        { label: '-1.00 (Full)', val: 1.0, desc: 'Full Penalty' }
+                      ].map((preset) => (
+                        <button
+                          key={preset.val}
+                          type="button"
+                          onClick={() => setTempNegativeValue(preset.val)}
+                          className={`p-2 rounded-xl border text-left transition-all ${
+                            tempNegativeValue === preset.val
+                              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/30'
+                              : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="font-extrabold font-mono text-xs">{preset.label}</div>
+                          <div className="text-[10px] text-slate-400">{preset.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Custom Input */}
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 dark:text-slate-200">
+                      Or Enter Custom Deduction Amount:
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold font-mono text-base text-amber-500">-</span>
+                      <input
+                        type="number"
+                        min="0.05"
+                        max="5"
+                        step="0.01"
+                        value={tempNegativeValue}
+                        onChange={(e) => setTempNegativeValue(Number(e.target.value))}
+                        className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        placeholder="e.g. 0.25, 0.33, 0.5"
+                      />
+                      <span className="text-slate-400 font-medium">marks / wrong answer</span>
+                    </div>
+                  </div>
+
+                  {/* Live Simulation preview */}
+                  <div className="p-3 bg-amber-50/60 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/40 text-[11px] text-amber-900 dark:text-amber-200 space-y-1">
+                    <span className="font-bold block">Scoring Rule:</span>
+                    <p>
+                      A correct 1.0-mark answer gives <strong>+1.0</strong>. An incorrect answer will deduct <strong>-{tempNegativeValue}</strong> marks.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditNegativeModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveNegativeMarking}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-extrabold shadow-sm active:scale-95 transition-all"
+              >
+                Save Negative Marking
               </button>
             </div>
           </div>
