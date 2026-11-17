@@ -1328,7 +1328,7 @@ export const TeacherCurriculum = () => {
 
           <button
             onClick={handleOpenAddSubject}
-            className="px-5 py-2.5 rounded-xl bg-[#0E3B43] hover:bg-[#134E59] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition-all active:scale-95"
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Subject</span>
@@ -1405,9 +1405,9 @@ export const TeacherCurriculum = () => {
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           <button
             onClick={() => setSubjectTab('all')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
               subjectTab === 'all'
-                ? 'bg-[#0E3B43] text-white shadow-xs'
+                ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white border border-[#20B8C7]/50 shadow-[0_4px_16px_rgba(20,184,166,0.22)]'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
@@ -1415,9 +1415,9 @@ export const TeacherCurriculum = () => {
           </button>
           <button
             onClick={() => setSubjectTab('active')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+            className={`px-4 py-2 rounded-2xl text-xs font-semibold transition-all whitespace-nowrap ${
               subjectTab === 'active'
-                ? 'bg-[#0E3B43] text-white shadow-xs'
+                ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white border border-[#20B8C7]/50 shadow-[0_4px_16px_rgba(20,184,166,0.22)]'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
@@ -1425,9 +1425,9 @@ export const TeacherCurriculum = () => {
           </button>
           <button
             onClick={() => setSubjectTab('draft')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+            className={`px-4 py-2 rounded-2xl text-xs font-semibold transition-all whitespace-nowrap ${
               subjectTab === 'draft'
-                ? 'bg-[#0E3B43] text-white shadow-xs'
+                ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white border border-[#20B8C7]/50 shadow-[0_4px_16px_rgba(20,184,166,0.22)]'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
@@ -1435,9 +1435,9 @@ export const TeacherCurriculum = () => {
           </button>
           <button
             onClick={() => setSubjectTab('archived')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+            className={`px-4 py-2 rounded-2xl text-xs font-semibold transition-all whitespace-nowrap ${
               subjectTab === 'archived'
-                ? 'bg-[#0E3B43] text-white shadow-xs'
+                ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white border border-[#20B8C7]/50 shadow-[0_4px_16px_rgba(20,184,166,0.22)]'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
@@ -1463,7 +1463,7 @@ export const TeacherCurriculum = () => {
               onClick={() => setLayoutView('grid')}
               className={`p-1.5 rounded-lg text-xs transition-colors ${
                 layoutView === 'grid'
-                  ? 'bg-[#0E3B43] text-white shadow-xs'
+                  ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white shadow-xs'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
               title="Grid View"
@@ -1474,7 +1474,7 @@ export const TeacherCurriculum = () => {
               onClick={() => setLayoutView('list')}
               className={`p-1.5 rounded-lg text-xs transition-colors ${
                 layoutView === 'list'
-                  ? 'bg-[#0E3B43] text-white shadow-xs'
+                  ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white shadow-xs'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
               title="List View"
@@ -1609,7 +1609,7 @@ export const TeacherCurriculum = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedSubject(sub)}
-                    className="py-2.5 px-4 rounded-xl bg-[#0E3B43] hover:bg-[#134E59] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs active:scale-95 transition-all group/btn"
+                    className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center gap-1.5 shadow-[0_4px_14px_rgba(20,184,166,0.2)] border border-[#20B8C7]/30 active:scale-95 transition-all group/btn"
                   >
                     <span>Manage Modules ({totalModules})</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />

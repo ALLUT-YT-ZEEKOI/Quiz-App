@@ -964,8 +964,8 @@ export const StudentCurriculum = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-blue-950 text-white p-6 sm:p-8 rounded-3xl shadow-lg relative overflow-hidden border border-slate-800">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+      <div className="bg-gradient-to-r from-[#07191E] via-[#0A262C] to-[#0E353E] text-white p-6 sm:p-8 rounded-3xl shadow-lg relative overflow-hidden border border-[#144752]">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
@@ -1119,7 +1119,7 @@ export const StudentCurriculum = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedSubject(sub)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#0E3B43] hover:bg-[#134E59] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 group/btn"
+                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-[0_4px_14px_rgba(20,184,166,0.2)] border border-[#20B8C7]/30 active:scale-95 group/btn"
                   >
                     <span>Start Learning</span>
                     <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
