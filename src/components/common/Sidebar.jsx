@@ -1,14 +1,9 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import {
-  LayoutDashboard,
   BookOpen,
   Users,
   FileQuestion,
-  BarChart3,
-  Layers,
-  Settings,
-  ShieldCheck,
   Award,
   ChevronLeft,
   ChevronRight,
@@ -28,12 +23,6 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
   } = useApp();
 
   const teacherNavItems = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-      targetView: 'subjects'
-    },
     {
       id: 'subjects',
       label: 'Subjects & Curriculum',
@@ -55,34 +44,10 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       icon: FileQuestion,
       targetView: 'results',
       badge: curriculumAttempts?.length || undefined
-    },
-    {
-      id: 'reports',
-      label: 'Reports & Analytics',
-      icon: BarChart3,
-      targetView: 'results'
-    },
-    {
-      id: 'content',
-      label: 'Content Library',
-      icon: Layers,
-      targetView: 'subjects'
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: Settings,
-      onClick: () => showToast('Settings panel available in system configuration', 'info')
     }
   ];
 
   const studentNavItems = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-      targetView: 'subjects'
-    },
     {
       id: 'subjects',
       label: 'Subjects & Curriculum',
@@ -98,24 +63,6 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badge: (curriculumAttempts || []).filter(
         (a) => a.studentId === (currentUser?.id || 'STU001')
       ).length || undefined
-    },
-    {
-      id: 'reports',
-      label: 'Reports & Analytics',
-      icon: BarChart3,
-      targetView: 'results'
-    },
-    {
-      id: 'content',
-      label: 'Content Library',
-      icon: Layers,
-      targetView: 'subjects'
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: Settings,
-      onClick: () => showToast('Student preferences configured', 'info')
     }
   ];
 
@@ -131,17 +78,16 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
   };
 
   const isItemActive = (item) => {
-    if (item.id === 'subjects' && activeView === 'subjects') return true;
-    if (item.id === 'dashboard' && activeView === 'dashboard') return true;
+    if (item.id === 'subjects' && (activeView === 'subjects' || activeView === 'dashboard')) return true;
     if (item.id === 'students' && activeView === 'subscriptions') return true;
-    if ((item.id === 'quizzes' || item.id === 'reports') && activeView === 'results') return true;
+    if (item.id === 'quizzes' && activeView === 'results') return true;
     return false;
   };
 
   const sidebarContent = (
     <aside
       className={`h-full flex flex-col justify-between bg-gradient-to-b from-[#092227] via-[#0A262C] to-[#07191E] text-slate-200 border-r border-[#14424D]/80 relative overflow-hidden select-none transition-all duration-300 shadow-[4px_0_24px_rgba(4,20,24,0.4)] ${
-        collapsed ? 'w-20' : 'w-64'
+        collapsed ? 'w-20' : 'w-64 sm:w-[268px]'
       }`}
     >
       {/* Large Embossed CohesionTech Maze C Logo Watermark at bottom */}
@@ -210,14 +156,14 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
                 />
 
                 {!collapsed && (
-                  <span className={`truncate text-left flex-1 ${active ? 'font-bold text-white text-sm' : 'text-xs'}`}>
+                  <span className={`text-left flex-1 whitespace-nowrap ${active ? 'font-bold text-white text-[13px]' : 'text-xs text-[#9BB7BE] group-hover:text-white'}`}>
                     {item.label}
                   </span>
                 )}
 
                 {!collapsed && item.badge !== undefined && (
                   <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-mono ${
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-mono shrink-0 ${
                       item.badgeColor
                         ? item.badgeColor
                         : active
