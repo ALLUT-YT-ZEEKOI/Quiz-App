@@ -538,49 +538,72 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
       </div>
 
       {/* Stepper Progress Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-        <div className="flex items-center justify-between relative">
-          <div className="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-0.5 bg-slate-200 dark:bg-slate-800 z-0" />
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        <div className="relative">
+          {/* Centered Connecting Line Track (passes through the exact geometric center of all step circles) */}
           <div
-            className="absolute left-8 top-1/2 -translate-y-1/2 h-0.5 bg-[#087F8C] transition-all duration-300 z-0"
-            style={{ width: `${((currentStep - 1) / 4) * 85}%` }}
-          />
+            className="absolute top-[18px] sm:top-5 left-[18px] sm:left-5 right-[18px] sm:right-5 -translate-y-1/2 h-0.5 bg-slate-200 dark:bg-slate-700/80 z-0"
+            aria-hidden="true"
+          >
+            {/* Active Progress Fill Line */}
+            <div
+              className="h-full bg-teal-600 dark:bg-teal-500 transition-all duration-300"
+              style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+            />
+          </div>
 
-          {steps.map((s) => {
-            const isCompleted = currentStep > s.num;
-            const isCurrent = currentStep === s.num;
+          {/* Steps Row */}
+          <div className="relative z-10 flex items-start justify-between">
+            {steps.map((s) => {
+              const isCompleted = currentStep > s.num;
+              const isCurrent = currentStep === s.num;
 
-            return (
-              <div key={s.num} className="relative z-10 flex flex-col items-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (s.num < currentStep) setCurrentStep(s.num);
-                  }}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-extrabold transition-all shadow-sm ${
-                    isCurrent
-                      ? 'bg-[#087F8C] text-white ring-4 ring-[#20B8C7]/30 scale-105'
-                      : isCompleted
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  {isCompleted ? <Check className="w-4 h-4 stroke-[3]" /> : s.num}
-                </button>
-                <span
-                  className={`text-[11px] font-bold mt-2 whitespace-nowrap hidden sm:block ${
-                    isCurrent
-                      ? 'text-[#087F8C] dark:text-[#2DD4BF]'
-                      : isCompleted
-                      ? 'text-slate-800 dark:text-slate-200'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  {s.label}
-                </span>
-              </div>
-            );
-          })}
+              return (
+                <div key={s.num} className="flex flex-col items-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (s.num < currentStep) setCurrentStep(s.num);
+                    }}
+                    disabled={s.num >= currentStep}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 ${
+                      isCurrent
+                        ? 'bg-[#087F8C] text-white ring-4 ring-[#14B8A6]/30 shadow-md shadow-teal-900/20 scale-105'
+                        : isCompleted
+                        ? 'bg-teal-600 text-white hover:bg-teal-700 cursor-pointer shadow-xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                    }`}
+                    title={isCompleted ? `Go back to Step ${s.num}: ${s.label}` : s.label}
+                  >
+                    {isCompleted ? <Check className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[3]" /> : s.num}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (s.num < currentStep) setCurrentStep(s.num);
+                    }}
+                    disabled={s.num >= currentStep}
+                    className={`text-[11px] sm:text-xs font-semibold mt-2.5 whitespace-nowrap hidden sm:block transition-colors ${
+                      isCurrent
+                        ? 'text-[#087F8C] dark:text-[#2DD4BF] font-extrabold'
+                        : isCompleted
+                        ? 'text-slate-700 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-400 cursor-pointer'
+                        : 'text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Mobile Step Indicator Pill */}
+        <div className="sm:hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+          <span className="font-semibold text-slate-500">Step {currentStep} of {steps.length}</span>
+          <span className="font-bold text-[#087F8C] dark:text-[#2DD4BF]">{steps[currentStep - 1]?.label}</span>
         </div>
       </div>
 
