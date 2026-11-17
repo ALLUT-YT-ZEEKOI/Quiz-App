@@ -10,14 +10,17 @@ import {
   Award,
   Trophy,
   User,
-  ShieldCheck
+  ShieldCheck,
+  Radio
 } from 'lucide-react';
 
 export const MobileBottomNav = () => {
-  const { currentRole, activeView, setActiveView, pendingSubscriptionsCount } = useApp();
+  const { currentRole, activeView, setActiveView, pendingSubscriptionsCount, activeExamForAttempt, examinations } = useApp();
 
-  // If inside active quiz attempt screen, don't show the bottom nav so there's zero distraction
-  if (activeView === 'quiz-attempt') return null;
+  // If inside active quiz or exam attempt screen, don't show the bottom nav so there's zero distraction
+  if (activeView === 'quiz-attempt' || activeView === 'exam-taking' || activeExamForAttempt) return null;
+
+  const liveCount = (examinations || []).filter((e) => e.status === 'Live Now').length;
 
   const teacherItems = [
     { id: 'subjects', label: 'Curriculum', icon: BookOpen },
@@ -27,11 +30,23 @@ export const MobileBottomNav = () => {
       icon: ShieldCheck,
       badge: pendingSubscriptionsCount > 0 ? pendingSubscriptionsCount : null
     },
-    { id: 'results', label: 'Quiz Results', icon: BarChart3 }
+    {
+      id: 'examinations',
+      label: 'Live Exams',
+      icon: Radio,
+      badge: liveCount > 0 ? 'Live' : null
+    },
+    { id: 'results', label: 'Results', icon: BarChart3 }
   ];
 
   const studentItems = [
-    { id: 'subjects', label: 'My Subjects', icon: BookOpen },
+    { id: 'subjects', label: 'Subjects', icon: BookOpen },
+    {
+      id: 'examinations',
+      label: 'Live Exams',
+      icon: Radio,
+      badge: liveCount > 0 ? 'Live' : null
+    },
     { id: 'results', label: 'My Results', icon: Award }
   ];
 

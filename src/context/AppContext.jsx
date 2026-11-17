@@ -3,6 +3,7 @@ import { TEACHERS, STUDENTS, SUBJECTS } from '../data/initialData';
 import { QUESTIONS_BANK } from '../data/questionsData';
 import { INITIAL_QUIZZES, INITIAL_ATTEMPTS, INITIAL_NOTIFICATIONS } from '../data/quizzesData';
 import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS, INITIAL_SUBSCRIPTIONS } from '../data/curriculumData';
+import { INITIAL_EXAMINATIONS, generateLiveMonitoringData, generateCompletedExamAttempts } from '../data/examinationsData';
 import { formatEmbedUrl } from '../utils/videoUtils';
 
 const AppContext = createContext();
@@ -232,6 +233,270 @@ export const AppProvider = ({ children }) => {
   const resetDifficultyLevels = () => {
     setDifficultyLevels(DEFAULT_DIFFICULTY_LEVELS);
     showToast('Difficulty labels reset to defaults (Easy, Medium, Hard)', 'info');
+  };
+
+  // =========================================================================
+  // LIVE & SCHEDULED EXAMINATIONS STATE & METHODS
+  // =========================================================================
+  const [examinations, setExaminations] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_examinations');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Examinations parse notice:', e);
+    }
+    return INITIAL_EXAMINATIONS;
+  });
+
+  const [examAttempts, setExamAttempts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_exam_attempts');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Exam attempts parse notice:', e);
+    }
+    return generateCompletedExamAttempts();
+  });
+
+  const [examMonitoringSessions, setExamMonitoringSessions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_exam_monitoring');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Exam monitoring parse notice:', e);
+    }
+    return generateLiveMonitoringData('EXAM-2026-001');
+  });
+
+  const [activeExamForAttempt, setActiveExamForAttempt] = useState(null);
+  const [lastExamResult, setLastExamResult] = useState(null);
+  const [selectedExamForMonitoring, setSelectedExamForMonitoring] = useState('EXAM-2026-001');
+  const [selectedExamForAnalytics, setSelectedExamForAnalytics] = useState('EXAM-2026-006');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cohesion_examinations', JSON.stringify(examinations));
+    } catch (e) {}
+  }, [examinations]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cohesion_exam_attempts', JSON.stringify(examAttempts));
+    } catch (e) {}
+  }, [examAttempts]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cohesion_exam_monitoring', JSON.stringify(examMonitoringSessions));
+    } catch (e) {}
+  }, [examMonitoringSessions]);
+
+  const createExamination = (examData) => {
+    const newExam = {
+      ...examData,
+      id: examData.id || `EXAM-2026-${Date.now().toString().slice(-4)}`,
+      createdAt: new Date().toISOString()
+    };
+    setExaminations((prev) => [newExam, ...prev]);
+    showToast(`Examination "${newExam.title}" scheduled successfully!`, 'success');
+    return newExam;
+  };
+
+  const updateExamination = (id, updatedFields) => {
+    setExaminations((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...updatedFields } : e))
+    );
+    showToast('Examination updated successfully!', 'success');
+  };
+
+  const deleteExamination = (id) => {
+    setExaminations((prev) => prev.filter((e) => e.id !== id));
+    showToast('Examination deleted', 'info');
+  };
+
+  const startStudentExam = (examId) => {
+    const exam = examinations.find((e) => e.id === examId);
+    if (!exam) {
+      showToast('Examination not found', 'error');
+      return;
+    }
+    setActiveExamForAttempt(exam);
+    // Update monitoring session for this student
+    setExamMonitoringSessions((prev) =>
+      prev.map((s) =>
+        s.studentId === currentUserId && (s.examId === examId || !s.examId)
+          ? {
+              ...s,
+              status: 'In Progress',
+              connectionStatus: 'Connected',
+              startTime: s.startTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              lastActivityText: 'Active just now',
+              lastActivityTimestamp: Date.now()
+            }
+          : s
+      )
+    );
+  };
+
+  const saveExamDraftAnswer = (examId, studentId, questionIndex, selectedOption) => {
+    setExamMonitoringSessions((prev) =>
+      prev.map((s) => {
+        if (s.studentId === studentId && (s.examId === examId || !s.examId)) {
+          const currentAnswered = selectedOption !== null && selectedOption !== undefined
+            ? Math.max(s.answeredCount || 0, questionIndex + 1)
+            : s.answeredCount || 0;
+          return {
+            ...s,
+            answeredCount: currentAnswered,
+            progressPct: Math.round((currentAnswered / (s.totalQuestions || 30)) * 100),
+            currentQuestionIndex: questionIndex,
+            lastActivityText: 'Active just now',
+            lastActivityTimestamp: Date.now(),
+            connectionStatus: 'Connected'
+          };
+        }
+        return s;
+      })
+    );
+  };
+
+  const submitStudentExamAttempt = (examId, studentAnswers, timeSpentMinutes = 45) => {
+    const exam = examinations.find((e) => e.id === examId) || activeExamForAttempt;
+    if (!exam) return null;
+
+    const student = currentUser || STUDENTS[0];
+    const totalQuestions = exam.questions?.length || 30;
+    const totalMarks = exam.totalMarks || 30;
+
+    let correctCount = 0;
+    let incorrectCount = 0;
+    let unattemptedCount = 0;
+
+    (exam.questions || []).forEach((q, idx) => {
+      const studentAns = studentAnswers[idx];
+      if (studentAns === null || studentAns === undefined) {
+        unattemptedCount++;
+      } else if (studentAns === q.correctAnswer) {
+        correctCount++;
+      } else {
+        incorrectCount++;
+      }
+    });
+
+    const negPerWrong = exam.negativeMarking ? (exam.negativeMarkValue || 0.25) : 0;
+    const rawScore = correctCount - (incorrectCount * negPerWrong);
+    const finalScore = Math.max(0, Math.round(rawScore * 10) / 10);
+    const percentage = Math.round((finalScore / totalMarks) * 100);
+    const passed = finalScore >= (exam.passingMarks || 15);
+
+    const newAttempt = {
+      id: `ATT-${exam.id}-${student.id}-${Date.now().toString().slice(-4)}`,
+      examId: exam.id,
+      examTitle: exam.title,
+      subjectId: exam.subjectId,
+      subjectName: exam.subjectName,
+      studentId: student.id,
+      studentName: student.name,
+      studentRollNo: student.studentId || 'CE-2022-001',
+      batch: student.batch || '2022-2026',
+      semester: student.semester || 'S6',
+      avatar: student.avatar || '',
+      totalQuestions,
+      totalMarks,
+      correctCount,
+      incorrectCount,
+      unattemptedCount,
+      score: finalScore,
+      percentage,
+      passed,
+      timeSpentMinutes,
+      submittedAt: new Date().toISOString(),
+      answers: (exam.questions || []).map((q, idx) => ({
+        questionIndex: idx,
+        questionText: q.questionText,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+        difficulty: q.difficulty,
+        selectedOption: studentAnswers[idx] !== undefined ? studentAnswers[idx] : null,
+        isCorrect: studentAnswers[idx] === q.correctAnswer
+      }))
+    };
+
+    setExamAttempts((prev) => [newAttempt, ...prev]);
+    setLastExamResult(newAttempt);
+    setActiveExamForAttempt(null);
+
+    // Update monitoring session
+    setExamMonitoringSessions((prev) =>
+      prev.map((s) =>
+        s.studentId === student.id && (s.examId === exam.id || !s.examId)
+          ? {
+              ...s,
+              status: 'Submitted',
+              connectionStatus: 'Connected',
+              answeredCount: totalQuestions - unattemptedCount,
+              progressPct: 100,
+              score: finalScore,
+              submitTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              lastActivityText: 'Submitted examination',
+              timeSpentMinutes
+            }
+          : s
+      )
+    );
+
+    showToast(`Examination submitted successfully! You scored ${finalScore}/${totalMarks} (${percentage}%)`, 'success');
+    return newAttempt;
+  };
+
+  const exportExamResultsCSV = (examId) => {
+    const exam = examinations.find((e) => e.id === examId);
+    const attemptsForExam = examAttempts.filter((a) => a.examId === examId);
+
+    const headers = [
+      'Rank', 'Roll Number', 'Student Name', 'Batch', 'Semester',
+      'Score', 'Total Marks', 'Percentage %', 'Correct', 'Incorrect', 'Unattempted',
+      'Result Status', 'Time Spent (mins)', 'Submitted At'
+    ];
+
+    const sorted = [...attemptsForExam].sort((a, b) => b.score - a.score);
+
+    const rows = sorted.map((a, idx) => [
+      idx + 1,
+      a.studentRollNo,
+      `"${a.studentName}"`,
+      a.batch,
+      a.semester,
+      a.score,
+      a.totalMarks,
+      `${a.percentage}%`,
+      a.correctCount,
+      a.incorrectCount,
+      a.unattemptedCount,
+      a.passed ? 'PASSED' : 'FAILED',
+      a.timeSpentMinutes,
+      a.submittedAt
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${exam ? exam.code || exam.id : 'Exam'}_Results_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Exported examination results to CSV', 'success');
   };
 
   // Helper to resolve question difficulty label & meta
@@ -971,7 +1236,28 @@ export const AppProvider = ({ children }) => {
         resetDifficultyLevels,
         getDifficultyMeta,
         getDifficultyLabel,
-        matchesDifficulty
+        matchesDifficulty,
+        examinations,
+        setExaminations,
+        examAttempts,
+        setExamAttempts,
+        examMonitoringSessions,
+        setExamMonitoringSessions,
+        activeExamForAttempt,
+        setActiveExamForAttempt,
+        lastExamResult,
+        setLastExamResult,
+        selectedExamForMonitoring,
+        setSelectedExamForMonitoring,
+        selectedExamForAnalytics,
+        setSelectedExamForAnalytics,
+        createExamination,
+        updateExamination,
+        deleteExamination,
+        startStudentExam,
+        saveExamDraftAnswer,
+        submitStudentExamAttempt,
+        exportExamResultsCSV
       }}
     >
       {children}

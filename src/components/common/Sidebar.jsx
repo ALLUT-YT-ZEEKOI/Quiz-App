@@ -5,6 +5,7 @@ import {
   Users,
   FileQuestion,
   Award,
+  Radio,
   ChevronLeft,
   ChevronRight,
   X
@@ -19,8 +20,11 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     curriculumSubjects,
     curriculumAttempts,
     pendingSubscriptionsCount,
+    examinations,
     showToast
   } = useApp();
+
+  const liveExamsCount = (examinations || []).filter((e) => e.status === 'Live Now').length;
 
   const teacherNavItems = [
     {
@@ -39,6 +43,14 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badgeColor: 'bg-amber-500 text-white'
     },
     {
+      id: 'examinations',
+      label: 'Live Examinations',
+      icon: Radio,
+      targetView: 'examinations',
+      badge: liveExamsCount > 0 ? `${liveExamsCount} Live` : undefined,
+      badgeColor: 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse'
+    },
+    {
       id: 'quizzes',
       label: 'Quiz & Assessments',
       icon: FileQuestion,
@@ -54,6 +66,14 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       icon: BookOpen,
       targetView: 'subjects',
       badge: curriculumSubjects?.length || 0
+    },
+    {
+      id: 'examinations',
+      label: 'Live Examinations',
+      icon: Radio,
+      targetView: 'examinations',
+      badge: liveExamsCount > 0 ? `${liveExamsCount} Live` : undefined,
+      badgeColor: 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse'
     },
     {
       id: 'quizzes',
@@ -80,6 +100,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
   const isItemActive = (item) => {
     if (item.id === 'subjects' && (activeView === 'subjects' || activeView === 'dashboard')) return true;
     if (item.id === 'students' && activeView === 'subscriptions') return true;
+    if (item.id === 'examinations' && activeView === 'examinations') return true;
     if (item.id === 'quizzes' && activeView === 'results') return true;
     return false;
   };

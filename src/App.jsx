@@ -13,6 +13,9 @@ import { StudentCurriculum } from './components/curriculum/StudentCurriculum';
 import { CurriculumResults } from './components/curriculum/CurriculumResults';
 import { AdminSubscriptions } from './components/curriculum/AdminSubscriptions';
 
+// Live & Scheduled Examination Module
+import { ExaminationsMain } from './components/examinations/ExaminationsMain';
+
 const AppContent = () => {
   const {
     currentRole,
@@ -29,8 +32,13 @@ const AppContent = () => {
     return <AuthModal isOpen={true} />;
   }
 
-  // Streamlined view router: Focused exclusively on Subjects -> Modules -> Videos & Q&A + Results + Approvals
+  // Streamlined view router: Focused exclusively on Subjects -> Modules -> Videos & Q&A + Live Examinations + Results + Approvals
   const renderCurrentView = () => {
+    // If Live Examinations view or Student is taking an exam
+    if (activeView === 'examinations' || activeView === 'live-exams') {
+      return <ExaminationsMain />;
+    }
+
     // If Results view
     if (activeView === 'results') {
       return <CurriculumResults />;
