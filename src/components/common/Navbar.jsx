@@ -725,7 +725,7 @@ export const Navbar = ({ onMobileMenuToggle }) => {
           {/* Dark / Light Mode Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="hidden min-[380px]:flex p-1.5 sm:p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+            className="hidden sm:flex p-1.5 sm:p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle theme"
           >
