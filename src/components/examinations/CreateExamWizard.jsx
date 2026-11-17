@@ -912,29 +912,57 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
 
             {/* Questions List */}
             {filteredBank.length === 0 ? (
-              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-center space-y-3 border border-dashed border-slate-200 dark:border-slate-700">
-                <HelpCircle className="w-8 h-8 text-slate-400 mx-auto" />
-                <div className="text-xs text-slate-600 dark:text-slate-300 font-semibold">
-                  {questionViewMode === 'selected'
-                    ? 'No questions selected for this examination yet.'
-                    : 'No questions match your current search and filters.'}
+              <div className="p-8 rounded-3xl bg-slate-50 dark:bg-slate-800/40 text-center space-y-4 border-2 border-dashed border-slate-200 dark:border-slate-700/80">
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/50 text-[#087F8C] dark:text-[#2DD4BF] flex items-center justify-center mx-auto border border-teal-200 dark:border-teal-800/60 shadow-2xs">
+                  <HelpCircle className="w-6 h-6" />
                 </div>
+
+                <div className="space-y-1">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    {questionViewMode === 'selected'
+                      ? 'No questions selected for this examination yet.'
+                      : 'No questions match your current search and filters.'}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                    {questionViewMode === 'selected'
+                      ? 'Add single questions, bulk upload your question bank, or pick questions from the repository.'
+                      : 'Try adjusting your search keywords, difficulty, or discipline filters.'}
+                  </p>
+                </div>
+
                 {questionViewMode === 'selected' && (
-                  <div className="flex items-center justify-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setQuestionViewMode('bank')}
-                      className="px-3 py-1.5 rounded-xl bg-[#087F8C] text-white text-xs font-bold"
-                    >
-                      Browse Question Bank
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSingleQuestionModalOpen(true)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold"
-                    >
-                      + Add Question
-                    </button>
+                  <div className="space-y-3 pt-2">
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setSingleQuestionModalOpen(true)}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>+ Add Question</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setBulkModalOpen(true)}
+                        className="px-4 py-2.5 rounded-xl bg-[#092B32] hover:bg-[#0E3B44] text-[#2DD4BF] border border-[#20B8C7]/50 text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>Bulk Upload Questions</span>
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-slate-400">
+                      Or select from the{' '}
+                      <button
+                        type="button"
+                        onClick={() => setQuestionViewMode('bank')}
+                        className="text-[#087F8C] dark:text-[#2DD4BF] font-bold hover:underline"
+                      >
+                        Question Bank
+                      </button>{' '}
+                      ({allAvailableQuestions.length} repository items available).
+                    </p>
                   </div>
                 )}
               </div>
