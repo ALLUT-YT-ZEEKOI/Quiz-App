@@ -51,6 +51,36 @@
   bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Premium Card & Element Hover Utilities */
+.card-hover-lift {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+}
+
+/* Glassmorphism Surface utility */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.dark .glass-surface {
+  background: rgba(21, 30, 50, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Subtle glowing pulse */
+@keyframes softPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+.animate-soft-pulse {
+  animation: softPulse 2.5s infinite ease-in-out;
+}
+
 /* Pulse animation for timer */
 @keyframes timerAlert {
   0%, 100% {

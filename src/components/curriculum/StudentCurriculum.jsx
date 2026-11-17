@@ -885,7 +885,7 @@ export const StudentCurriculum = () => {
               return (
                 <div
                   key={mod.id || idx}
-                  className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:border-blue-400 transition-all flex flex-col justify-between"
+                  className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs hover:border-blue-400 card-hover-lift transition-all flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -960,17 +960,45 @@ export const StudentCurriculum = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-navy-950 via-navy-900 to-blue-900 text-white p-6 sm:p-8 rounded-3xl shadow-lg relative overflow-hidden">
-        <div className="relative z-10">
-          <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-500/30 text-blue-200 border border-blue-400/30">
-            Student Learning Portal
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-black mt-2">
-            My Subjects & Course Subscriptions
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed">
-            Choose a subject to watch lesson videos and test with Easy, Medium, and Hard quizzes. Subscribed courses are unlocked with full access.
-          </p>
+      <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-blue-950 text-white p-6 sm:p-8 rounded-3xl shadow-lg relative overflow-hidden border border-slate-800">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                🎓 Student Examination & Learning Portal
+              </span>
+              <span className="text-xs text-slate-400">
+                Hi, {currentUser?.name || 'Student'}!
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              My Subjects & Course Subscriptions
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
+              Explore syllabus-aligned modules, watch recorded video lectures, and practice with difficulty-tuned assessments.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md text-center min-w-[90px]">
+              <span className="block text-xl font-black text-emerald-400">
+                {curriculumSubjects.filter((s) => checkEnrollmentStatus(currentUser?.id || 'STU001', s.id) === 'active').length}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-300">
+                Enrolled
+              </span>
+            </div>
+            <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md text-center min-w-[90px]">
+              <span className="block text-xl font-black text-blue-400">
+                {curriculumSubjects.length}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-300">
+                Available
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -995,100 +1023,108 @@ export const StudentCurriculum = () => {
           return (
             <div
               key={sub.id}
-              className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+              className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs card-hover-lift flex flex-col justify-between group"
             >
               <div>
-                {/* Banner Thumbnail */}
-                <div className="h-32 w-full relative overflow-hidden bg-slate-900">
+                {/* Banner Thumbnail (Cinematic Aspect) */}
+                <div className="h-44 w-full relative overflow-hidden bg-slate-900">
                   <img
                     src={sub.thumbnail}
                     alt={sub.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-85"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
+                      e.target.src =
+                        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
                   
                   {/* Top Left: Code */}
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/90 text-slate-900 backdrop-blur-xs">
+                  <div className="absolute top-3.5 left-3.5">
+                    <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-white/95 text-slate-900 backdrop-blur-md shadow-xs">
                       {sub.code || 'CODE'}
                     </span>
                   </div>
 
                   {/* Top Right: Status Badge */}
-                  <div className="absolute top-3 right-3">
+                  <div className="absolute top-3.5 right-3.5">
                     {isEnrolled ? (
-                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white flex items-center gap-1 shadow-sm">
+                      <span className="px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white flex items-center gap-1 shadow-sm backdrop-blur-md border border-emerald-400/30">
                         <Unlock className="w-3 h-3" /> Enrolled
                       </span>
                     ) : isPending ? (
-                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white flex items-center gap-1 shadow-sm animate-pulse">
+                      <span className="px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white flex items-center gap-1 shadow-sm backdrop-blur-md animate-soft-pulse border border-amber-400/30">
                         <Clock className="w-3 h-3" /> Pending Review
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-blue-600 text-white flex items-center gap-1 shadow-sm">
+                      <span className="px-3 py-1 rounded-xl text-xs font-black bg-blue-600 text-white flex items-center gap-1 shadow-sm backdrop-blur-md border border-blue-400/30">
                         <Lock className="w-3 h-3" /> ₹{sub.price || 499}
                       </span>
                     )}
                   </div>
 
-                  <div className="absolute bottom-3 left-3 right-3">
-                    <h3 className="font-extrabold text-base text-white truncate drop-shadow-sm">
-                      {sub.name}
-                    </h3>
-                    <span className="text-[11px] text-blue-200 font-medium">
+                  {/* Bottom Title & Category */}
+                  <div className="absolute bottom-3.5 left-3.5 right-3.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block mb-0.5">
                       {sub.category}
                     </span>
+                    <h3 className="font-extrabold text-lg text-white truncate drop-shadow-sm">
+                      {sub.name}
+                    </h3>
                   </div>
                 </div>
 
-                <div className="p-4 space-y-3">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                <div className="p-5 space-y-3.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                     {sub.description}
                   </p>
 
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
-                      <span className="block text-xs font-black text-slate-900 dark:text-white">
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-center">
+                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
+                      <span className="block text-sm font-black text-slate-900 dark:text-white">
                         {totalModules}
                       </span>
-                      <span className="text-[10px] text-slate-400">Modules</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Modules
+                      </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
-                      <span className="block text-xs font-black text-blue-600">
+                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
+                      <span className="block text-sm font-black text-blue-600 dark:text-blue-400">
                         {totalVideos}
                       </span>
-                      <span className="text-[10px] text-slate-400">Videos</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Videos
+                      </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
-                      <span className="block text-xs font-black text-emerald-600">
+                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
+                      <span className="block text-sm font-black text-emerald-600 dark:text-emerald-400">
                         {totalQuestions}
                       </span>
-                      <span className="text-[10px] text-slate-400">Questions</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Practice
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Action Button: Enrolled vs Pending vs Locked */}
-              <div className="p-4 pt-0">
+              <div className="p-5 pt-0 border-t border-slate-50 dark:border-slate-800/50 mt-1 pt-3.5">
                 {isEnrolled ? (
                   <button
                     type="button"
                     onClick={() => setSelectedSubject(sub)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-blue-600 dark:bg-slate-800 dark:group-hover:bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                    className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm shadow-blue-500/20 active:scale-95 group/btn"
                   >
-                    <span>Open Lessons & Quizzes</span>
-                    <ChevronRight className="w-4 h-4" />
+                    <span>Start Learning</span>
+                    <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
                   </button>
                 ) : isPending ? (
                   <button
                     type="button"
                     onClick={() => setPendingModalSubject(sub)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-amber-100 transition-all"
+                    className="w-full py-2.5 px-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all"
                   >
                     <Clock className="w-4 h-4 text-amber-600" />
                     <span>Payment Pending Admin Approval</span>

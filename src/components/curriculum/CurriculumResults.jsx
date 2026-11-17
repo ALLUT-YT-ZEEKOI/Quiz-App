@@ -12,7 +12,10 @@ import {
   Download,
   Calendar,
   Layers,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  BarChart3,
+  Percent
 } from 'lucide-react';
 
 export const CurriculumResults = () => {
@@ -27,6 +30,20 @@ export const CurriculumResults = () => {
     : (curriculumAttempts || []).filter(
         (a) => a.studentId === (currentUser?.id || 'STU001')
       );
+
+  const totalSubmissions = attempts.length;
+  const avgScore =
+    totalSubmissions > 0
+      ? Math.round(
+          attempts.reduce((sum, a) => sum + (Number(a.scorePct) || 0), 0) /
+            totalSubmissions
+        )
+      : 0;
+  const passCount = attempts.filter(
+    (a) => a.status === 'Passed' || Number(a.scorePct) >= 60
+  ).length;
+  const passRate =
+    totalSubmissions > 0 ? Math.round((passCount / totalSubmissions) * 100) : 0;
 
   const filteredAttempts = attempts.filter((att) => {
     const matchesSearch =
@@ -124,12 +141,71 @@ export const CurriculumResults = () => {
         {currentRole === 'teacher' && (
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-2 transition-all self-start md:self-auto shrink-0"
+            className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-2 transition-all self-start md:self-auto shrink-0 border border-slate-200 dark:border-slate-700"
           >
             <Download className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             <span>Export CSV</span>
           </button>
         )}
+      </div>
+
+      {/* KPI Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
+          <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <Award className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+              {totalSubmissions}
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {currentRole === 'teacher' ? 'Submissions' : 'Quizzes Taken'}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <Percent className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+              {avgScore}%
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Average Score
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+              {passRate}%
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Pass Rate (≥60%)
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
+          <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <BarChart3 className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight truncate">
+              {uniqueSubjects.length}
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Subjects Assessed
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -182,7 +258,7 @@ export const CurriculumResults = () => {
             return (
               <div
                 key={att.id}
-                className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-blue-400 transition-all"
+                className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-blue-400 card-hover-lift transition-all"
               >
                 <div className="flex items-start gap-3.5">
                   <img

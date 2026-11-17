@@ -13,6 +13,8 @@ import {
   X,
   CreditCard,
   QrCode,
+  DollarSign,
+  Users,
   Image as ImageIcon
 } from 'lucide-react';
 
@@ -31,6 +33,8 @@ export const AdminSubscriptions = () => {
   const pendingList = (subscriptions || []).filter((s) => s.status === 'pending');
   const approvedList = (subscriptions || []).filter((s) => s.status === 'approved');
   const rejectedList = (subscriptions || []).filter((s) => s.status === 'rejected');
+
+  const totalRevenue = approvedList.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
 
   const getFilteredList = () => {
     let base = subscriptions || [];
@@ -54,7 +58,7 @@ export const AdminSubscriptions = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="bg-white dark:bg-surface-darkCard p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-surface-darkCard p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
@@ -86,6 +90,65 @@ export const AdminSubscriptions = () => {
                 Awaiting your verification
               </span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Stats Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5 animate-soft-pulse" />
+          </div>
+          <div>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+              Pending Verification
+            </span>
+            <span className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">
+              {pendingList.length}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+              Approved Access
+            </span>
+            <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
+              {approvedList.length}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center shrink-0">
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+              Total Revenue
+            </span>
+            <span className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400">
+              ₹{totalRevenue.toLocaleString()}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+              Total Submissions
+            </span>
+            <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+              {(subscriptions || []).length}
+            </span>
           </div>
         </div>
       </div>
@@ -182,7 +245,7 @@ export const AdminSubscriptions = () => {
             return (
               <div
                 key={req.id}
-                className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:border-blue-400/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-5"
+                className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs hover:border-blue-400/80 card-hover-lift transition-all flex flex-col md:flex-row md:items-center justify-between gap-5"
               >
                 {/* Left: Student & Course Details */}
                 <div className="flex items-start gap-4">

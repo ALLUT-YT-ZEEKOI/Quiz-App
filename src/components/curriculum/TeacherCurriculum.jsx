@@ -514,15 +514,17 @@ export const TeacherCurriculum = () => {
             </div>
 
             {filteredQuestions.length === 0 ? (
-              <div className="p-10 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
-                <HelpCircle className="w-12 h-12 text-slate-300 mx-auto" />
-                <h3 className="font-bold text-slate-700 dark:text-slate-300 text-base">
-                  No {questionDifficultyFilter !== 'All' ? questionDifficultyFilter : ''} Questions
+              <div className="p-10 sm:p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3.5">
+                <div className="w-14 h-14 rounded-2xl mx-auto bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+                  <HelpCircle className="w-7 h-7" />
+                </div>
+                <h3 className="font-extrabold text-slate-800 dark:text-slate-200 text-base sm:text-lg">
+                  No {questionDifficultyFilter !== 'All' ? `"${questionDifficultyFilter}"` : ''} Questions Found
                 </h3>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  Add questions with Easy, Medium, and Hard difficulty modes so students can practice effectively.
+                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Add assessments with {difficultyLevels.map((l) => l.label).join(', ')} modes so students can practice effectively and test their knowledge.
                 </p>
-                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
                   <button
                     onClick={() => setBulkModalOpen(true)}
                     className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold inline-flex items-center gap-2 border border-slate-700/80 shadow-xs active:scale-95 transition-all"
@@ -539,7 +541,7 @@ export const TeacherCurriculum = () => {
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {filteredQuestions.map((q, idx) => {
                   const diffMeta = getDifficultyMeta(q.difficulty);
                   const difficultyColor =
@@ -552,7 +554,7 @@ export const TeacherCurriculum = () => {
                   return (
                     <div
                       key={q.id || idx}
-                      className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-xs"
+                      className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-2xs card-hover-lift transition-all"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2">
@@ -1206,34 +1208,120 @@ export const TeacherCurriculum = () => {
   // =========================================================================
   // VIEW 1: SUBJECTS DIRECTORY (Root Studio)
   // =========================================================================
+  const grandTotalSubjects = curriculumSubjects.length;
+  const grandTotalModules = curriculumSubjects.reduce(
+    (acc, s) => acc + (s.modules?.length || 0),
+    0
+  );
+  const grandTotalVideos = curriculumSubjects.reduce(
+    (acc, s) => acc + (s.modules || []).reduce((mAcc, m) => mAcc + (m.videos?.length || 0), 0),
+    0
+  );
+  const grandTotalQuestions = curriculumSubjects.reduce(
+    (acc, s) => acc + (s.modules || []).reduce((mAcc, m) => mAcc + (m.questions?.length || 0), 0),
+    0
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Studio Header */}
-      <div className="bg-white dark:bg-surface-darkCard p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
-              Admin & Teacher Studio
+      <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-surface-darkCard dark:to-slate-900/60 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+              👑 Admin & Teacher Studio
             </span>
-            <span className="text-xs text-slate-400 font-medium">
-              Curriculum Manager
+            <span className="text-[11px] text-slate-400 font-medium">
+              Curriculum & Assessment Suite
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Subject & Curriculum Manager
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            Add subjects (e.g. Malayalam, English), create lesson modules, upload videos, and set up Easy, Medium, and Hard Q&A assessments.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl leading-relaxed">
+            Create subjects with custom fees, upload lesson videos, set up assessment questions with Easy, Medium, and Tough modes, and manage student enrollments.
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAddSubject}
-          className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-blue-500/25 active:scale-95 transition-all self-start md:self-auto shrink-0"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add New Subject</span>
-        </button>
+        <div className="flex items-center gap-2 relative z-10 self-start md:self-auto shrink-0">
+          <button
+            onClick={() => setDifficultyModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 border border-slate-300/80 dark:border-slate-700 shadow-2xs active:scale-95 transition-all"
+            title="Customize Easy, Medium, Tough mode labels"
+          >
+            <Sliders className="w-4 h-4 text-amber-500" />
+            <span>Edit Mode Labels</span>
+          </button>
+
+          <button
+            onClick={handleOpenAddSubject}
+            className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Subject</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Studio KPI Metrics Bar */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
+          <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <BookOpen className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+              {grandTotalSubjects}
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Subjects
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <Layers className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+              {grandTotalModules}
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Lesson Modules
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <Video className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+              {grandTotalVideos}
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Lesson Videos
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-surface-darkCard p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5 card-hover-lift">
+          <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <HelpCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+              {grandTotalQuestions}
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Q&A Assessments
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Subjects Grid */}
@@ -1252,97 +1340,107 @@ export const TeacherCurriculum = () => {
           return (
             <div
               key={sub.id}
-              className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+              className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs card-hover-lift flex flex-col justify-between group"
             >
               <div>
-                {/* Banner Thumbnail */}
-                <div className="h-32 w-full relative overflow-hidden bg-slate-900">
+                {/* Banner Thumbnail (Cinematic 44 Aspect) */}
+                <div className="h-44 w-full relative overflow-hidden bg-slate-900">
                   <img
                     src={sub.thumbnail}
                     alt={sub.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-85"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
+                      e.target.src =
+                        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/90 text-slate-900 backdrop-blur-xs">
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
+                  
+                  {/* Top Row: Code & Price */}
+                  <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-white/95 text-slate-900 backdrop-blur-md shadow-xs">
                       {sub.code || 'CODE'}
                     </span>
-                  </div>
-                  <div className="absolute top-3 right-3">
-                    <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-emerald-600 text-white shadow-sm flex items-center gap-0.5">
+                    <span className="px-3 py-1 rounded-xl text-xs font-black backdrop-blur-md bg-emerald-600/90 text-white shadow-xs border border-emerald-400/30">
                       {sub.price && Number(sub.price) > 0 ? `₹${sub.price}` : 'Free'}
                     </span>
                   </div>
-                  <div className="absolute bottom-3 left-3 right-3">
-                    <h3 className="font-extrabold text-base text-white truncate drop-shadow-sm">
-                      {sub.name}
-                    </h3>
-                    <span className="text-[11px] text-blue-200 font-medium">
+
+                  {/* Bottom Title & Category */}
+                  <div className="absolute bottom-3.5 left-3.5 right-3.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block mb-0.5">
                       {sub.category}
                     </span>
+                    <h3 className="font-extrabold text-lg text-white truncate drop-shadow-sm">
+                      {sub.name}
+                    </h3>
                   </div>
                 </div>
 
                 {/* Content info */}
-                <div className="p-4 space-y-3">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                <div className="p-5 space-y-3.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                     {sub.description}
                   </p>
 
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
-                      <span className="block text-xs font-black text-slate-900 dark:text-white">
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-center">
+                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
+                      <span className="block text-sm font-black text-slate-900 dark:text-white">
                         {totalModules}
                       </span>
-                      <span className="text-[10px] text-slate-400">Modules</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Modules
+                      </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
-                      <span className="block text-xs font-black text-blue-600">
+                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
+                      <span className="block text-sm font-black text-blue-600 dark:text-blue-400">
                         {totalVideos}
                       </span>
-                      <span className="text-[10px] text-slate-400">Videos</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Videos
+                      </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
-                      <span className="block text-xs font-black text-emerald-600">
+                    <div className="p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50">
+                      <span className="block text-sm font-black text-emerald-600 dark:text-emerald-400">
                         {totalQuestions}
                       </span>
-                      <span className="text-[10px] text-slate-400">Q&A</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Q&A
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="p-4 pt-0 flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleOpenEditSubject(sub)}
-                  className="p-2.5 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
-                  title="Edit Subject & Image"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => deleteSubject(sub.id)}
-                  className="p-2.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                  title="Delete Subject"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+              <div className="p-5 pt-0 flex items-center justify-between gap-2 border-t border-slate-50 dark:border-slate-800/50 mt-1 pt-3.5">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditSubject(sub)}
+                    className="p-2.5 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                    title="Edit Subject, Price & Cover"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteSubject(sub.id)}
+                    className="p-2.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                    title="Delete Subject"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
 
                 <button
                   type="button"
                   onClick={() => setSelectedSubject(sub)}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 active:scale-95 transition-all"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 active:scale-95 transition-all group/btn"
                 >
                   <span>Manage Modules ({totalModules})</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
                 </button>
               </div>
             </div>
