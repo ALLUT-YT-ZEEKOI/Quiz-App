@@ -1042,8 +1042,8 @@ export const StudentCurriculum = () => {
         </div>
       </div>
 
-      {/* Subjects Grid (Compact 4 Cards in a Row) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+      {/* Subjects Grid (2 Cards in a Row on Mobile App, 4 on Desktop) */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
         {curriculumSubjects.map((sub) => {
           const totalModules = sub.modules?.length || 0;
           const totalVideos = (sub.modules || []).reduce(
@@ -1063,11 +1063,11 @@ export const StudentCurriculum = () => {
           return (
             <div
               key={sub.id}
-              className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs card-hover-lift flex flex-col justify-between group"
+              className="bg-white dark:bg-surface-darkCard rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs card-hover-lift flex flex-col justify-between group"
             >
               <div>
-                {/* Banner Thumbnail (Compact Aspect) */}
-                <div className="h-32 w-full relative overflow-hidden bg-slate-900">
+                {/* Banner Thumbnail (Compact Aspect for 2 Cards in a Row) */}
+                <div className="h-24 sm:h-32 w-full relative overflow-hidden bg-slate-900">
                   <img
                     src={sub.thumbnail}
                     alt={sub.name}
@@ -1078,49 +1078,71 @@ export const StudentCurriculum = () => {
                         'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#07191E] via-[#0A262C]/70 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#07191E] via-[#0A262C]/60 to-transparent" />
                   
                   {/* Top Left: Code */}
-                  <div className="absolute top-2.5 left-2.5">
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/95 text-slate-900 shadow-2xs">
+                  <div className="absolute top-1.5 sm:top-2.5 left-1.5 sm:left-2.5">
+                    <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-white/95 text-slate-900 shadow-2xs">
                       {sub.code || 'CODE'}
                     </span>
                   </div>
 
                   {/* Top Right: Status Badge */}
-                  <div className="absolute top-2.5 right-2.5">
+                  <div className="absolute top-1.5 sm:top-2.5 right-1.5 sm:right-2.5">
                     {isEnrolled ? (
-                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white flex items-center gap-1 shadow-2xs">
-                        <Unlock className="w-3 h-3" /> Enrolled
+                      <span className="px-1.5 sm:px-2.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white flex items-center gap-0.5 sm:gap-1 shadow-2xs">
+                        <Unlock className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                        <span className="hidden min-[360px]:inline">Enrolled</span>
                       </span>
                     ) : isPending ? (
-                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white flex items-center gap-1 shadow-2xs animate-soft-pulse">
-                        <Clock className="w-3 h-3" /> Pending
+                      <span className="px-1.5 sm:px-2.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white flex items-center gap-0.5 sm:gap-1 shadow-2xs animate-soft-pulse">
+                        <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                        <span className="hidden min-[360px]:inline">Pending</span>
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black bg-[#00897B] text-white flex items-center gap-1 shadow-2xs">
-                        <Lock className="w-3 h-3" /> ₹{sub.price || 499}
+                      <span className="px-1.5 sm:px-2.5 py-0.5 rounded text-[8px] sm:text-[10px] font-black bg-[#00897B] text-white flex items-center gap-0.5 sm:gap-1 shadow-2xs">
+                        <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                        <span>₹{sub.price || 499}</span>
                       </span>
                     )}
                   </div>
 
                   {/* Bottom Title & Category */}
-                  <div className="absolute bottom-2.5 left-2.5 right-2.5">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-300 block leading-tight">
+                  <div className="absolute bottom-1.5 sm:bottom-2.5 left-1.5 sm:left-2.5 right-1.5 sm:right-2.5">
+                    <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-cyan-300 block leading-tight truncate">
                       {sub.category}
                     </span>
-                    <h3 className="font-extrabold text-sm sm:text-base text-white truncate drop-shadow-sm">
+                    <h3 className="font-extrabold text-xs sm:text-base text-white truncate drop-shadow-sm">
                       {sub.name}
                     </h3>
                   </div>
                 </div>
 
-                <div className="p-3 sm:p-3.5 space-y-2">
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-snug">
+                <div className="p-2 sm:p-3.5 space-y-1.5 sm:space-y-2">
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-snug hidden sm:block">
                     {sub.description}
                   </p>
 
-                  <div className="grid grid-cols-3 gap-1.5 pt-0.5 text-center">
+                  {/* Mobile App Style Metric Summary (Visible on Mobile) */}
+                  <div className="flex sm:hidden items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300 py-1 border-y border-slate-100 dark:border-slate-800/60 my-0.5">
+                    <span className="flex items-center gap-0.5">
+                      <span className="text-teal-600 dark:text-teal-400 font-extrabold">{totalModules}</span>
+                      <span className="text-[9px] text-slate-400 font-semibold">Mod</span>
+                    </span>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <span className="flex items-center gap-0.5">
+                      <span className="text-teal-600 dark:text-teal-400 font-extrabold">{totalVideos}</span>
+                      <span className="text-[9px] text-slate-400 font-semibold">Vid</span>
+                    </span>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <span className="flex items-center gap-0.5">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{totalQuestions}</span>
+                      <span className="text-[9px] text-slate-400 font-semibold">Qs</span>
+                    </span>
+                  </div>
+
+                  {/* Desktop / Tablet 3-Column Boxes (Visible on sm and up) */}
+                  <div className="hidden sm:grid grid-cols-3 gap-1.5 pt-0.5 text-center">
                     <div className="p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 truncate">
                       <span className="block text-xs font-black text-slate-900 dark:text-white">
                         {totalModules}
@@ -1150,33 +1172,33 @@ export const StudentCurriculum = () => {
               </div>
 
               {/* Action Button: Enrolled vs Pending vs Locked */}
-              <div className="p-3 sm:p-3.5 pt-0 border-t border-slate-100 dark:border-slate-800/60 pt-2.5">
+              <div className="p-2 sm:p-3.5 pt-0 sm:pt-0 border-t border-slate-100 dark:border-slate-800/60 pt-1.5 sm:pt-2.5">
                 {isEnrolled ? (
                   <button
                     type="button"
                     onClick={() => setSelectedSubject(sub)}
-                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center justify-center gap-1 transition-all shadow-[0_4px_14px_rgba(20,184,166,0.2)] border border-[#20B8C7]/30 active:scale-95 group/btn"
+                    className="w-full py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1 transition-all shadow-xs border border-[#20B8C7]/30 active:scale-95 group/btn"
                   >
                     <span>Start Learning</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
                   </button>
                 ) : isPending ? (
                   <button
                     type="button"
                     onClick={() => setPendingModalSubject(sub)}
-                    className="w-full py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold text-[11px] flex items-center justify-center gap-1 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all truncate"
+                    className="w-full py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold text-[10px] sm:text-[11px] flex items-center justify-center gap-1 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all truncate"
                   >
-                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="truncate">Pending Review</span>
+                    <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                    <span className="truncate">Pending</span>
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => handleOpenPayModal(sub)}
-                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm border border-[#20B8C7]/30 active:scale-95 transition-all truncate"
+                    className="w-full py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1 shadow-xs border border-[#20B8C7]/30 active:scale-95 transition-all truncate"
                   >
                     <Lock className="w-3 h-3 text-cyan-200 shrink-0" />
-                    <span className="truncate">Subscribe (₹{sub.price || 499})</span>
+                    <span className="truncate">₹{sub.price || 499}</span>
                   </button>
                 )}
               </div>
