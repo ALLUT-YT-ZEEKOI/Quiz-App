@@ -105,31 +105,31 @@ export const Navbar = ({ onMobileMenuToggle }) => {
           </div>
         </div>
 
-        {/* Center/Left: Desktop Global Search trigger button */}
-        <div className="flex-1 max-w-xl mx-2 hidden md:block">
+        {/* Center/Left: Desktop Global Search trigger button (lg and up) */}
+        <div className="flex-1 max-w-md mx-2 hidden lg:block min-w-0">
           <button
             onClick={() => setGlobalSearchOpen(true)}
-            className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all text-left shadow-2xs"
+            className="w-full flex items-center justify-between px-3.5 py-2 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all text-left shadow-2xs min-w-0"
           >
-            <span className="flex items-center gap-2.5">
-              <Search className="w-4 h-4 text-slate-400" />
-              <span>Search subjects, modules, lessons, or questions...</span>
+            <span className="flex items-center gap-2 min-w-0 truncate">
+              <Search className="w-4 h-4 text-slate-400 shrink-0" />
+              <span className="truncate">Search subjects, modules, lessons, questions...</span>
             </span>
-            <kbd className="inline-block px-2 py-0.5 text-[10px] font-semibold text-slate-500 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md shadow-2xs">
+            <kbd className="inline-block px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md shadow-2xs shrink-0 ml-2">
               Ctrl + K
             </kbd>
           </button>
         </div>
 
-        {/* Right Actions: Compact & Optimized for Mobile */}
+        {/* Right Actions: Compact & Optimized for Mobile/Tablet */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Mobile search icon button */}
+          {/* Mobile & Tablet search icon button (below lg) */}
           <button
             onClick={() => setGlobalSearchOpen(true)}
-            className="sm:hidden p-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+            className="lg:hidden p-1.5 sm:p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             aria-label="Search"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </button>
 
           {/* Role Switcher Pill */}

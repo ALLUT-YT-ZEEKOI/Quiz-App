@@ -986,55 +986,55 @@ export const StudentCurriculum = () => {
   // =========================================================================
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Welcome Banner: Mobile App Style on Mobile, Premium SaaS on Desktop */}
-      <div className="bg-gradient-to-br from-[#07191E] via-[#0A262C] to-[#0E353E] text-white p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-lg relative overflow-hidden border border-[#144752]">
+      {/* Welcome Banner: Mobile App Style on Mobile, Tablet-Friendly, Premium SaaS on Desktop */}
+      <div className="bg-gradient-to-br from-[#07191E] via-[#0A262C] to-[#0E353E] text-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-lg relative overflow-hidden border border-[#144752]">
         <div className="absolute top-0 right-0 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none -ml-10 -mb-10" />
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
-          <div className="space-y-2 sm:space-y-2.5">
-            {/* Top Row: Mobile-First Greeting and Portal Tag */}
-            <div className="flex items-center justify-between gap-2">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4 lg:gap-6">
+          <div className="space-y-2 sm:space-y-2.5 max-w-2xl">
+            {/* Top Row: Greeting and Portal Tag */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-teal-500/20 text-[#2DD4BF] border border-teal-500/30">
+                <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-teal-500/20 text-[#2DD4BF] border border-teal-500/30">
                   Student Portal
                 </span>
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30">
                   Civil Engineering
                 </span>
               </div>
               <span className="text-xs sm:text-sm font-semibold text-slate-300 shrink-0">
-                Hi, {currentUser?.name?.split(' ')[0] || 'Student'}! 👋
+                Hi, {currentUser?.name || 'Student'}! 👋
               </span>
             </div>
 
             {/* Main Title & Subtitle */}
             <div>
-              <h1 className="text-lg sm:text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">
+              <h1 className="text-lg sm:text-2xl lg:text-3xl font-black tracking-tight text-white leading-tight">
                 My Subjects & Course Subscriptions
               </h1>
-              <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed mt-1 line-clamp-2 sm:line-clamp-none max-w-xl">
+              <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed mt-1 line-clamp-2 lg:line-clamp-none max-w-xl">
                 Explore syllabus-aligned modules, watch recorded video lectures, and practice with difficulty-tuned assessments.
               </p>
             </div>
           </div>
 
-          {/* Quick Stat Chips (Mobile App Style Row) */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 pt-1 sm:pt-0">
-            <div className="flex-1 sm:flex-initial flex items-center justify-center sm:flex-col gap-2 sm:gap-0.5 px-3 py-2 sm:p-4 rounded-xl sm:rounded-2xl bg-white/10 dark:bg-white/5 border border-white/10 backdrop-blur-md text-center min-w-[85px]">
-              <span className="text-base sm:text-xl font-black text-emerald-400 leading-none">
+          {/* Quick Stat Chips (Adaptive Tablet & Mobile Row) */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 pt-1 lg:pt-0">
+            <div className="flex-1 sm:flex-initial flex items-center justify-center sm:flex-col gap-2 sm:gap-1 px-4 py-2 sm:p-4 rounded-xl sm:rounded-2xl bg-white/10 dark:bg-white/5 border border-white/10 backdrop-blur-md text-center min-w-[95px]">
+              <span className="text-lg sm:text-2xl font-black text-emerald-400 leading-none">
                 {curriculumSubjects.filter((s) => checkEnrollmentStatus(currentUser?.id || 'STU001', s.id) === 'active').length}
               </span>
-              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-200">
+              <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-bold text-slate-200">
                 Enrolled
               </span>
             </div>
 
-            <div className="flex-1 sm:flex-initial flex items-center justify-center sm:flex-col gap-2 sm:gap-0.5 px-3 py-2 sm:p-4 rounded-xl sm:rounded-2xl bg-white/10 dark:bg-white/5 border border-white/10 backdrop-blur-md text-center min-w-[85px]">
-              <span className="text-base sm:text-xl font-black text-cyan-300 leading-none">
+            <div className="flex-1 sm:flex-initial flex items-center justify-center sm:flex-col gap-2 sm:gap-1 px-4 py-2 sm:p-4 rounded-xl sm:rounded-2xl bg-white/10 dark:bg-white/5 border border-white/10 backdrop-blur-md text-center min-w-[95px]">
+              <span className="text-lg sm:text-2xl font-black text-cyan-300 leading-none">
                 {curriculumSubjects.length}
               </span>
-              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-200">
+              <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-bold text-slate-200">
                 Available
               </span>
             </div>
