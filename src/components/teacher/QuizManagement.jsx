@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomDropdown } from '../common/CustomDropdown';
 import {
   Plus,
   Search,
@@ -211,28 +212,28 @@ export const QuizManagement = ({ initialOpenCreate = false, onCloseCreate = () =
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <CustomDropdown
             value={subjectFilter}
-            onChange={(e) => setSubjectFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="All">All Subjects</option>
-            {subjects.map((sub) => (
-              <option key={sub.id} value={sub.id}>
-                {sub.code}: {sub.name}
-              </option>
-            ))}
-          </select>
+            onChange={setSubjectFilter}
+            options={[
+              { value: 'All', label: 'All Subjects' },
+              ...subjects.map((sub) => ({ value: sub.id, label: `${sub.code}: ${sub.name}` }))
+            ]}
+            className="w-full sm:w-auto"
+            buttonClassName="py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900"
+          />
 
-          <select
+          <CustomDropdown
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="All">All Statuses</option>
-            <option value="Published">Published Live</option>
-            <option value="Draft">Draft (Hidden from students)</option>
-          </select>
+            onChange={setStatusFilter}
+            options={[
+              { value: 'All', label: 'All Statuses' },
+              { value: 'Published', label: 'Published Live' },
+              { value: 'Draft', label: 'Draft (Hidden from students)' }
+            ]}
+            className="w-full sm:w-auto"
+            buttonClassName="py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900"
+          />
 
           {(searchTerm || subjectFilter !== 'All' || statusFilter !== 'All') && (
             <button

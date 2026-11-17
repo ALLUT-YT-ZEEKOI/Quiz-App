@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomDropdown } from '../common/CustomDropdown';
 import {
   Award,
   CheckCircle2,
@@ -22,6 +23,7 @@ export const CurriculumResults = () => {
   const { currentRole, currentUser, curriculumAttempts, showToast } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
 
   // Filter attempts based on role:
   // If Student, only show their own attempts; if Teacher, show all students' attempts
@@ -54,12 +56,29 @@ export const CurriculumResults = () => {
     const matchesSubject =
       filterSubject === 'All' || att.subjectName === filterSubject;
 
-    return matchesSearch && matchesSubject;
+    const isPassed = att.status === 'Passed' || Number(att.scorePct) >= 60;
+    const matchesStatus =
+      filterStatus === 'All' ||
+      (filterStatus === 'Passed' && isPassed) ||
+      (filterStatus === 'Failed' && !isPassed);
+
+    return matchesSearch && matchesSubject && matchesStatus;
   });
 
   const uniqueSubjects = Array.from(
     new Set((attempts || []).map((a) => a.subjectName).filter(Boolean))
   );
+
+  const subjectOptions = [
+    { value: 'All', label: `All Subjects (${uniqueSubjects.length})` },
+    ...uniqueSubjects.map((sub) => ({ value: sub, label: sub }))
+  ];
+
+  const statusOptions = [
+    { value: 'All', label: 'All Results' },
+    { value: 'Passed', label: 'Passed (≥60%)' },
+    { value: 'Failed', label: 'Needs Improvement (<60%)' }
+  ];
 
   const handleExportCSV = () => {
     if (filteredAttempts.length === 0) {
@@ -222,19 +241,22 @@ export const CurriculumResults = () => {
         </div>
 
         {uniqueSubjects.length > 0 && (
-          <select
+          <CustomDropdown
             value={filterSubject}
-            onChange={(e) => setFilterSubject(e.target.value)}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-2xl text-xs sm:text-sm bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-slate-800 focus:outline-none"
-          >
-            <option value="All">All Subjects ({uniqueSubjects.length})</option>
-            {uniqueSubjects.map((sub) => (
-              <option key={sub} value={sub}>
-                {sub}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterSubject}
+            options={subjectOptions}
+            icon={BookOpen}
+            className="w-full sm:w-auto"
+          />
         )}
+
+        <CustomDropdown
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={statusOptions}
+          icon={Filter}
+          className="w-full sm:w-auto"
+        />
       </div>
 
       {/* Results Table & Cards */}

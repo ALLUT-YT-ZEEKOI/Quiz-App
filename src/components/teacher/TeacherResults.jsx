@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomDropdown } from '../common/CustomDropdown';
 import {
   Download,
   Search,
@@ -145,41 +146,39 @@ export const TeacherResults = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <CustomDropdown
             value={selectedQuizFilter}
-            onChange={(e) => setSelectedQuizFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none max-w-[150px] sm:max-w-[180px] truncate"
-          >
-            <option value="All">All Quizzes</option>
-            {quizzes.map((q) => (
-              <option key={q.id} value={q.id}>
-                {q.title}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedQuizFilter}
+            options={[
+              { value: 'All', label: 'All Quizzes' },
+              ...quizzes.map((q) => ({ value: q.id, label: q.title }))
+            ]}
+            className="w-full sm:w-auto"
+            buttonClassName="py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900"
+          />
 
-          <select
+          <CustomDropdown
             value={selectedSubjectFilter}
-            onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="All">All Subjects</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.code}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedSubjectFilter}
+            options={[
+              { value: 'All', label: 'All Subjects' },
+              ...subjects.map((s) => ({ value: s.id, label: s.code }))
+            ]}
+            className="w-full sm:w-auto"
+            buttonClassName="py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900"
+          />
 
-          <select
+          <CustomDropdown
             value={selectedStatusFilter}
-            onChange={(e) => setSelectedStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="All">All Results</option>
-            <option value="PASSED">Passed</option>
-            <option value="FAILED">Failed</option>
-          </select>
+            onChange={setSelectedStatusFilter}
+            options={[
+              { value: 'All', label: 'All Results' },
+              { value: 'PASSED', label: 'Passed' },
+              { value: 'FAILED', label: 'Failed' }
+            ]}
+            className="w-full sm:w-auto"
+            buttonClassName="py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900"
+          />
 
           {(searchTerm ||
             selectedQuizFilter !== 'All' ||

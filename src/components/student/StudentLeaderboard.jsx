@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomDropdown } from '../common/CustomDropdown';
 import { Trophy, Medal, Award, Star, TrendingUp, CheckCircle, Search } from 'lucide-react';
 
 export const StudentLeaderboard = () => {
@@ -32,17 +33,18 @@ export const StudentLeaderboard = () => {
         {/* Semester Filter */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">Semester:</span>
-          <select
+          <CustomDropdown
             value={selectedSemester}
-            onChange={(e) => setSelectedSemester(e.target.value)}
-            className="px-3 py-1.5 rounded-xl text-xs bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="All">All Semesters</option>
-            <option value="S2">Semester S2</option>
-            <option value="S4">Semester S4</option>
-            <option value="S6">Semester S6</option>
-            <option value="S8">Semester S8</option>
-          </select>
+            onChange={setSelectedSemester}
+            options={[
+              { value: 'All', label: 'All Semesters' },
+              { value: 'S2', label: 'Semester S2' },
+              { value: 'S4', label: 'Semester S4' },
+              { value: 'S6', label: 'Semester S6' },
+              { value: 'S8', label: 'Semester S8' }
+            ]}
+            buttonClassName="py-1.5 text-xs rounded-xl"
+          />
         </div>
       </div>
 

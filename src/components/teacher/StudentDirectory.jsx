@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomDropdown } from '../common/CustomDropdown';
 import {
   Search,
   Plus,
@@ -168,43 +169,49 @@ export const StudentDirectory = () => {
         {/* Filter Dropdowns */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Semester */}
-          <select
+          <CustomDropdown
             value={semesterFilter}
-            onChange={(e) => setSemesterFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="All">All Semesters</option>
-            <option value="S2">Semester S2</option>
-            <option value="S4">Semester S4</option>
-            <option value="S6">Semester S6</option>
-            <option value="S8">Semester S8</option>
-          </select>
+            onChange={setSemesterFilter}
+            options={[
+              { value: 'All', label: 'All Semesters' },
+              { value: 'S2', label: 'Semester S2' },
+              { value: 'S4', label: 'Semester S4' },
+              { value: 'S6', label: 'Semester S6' },
+              { value: 'S8', label: 'Semester S8' }
+            ]}
+            className="w-full sm:w-auto"
+            buttonClassName="py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900"
+          />
 
           {/* Batch */}
-          <select
+          <CustomDropdown
             value={batchFilter}
-            onChange={(e) => setBatchFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="All">All Batches</option>
-            <option value="2021-2025">Batch 2021–2025</option>
-            <option value="2022-2026">Batch 2022–2026</option>
-            <option value="2023-2027">Batch 2023–2027</option>
-            <option value="2024-2028">Batch 2024–2028</option>
-          </select>
+            onChange={setBatchFilter}
+            options={[
+              { value: 'All', label: 'All Batches' },
+              { value: '2021-2025', label: 'Batch 2021–2025' },
+              { value: '2022-2026', label: 'Batch 2022–2026' },
+              { value: '2023-2027', label: 'Batch 2023–2027' },
+              { value: '2024-2028', label: 'Batch 2024–2028' }
+            ]}
+            className="w-full sm:w-auto"
+            buttonClassName="py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900"
+          />
 
           {/* Performance Status */}
-          <select
+          <CustomDropdown
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="All">All Statuses</option>
-            <option value="Excellent">Excellent (&ge;85%)</option>
-            <option value="Good">Good (75–84%)</option>
-            <option value="Average">Average (60–74%)</option>
-            <option value="At Risk">At Risk (&lt;60%)</option>
-          </select>
+            onChange={setStatusFilter}
+            options={[
+              { value: 'All', label: 'All Statuses' },
+              { value: 'Excellent', label: 'Excellent (≥85%)' },
+              { value: 'Good', label: 'Good (75–84%)' },
+              { value: 'Average', label: 'Average (60–74%)' },
+              { value: 'At Risk', label: 'At Risk (<60%)' }
+            ]}
+            className="w-full sm:w-auto"
+            buttonClassName="py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900"
+          />
 
           {(searchTerm || semesterFilter !== 'All' || batchFilter !== 'All' || statusFilter !== 'All') && (
             <button
