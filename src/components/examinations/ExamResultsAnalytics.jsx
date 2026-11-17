@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomDropdown } from '../common/CustomDropdown';
+import { PageHeader } from '../common/PageHeader';
 import {
   BarChart3,
   Download,
@@ -134,63 +135,50 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-16">
-      {/* Top Header & Breadcrumbs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 text-[10px] font-extrabold uppercase tracking-wider border border-teal-300 dark:border-teal-800">
-                OFFICIAL REPORT
-              </span>
-              <span className="text-xs font-mono font-bold text-slate-400">
-                {exam?.code || 'EX-EVAL'}
-              </span>
+      {/* Top Header & Breadcrumbs: App Header Style */}
+      <PageHeader
+        onBack={onBack}
+        backLabel="Back to Dashboard"
+        title="Examination Performance & Analytics"
+        subtitle={`${exam?.code || 'EX-EVAL'} • Official Report • ${exam?.title}`}
+        badge={
+          <span className="px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 text-[10px] font-extrabold uppercase tracking-wider border border-teal-300 dark:border-teal-800">
+            OFFICIAL REPORT
+          </span>
+        }
+        actions={
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <CustomDropdown
+              options={examinations.map((ex) => ({
+                value: ex.id,
+                label: ex.code ? `${ex.code} – ${ex.title.length > 32 ? ex.title.slice(0, 32) + '...' : ex.title}` : ex.title,
+                badge: ex.status
+              }))}
+              value={selectedExamId}
+              onChange={setSelectedExamId}
+              size="sm"
+            />
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => exportExamResultsCSV(selectedExamId)}
+                className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-[#087F8C] hover:bg-[#0C6D7C] text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Export CSV</span>
+              </button>
+
+              <button
+                onClick={handlePrint}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-all"
+              >
+                <Printer className="w-4 h-4" />
+                <span className="hidden sm:inline">Print Report</span>
+              </button>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
-              Examination Performance & Analytics
-            </h1>
           </div>
-        </div>
-
-        {/* Exam Selector & Export Actions */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
-          <CustomDropdown
-            options={examinations.map((ex) => ({
-              value: ex.id,
-              label: ex.code ? `${ex.code} – ${ex.title.length > 32 ? ex.title.slice(0, 32) + '...' : ex.title}` : ex.title,
-              badge: ex.status
-            }))}
-            value={selectedExamId}
-            onChange={setSelectedExamId}
-            size="sm"
-          />
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => exportExamResultsCSV(selectedExamId)}
-              className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-[#087F8C] hover:bg-[#0C6D7C] text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Export CSV</span>
-            </button>
-
-            <button
-              onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-all"
-            >
-              <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Print Report</span>
-            </button>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* KPI Overview Summary Banner */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">

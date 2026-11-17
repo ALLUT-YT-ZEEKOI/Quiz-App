@@ -15,6 +15,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { PageHeader } from '../common/PageHeader';
 
 export const QuizResultScreen = () => {
   const { lastQuizResult, quizzes, questions, setActiveView, setActiveQuizForAttempt } = useApp();
@@ -80,6 +81,42 @@ export const QuizResultScreen = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-300 pb-12">
+      {/* Top Header with Native-App Circular Back Button */}
+      <PageHeader
+        onBack={() => setActiveView('dashboard')}
+        backLabel="Back to Dashboard"
+        title="Assessment Result & Analytics"
+        subtitle={`Candidate: ${studentName} (${rollNumber}) • Evaluated Submission`}
+        badge={
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+              isPassed
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+            }`}
+          >
+            {isPassed ? 'PASSED' : 'RETAKE RECOMMENDED'}
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRetake}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-blue-500" />
+              <span>Retake</span>
+            </button>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-500" />
+              <span>Print</span>
+            </button>
+          </div>
+        }
+      />
       {/* Top Banner / Celebration Card */}
       <div
         className={`p-6 sm:p-8 rounded-3xl border shadow-premium relative overflow-hidden text-white ${

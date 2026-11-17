@@ -13,6 +13,7 @@ import {
   Check,
   X
 } from 'lucide-react';
+import { PageHeader } from '../common/PageHeader';
 
 export const StudentExamResult = ({ attempt, onBack }) => {
   const [filterMode, setFilterMode] = useState('All'); // 'All', 'Correct', 'Incorrect', 'Unanswered'
@@ -59,20 +60,24 @@ export const StudentExamResult = ({ attempt, onBack }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 max-w-4xl mx-auto px-2 sm:px-4 pb-16">
-      {/* Top Navigation */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-2 transition-all"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Examinations</span>
-        </button>
-
-        <span className="text-xs text-slate-400 font-mono">
-          Submitted {new Date(submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </span>
-      </div>
+      {/* Top Header with Native-App Circular Back Button */}
+      <PageHeader
+        onBack={onBack}
+        backLabel="Back to Examinations"
+        title={examTitle || 'Live Assessment Result'}
+        subtitle={`${subjectName || 'Examination'} • Submitted ${new Date(submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+        badge={
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+              passed
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                : 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+            }`}
+          >
+            {passed ? 'PASSED' : 'REMEDIAL REQUIRED'}
+          </span>
+        }
+      />
 
       {/* Main Score Hero Card */}
       <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#07242B] via-[#0A333C] to-[#0D4450] text-white p-4 sm:p-6 lg:p-8 border border-[#145663]/80 shadow-xl relative overflow-hidden">

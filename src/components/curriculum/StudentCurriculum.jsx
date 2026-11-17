@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { PageHeader } from '../common/PageHeader';
 import {
   BookOpen,
   Video,
@@ -236,57 +237,44 @@ export const StudentCurriculum = () => {
           </span>
         </div>
 
-        {/* Top Module Banner */}
-        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSelectedModule(null)}
-              className="p-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shrink-0"
-              title="Back to Modules"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
-                  {currentSubject.name}
-                </span>
-                <span className="text-xs text-slate-400 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {currentModule.duration}
-                </span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-0.5">
-                {currentModule.title}
-              </h2>
+        {/* Top Module Banner: App Header Style */}
+        <PageHeader
+          onBack={() => setSelectedModule(null)}
+          backLabel="Back to Modules"
+          title={currentModule.title}
+          subtitle={`${currentSubject.name} • ${currentModule.duration || '45 mins'}`}
+          badge={
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+              {currentSubject.name}
+            </span>
+          }
+          actions={
+            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800 shrink-0">
+              <button
+                onClick={() => setModuleMode('videos')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  moduleMode === 'videos'
+                    ? 'bg-white dark:bg-slate-800 text-[#087F8C] dark:text-[#2DD4BF] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <Video className="w-4 h-4" />
+                <span>Watch Videos</span>
+              </button>
+              <button
+                onClick={() => setModuleMode('quiz')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  moduleMode === 'quiz'
+                    ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>Attend Quiz</span>
+              </button>
             </div>
-          </div>
-
-          {/* Segmented Mode Switcher */}
-          <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800 shrink-0">
-            <button
-              onClick={() => setModuleMode('videos')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                moduleMode === 'videos'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <Video className="w-4 h-4" />
-              <span>Watch Videos</span>
-            </button>
-            <button
-              onClick={() => setModuleMode('quiz')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                moduleMode === 'quiz'
-                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>Attend Quiz</span>
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* ================================================================= */}
         {/* SUB-VIEW A: WATCH VIDEOS                                          */}
@@ -837,35 +825,23 @@ export const StudentCurriculum = () => {
           </span>
         </div>
 
-        {/* Subject Header Banner */}
-        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-start gap-3.5">
-          <button
-            onClick={() => setSelectedSubject(null)}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shrink-0"
-            title="Back to All Subjects"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
+        {/* Subject Header Banner: App Header Style */}
+        <PageHeader
+          onBack={() => setSelectedSubject(null)}
+          backLabel="Back to All Subjects"
+          title={currentSubject.name}
+          subtitle={`${currentSubject.code || 'CODE'} • ${currentSubject.category} • ${currentSubject.description?.slice(0, 70)}...`}
+          badge={
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20">
                 {currentSubject.code || 'CODE'}
-              </span>
-              <span className="text-xs text-slate-400 font-medium">
-                {currentSubject.category}
               </span>
               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/60">
                 <Check className="w-3 h-3" /> Enrolled
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
-              {currentSubject.name}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
-              {currentSubject.description}
-            </p>
-          </div>
-        </div>
+          }
+        />
 
         {/* Modules List */}
         <div>

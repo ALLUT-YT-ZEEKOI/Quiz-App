@@ -10,7 +10,9 @@ import {
   ChevronRight,
   X,
   Megaphone,
-  Bell
+  Bell,
+  User,
+  LogOut
 } from 'lucide-react';
 
 export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) => {
@@ -24,7 +26,8 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     pendingSubscriptionsCount,
     examinations,
     notifications,
-    showToast
+    showToast,
+    logout
   } = useApp();
 
   const liveExamsCount = (examinations || []).filter((e) => e.status === 'Live Now').length;
@@ -81,6 +84,12 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       targetView: 'notifications',
       badge: unreadNotifsCount > 0 ? unreadNotifsCount : undefined,
       badgeColor: 'bg-teal-500 text-white'
+    },
+    {
+      id: 'profile',
+      label: 'My Profile & Settings',
+      icon: User,
+      targetView: 'profile'
     }
   ];
 
@@ -116,6 +125,12 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       targetView: 'notifications',
       badge: studentUnreadCount > 0 ? studentUnreadCount : undefined,
       badgeColor: 'bg-teal-500 text-white'
+    },
+    {
+      id: 'profile',
+      label: 'My Profile & Settings',
+      icon: User,
+      targetView: 'profile'
     }
   ];
 
@@ -136,6 +151,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     if (item.id === 'examinations' && activeView === 'examinations') return true;
     if (item.id === 'quizzes' && activeView === 'results') return true;
     if (item.id === 'notifications' && (activeView === 'notifications' || activeView === 'announcements')) return true;
+    if (item.id === 'profile' && activeView === 'profile') return true;
     return false;
   };
 
@@ -228,6 +244,61 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
             );
           })}
         </nav>
+      </div>
+
+      {/* User Profile Card & Sign Out */}
+      <div className="px-3 pt-2 relative z-10">
+        <div
+          className={`flex items-center justify-between gap-2 p-2 rounded-2xl bg-[#061B20]/60 border border-[#144752]/70 ${
+            collapsed ? 'justify-center p-1.5' : ''
+          }`}
+        >
+          <button
+            onClick={() => {
+              setActiveView('profile');
+              if (mobileOpen) setMobileOpen(false);
+            }}
+            className={`flex items-center gap-2.5 min-w-0 flex-1 text-left ${
+              collapsed ? 'justify-center' : ''
+            }`}
+            title="My Profile & Settings"
+          >
+            {currentUser?.avatar ? (
+              <img
+                src={currentUser.avatar}
+                alt={currentUser.name}
+                className="w-8 h-8 rounded-xl object-cover ring-1 ring-[#20B8C7]/40 shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-xl bg-[#0E353E] text-[#2DD4BF] flex items-center justify-center shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+            )}
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-white truncate">
+                  {currentUser?.name || 'Account'}
+                </div>
+                <div className="text-[10px] text-[#2DD4BF] font-medium capitalize truncate">
+                  {currentRole === 'teacher' ? 'Faculty Member' : 'Student Account'}
+                </div>
+              </div>
+            )}
+          </button>
+
+          {!collapsed && (
+            <button
+              onClick={() => {
+                logout();
+                if (mobileOpen) setMobileOpen(false);
+              }}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors shrink-0"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Bottom Live Prototype Card */}

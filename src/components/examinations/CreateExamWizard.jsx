@@ -5,6 +5,7 @@ import { STUDENTS } from '../../data/initialData';
 import { parseA4Questions } from '../curriculum/BulkQuestionUploadModal';
 import { CustomDropdown } from '../common/CustomDropdown';
 import { CustomDatePicker } from '../common/CustomDatePicker';
+import { PageHeader } from '../common/PageHeader';
 import {
   Check,
   ChevronRight,
@@ -517,27 +518,29 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 max-w-5xl mx-auto px-2 sm:px-4 pb-16">
-      {/* Top Breadcrumb & Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      {/* Top Header with Native-App Circular Back Button */}
+      <PageHeader
+        onBack={onCancel}
+        backLabel="Cancel and return to Examinations"
+        title="Schedule New Examination"
+        subtitle="Configure parameters, question pools, timing window, and assign cohorts"
+        badge={
           <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-slate-400">
             <span>Live Examinations</span>
             <span>/</span>
-            <span className="text-teal-600 dark:text-teal-400">Create Examination</span>
+            <span className="text-teal-600 dark:text-teal-400 font-bold">Create Examination</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1 tracking-tight">
-            Schedule New Examination
-          </h1>
-        </div>
-
-        <button
-          onClick={onCancel}
-          className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
-          title="Cancel"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+        }
+        actions={
+          <button
+            onClick={onCancel}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+            title="Cancel"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        }
+      />
 
       {/* Stepper Progress Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs">

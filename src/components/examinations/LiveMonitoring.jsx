@@ -20,6 +20,7 @@ import {
   Layers,
   ChevronRight
 } from 'lucide-react';
+import { PageHeader } from '../common/PageHeader';
 
 export const LiveMonitoring = ({ examId, onBack, onViewAnalytics }) => {
   const {
@@ -114,58 +115,47 @@ export const LiveMonitoring = ({ examId, onBack, onViewAnalytics }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-16">
-      {/* Top Header & Breadcrumbs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
-                <Radio className="w-3 h-3 text-emerald-600 animate-pulse" />
-                TELEMETRY ACTIVE
-              </span>
-              <span className="text-xs font-mono font-bold text-slate-400">
-                {exam?.code || 'EXAM-LIVE'}
-              </span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
-              Live Proctoring: {exam?.title}
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {exam?.subjectName} • Window: {exam?.startTime} – {exam?.endTime} • Faculty: {exam?.faculty}
-            </p>
+      {/* Top Header with Native-App Circular Back Button */}
+      <PageHeader
+        onBack={onBack}
+        backLabel="Back to Dashboard"
+        badge={
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+              <Radio className="w-3 h-3 text-emerald-600 animate-pulse" />
+              TELEMETRY ACTIVE
+            </span>
+            <span className="text-xs font-mono font-bold text-slate-400">
+              {exam?.code || 'EXAM-LIVE'}
+            </span>
           </div>
-        </div>
-
-        {/* Live Countdown Clock Badge */}
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-2xl bg-gradient-to-r from-[#07242B] to-[#0A3944] text-white border border-[#145663]/80 shadow-md flex items-center gap-3">
-            <Clock className="w-5 h-5 text-[#2DD4BF] animate-pulse" />
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
-                Window Time Remaining
-              </span>
-              <span className="text-xl font-extrabold font-mono text-[#2DD4BF]">
-                {formatTime(timeRemainingSeconds)}
-              </span>
+        }
+        title={`Live Proctoring: ${exam?.title}`}
+        subtitle={`${exam?.subjectName} • Window: ${exam?.startTime} – ${exam?.endTime} • Faculty: ${exam?.faculty}`}
+        actions={
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#07242B] to-[#0A3944] text-white border border-[#145663]/80 shadow-md flex items-center gap-2.5 sm:gap-3 flex-1 sm:flex-initial">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-[#2DD4BF] animate-pulse shrink-0" />
+              <div>
+                <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
+                  Window Time Remaining
+                </span>
+                <span className="text-base sm:text-xl font-extrabold font-mono text-[#2DD4BF]">
+                  {formatTime(timeRemainingSeconds)}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <button
-            onClick={handleManualRefresh}
-            className="p-3 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs transition-all active:scale-95"
-            title="Manual Telemetry Refresh"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+            <button
+              onClick={handleManualRefresh}
+              className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs transition-all active:scale-95 shrink-0"
+              title="Manual Telemetry Refresh"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        }
+      />
 
       {/* KPI Real-Time Status Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">

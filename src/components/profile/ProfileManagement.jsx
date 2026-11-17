@@ -13,9 +13,10 @@ import {
   BookOpen,
   Calendar
 } from 'lucide-react';
+import { PageHeader } from '../common/PageHeader';
 
 export const ProfileManagement = () => {
-  const { currentUser, currentRole, updateStudent, showToast, resetDemoData } = useApp();
+  const { currentUser, currentRole, updateStudent, showToast, resetDemoData, setActiveView } = useApp();
 
   const [name, setName] = useState(currentUser?.name || '');
   const [email, setEmail] = useState(currentUser?.email || '');
@@ -47,15 +48,18 @@ export const ProfileManagement = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-200">
-      {/* Title */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-navy-900 dark:text-white tracking-tight">
-          Institutional Profile & Account Settings
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Manage your credentials, academic records, contact info, and preferences.
-        </p>
-      </div>
+      {/* Top Header with Native-App Circular Back Button */}
+      <PageHeader
+        onBack={() => setActiveView('dashboard')}
+        backLabel="Back to Dashboard"
+        title="Institutional Profile & Settings"
+        subtitle="Manage credentials, academic records, contact info, and preferences"
+        badge={
+          <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-extrabold uppercase tracking-wider border border-blue-200 dark:border-blue-800">
+            {currentRole === 'teacher' ? 'Faculty Member' : 'Student Account'}
+          </span>
+        }
+      />
 
       {/* Main Profile Card */}
       <div className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200 dark:border-slate-800 shadow-subtle p-6 sm:p-8 space-y-6">

@@ -20,6 +20,9 @@ import { ExaminationsMain } from './components/examinations/ExaminationsMain';
 import { AdminNotificationDashboard } from './components/notifications/AdminNotificationDashboard';
 import { StudentNoticeBoard } from './components/notifications/StudentNoticeBoard';
 
+// Profile Management
+import { ProfileManagement } from './components/profile/ProfileManagement';
+
 const AppContent = () => {
   const {
     currentRole,
@@ -61,6 +64,11 @@ const AppContent = () => {
       return <AdminSubscriptions />;
     }
 
+    // Institutional Profile & Account Settings view
+    if (activeView === 'profile') {
+      return <ProfileManagement />;
+    }
+
     // Default & Subjects view for Teacher
     if (currentRole === 'teacher') {
       return <TeacherCurriculum />;
@@ -92,7 +100,7 @@ const AppContent = () => {
       </div>
 
       {/* Mobile Native App Bottom Navigation */}
-      <MobileBottomNav />
+      <MobileBottomNav onMobileMenuToggle={() => setMobileMenuOpen(true)} />
 
       {/* Global Overlays */}
       <GlobalSearchModal />
