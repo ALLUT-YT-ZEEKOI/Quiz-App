@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { QUESTIONS_BANK } from '../../data/questionsData';
 import { STUDENTS } from '../../data/initialData';
+import { parseA4Questions } from '../curriculum/BulkQuestionUploadModal';
 import {
   Check,
   ChevronRight,
@@ -22,8 +23,42 @@ import {
   Info,
   Radio,
   Search,
-  BookOpen
+  BookOpen,
+  Upload,
+  Copy,
+  Download,
+  Filter,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
+
+const BULK_SAMPLE_TEMPLATE = `1. What is the kinematic indeterminacy of a plane pin-jointed truss with j joints and r external reactions?
+A) 2j - r
+B) 3j - r
+C) j - 2r
+D) 2j + r
+Answer: A
+Difficulty: Medium
+Explanation: In a 2D pin-jointed truss, each joint has 2 translational degrees of freedom. Hence Dk = 2j - r.
+
+2. Which Indian Standard code of practice is used for design of general construction in steel?
+A) IS 800:2007
+B) IS 456:2000
+C) IS 1893:2016
+D) IS 10262:2019
+Answer: A
+Difficulty: Easy
+Explanation: IS 800:2007 is the Indian Standard for General Construction in Steel.
+
+3. In limit state design of reinforced concrete beams, what is the maximum strain in concrete at extreme compression fiber?
+A) 0.002
+B) 0.0035
+C) 0.004
+D) 0.005
+Answer: B
+Difficulty: Easy
+Explanation: As per IS 456 Clause 38.1, maximum compressive strain in flexure is 0.0035.
+`;
 
 export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
   const {
@@ -36,8 +71,9 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
 
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Form State
-  // Step 1: Basic Information
+  // =========================================================================
+  // STEP 1: BASIC INFORMATION
+  // =========================================================================
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [subjectId, setSubjectId] = useState('CE-301');
@@ -48,28 +84,45 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
     '1. Duration is strictly 60 minutes.\n2. Total Questions: 30 MCQ (1 mark each).\n3. Negative marking applies (-0.25 per wrong answer).\n4. Scientific calculators are permitted as per IS 456.\n5. Examination closes automatically at the configured closing time.'
   );
 
-  // Step 2: Questions Selection & Settings
-  const [selectedQuestionIds, setSelectedQuestionIds] = useState(() => {
-    // Default select first 30 questions from bank
-    return QUESTIONS_BANK.slice(0, 30).map((q) => q.id);
-  });
+  // =========================================================================
+  // STEP 2: QUESTIONS & CUSTOM / BULK MANAGEMENT
+  // =========================================================================
+  // Custom single questions and bulk uploaded questions
+  const [customQuestions, setCustomQuestions] = useState([]);
+
+  // Selected question IDs: Starts EMPTY by default so teacher chooses!
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
+
+  // Question Selector View: 'bank' (all available) vs 'selected' (only chosen)
+  const [questionViewMode, setQuestionViewMode] = useState('bank'); // 'bank' | 'selected'
+
   const [questionSearch, setQuestionSearch] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('All');
+  const [subjectFilter, setSubjectFilter] = useState('All');
   const [marksPerQuestion, setMarksPerQuestion] = useState(1);
   const [negativeMarking, setNegativeMarking] = useState(true);
   const [negativeMarkValue, setNegativeMarkValue] = useState(0.25);
   const [randomizeQuestions, setRandomizeQuestions] = useState(true);
   const [randomizeOptions, setRandomizeOptions] = useState(false);
 
-  // Custom Question Modal State
-  const [customQuestionModal, setCustomQuestionModal] = useState(false);
-  const [customQText, setCustomQText] = useState('');
-  const [customQOptions, setCustomQOptions] = useState(['', '', '', '']);
-  const [customQCorrect, setCustomQCorrect] = useState(0);
-  const [customQDiff, setCustomQDiff] = useState('Medium');
-  const [customQExpl, setCustomQExpl] = useState('');
+  // Single Question Modal State
+  const [singleQuestionModalOpen, setSingleQuestionModalOpen] = useState(false);
+  const [singleQText, setSingleQText] = useState('');
+  const [singleQOptions, setSingleQOptions] = useState(['', '', '', '']);
+  const [singleQCorrect, setSingleQCorrect] = useState(0);
+  const [singleQDiff, setSingleQDiff] = useState('Medium');
+  const [singleQMarks, setSingleQMarks] = useState(1);
+  const [singleQExpl, setSingleQExpl] = useState('');
 
-  // Step 3: Examination Schedule
+  // Bulk Question Upload Modal State
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkInputText, setBulkInputText] = useState('');
+  const [bulkActiveTab, setBulkActiveTab] = useState('paste'); // 'paste' | 'preview'
+  const fileInputRef = useRef(null);
+
+  // =========================================================================
+  // STEP 3: EXAMINATION SCHEDULE & TIME WINDOW
+  // =========================================================================
   const [examDate, setExamDate] = useState(() => {
     const d = new Date();
     return d.toISOString().slice(0, 10);
@@ -83,9 +136,11 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
   const [maxAttempts, setMaxAttempts] = useState(1);
   const [autoSubmitTimeout, setAutoSubmitTimeout] = useState(true);
   const [autoSubmitEndWindow, setAutoSubmitEndWindow] = useState(true);
-  const [resultPublication, setResultPublication] = useState('After Exam'); // 'Immediately', 'After Exam', 'Manual'
+  const [resultPublication, setResultPublication] = useState('After Exam');
 
-  // Step 4: Assign Students
+  // =========================================================================
+  // STEP 4: ASSIGN STUDENTS
+  // =========================================================================
   const [assignedStudentIds, setAssignedStudentIds] = useState(() => STUDENTS.map((s) => s.id));
   const [studentSearch, setStudentSearch] = useState('');
   const [batchFilter, setBatchFilter] = useState('All');
@@ -105,40 +160,56 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
 
   const currentSubject = subjectList.find((s) => s.id === subjectId) || subjectList[0];
 
-  // Question bank list filtered
+  // Combine custom created questions with standard question bank
+  const allAvailableQuestions = useMemo(() => {
+    return [...customQuestions, ...QUESTIONS_BANK];
+  }, [customQuestions]);
+
+  // Selected questions objects
+  const selectedQuestions = useMemo(() => {
+    return allAvailableQuestions.filter((q) => selectedQuestionIds.includes(q.id));
+  }, [allAvailableQuestions, selectedQuestionIds]);
+
+  // Filtered pool of questions in bank
   const filteredBank = useMemo(() => {
-    return QUESTIONS_BANK.filter((q) => {
-      if (difficultyFilter !== 'All' && q.difficulty !== difficultyFilter) return false;
+    return allAvailableQuestions.filter((q) => {
+      // If viewing selected only
+      if (questionViewMode === 'selected' && !selectedQuestionIds.includes(q.id)) {
+        return false;
+      }
+
+      // Difficulty filter
+      if (difficultyFilter !== 'All' && q.difficulty !== difficultyFilter) {
+        return false;
+      }
+
+      // Subject filter
+      if (subjectFilter !== 'All' && q.subjectName !== subjectFilter && q.subjectId !== subjectFilter) {
+        return false;
+      }
+
+      // Search query
       if (questionSearch.trim()) {
         const query = questionSearch.toLowerCase();
         return (
           q.questionText.toLowerCase().includes(query) ||
-          q.subjectName.toLowerCase().includes(query)
+          (q.subjectName || '').toLowerCase().includes(query) ||
+          (q.id || '').toLowerCase().includes(query)
         );
       }
+
       return true;
     });
-  }, [difficultyFilter, questionSearch]);
+  }, [allAvailableQuestions, questionViewMode, selectedQuestionIds, difficultyFilter, subjectFilter, questionSearch]);
 
-  const toggleSelectQuestion = (qId) => {
-    setSelectedQuestionIds((prev) =>
-      prev.includes(qId) ? prev.filter((id) => id !== qId) : [...prev, qId]
-    );
-  };
-
-  const selectAllFiltered = () => {
-    const ids = filteredBank.slice(0, 30).map((q) => q.id);
-    setSelectedQuestionIds(ids);
-  };
-
-  const deselectAll = () => {
-    setSelectedQuestionIds([]);
-  };
-
-  // Selected questions objects
-  const selectedQuestions = useMemo(() => {
-    return QUESTIONS_BANK.filter((q) => selectedQuestionIds.includes(q.id));
-  }, [selectedQuestionIds]);
+  // Available unique subjects in question bank for filtering
+  const availableSubjectNames = useMemo(() => {
+    const set = new Set();
+    allAvailableQuestions.forEach((q) => {
+      if (q.subjectName) set.add(q.subjectName);
+    });
+    return ['All', ...Array.from(set)];
+  }, [allAvailableQuestions]);
 
   const difficultyStats = useMemo(() => {
     const easy = selectedQuestions.filter((q) => q.difficulty === 'Easy').length;
@@ -147,7 +218,150 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
     return { easy, medium, hard };
   }, [selectedQuestions]);
 
-  // Students filtering
+  // Toggle selection for a question
+  const toggleSelectQuestion = (qId) => {
+    setSelectedQuestionIds((prev) =>
+      prev.includes(qId) ? prev.filter((id) => id !== qId) : [...prev, qId]
+    );
+  };
+
+  // Quick select 30 questions
+  const selectQuick30 = () => {
+    const ids = allAvailableQuestions.slice(0, 30).map((q) => q.id);
+    setSelectedQuestionIds(ids);
+    showToast('Selected 30 technical questions from the bank', 'success');
+  };
+
+  // Select all currently filtered
+  const selectAllFiltered = () => {
+    const ids = filteredBank.map((q) => q.id);
+    setSelectedQuestionIds((prev) => Array.from(new Set([...prev, ...ids])));
+    showToast(`Added ${ids.length} questions to selection`, 'info');
+  };
+
+  // Clear all selections
+  const deselectAll = () => {
+    setSelectedQuestionIds([]);
+    showToast('Cleared all selected questions', 'info');
+  };
+
+  // -------------------------------------------------------------------------
+  // Single Question Handler
+  // -------------------------------------------------------------------------
+  const handleSaveSingleQuestion = () => {
+    if (!singleQText.trim()) {
+      showToast('Please enter the question text', 'error');
+      return;
+    }
+    const validOptions = singleQOptions.map((o) => o.trim());
+    if (validOptions.filter(Boolean).length < 2) {
+      showToast('Please provide at least 2 options for this question', 'error');
+      return;
+    }
+
+    const newQ = {
+      id: `Q-CUST-${Date.now().toString().slice(-5)}`,
+      questionText: singleQText.trim(),
+      options: validOptions,
+      correctAnswer: Number(singleQCorrect),
+      difficulty: singleQDiff,
+      marks: Number(singleQMarks || marksPerQuestion),
+      explanation: singleQExpl.trim() || 'Custom question authored for this examination.',
+      subjectName: currentSubject?.name || 'Structural Analysis',
+      isCustom: true
+    };
+
+    setCustomQuestions((prev) => [newQ, ...prev]);
+    setSelectedQuestionIds((prev) => [newQ.id, ...prev]);
+    setQuestionViewMode('selected');
+
+    // Reset single question form
+    setSingleQText('');
+    setSingleQOptions(['', '', '', '']);
+    setSingleQCorrect(0);
+    setSingleQDiff('Medium');
+    setSingleQExpl('');
+    setSingleQuestionModalOpen(false);
+
+    showToast('Question added and selected for this examination!', 'success');
+  };
+
+  // -------------------------------------------------------------------------
+  // Bulk Upload Handler
+  // -------------------------------------------------------------------------
+  const parsedBulkQuestions = useMemo(() => {
+    return parseA4Questions(bulkInputText);
+  }, [bulkInputText]);
+
+  const validParsedBulk = useMemo(() => {
+    return parsedBulkQuestions.filter((q) => q.question && q.options.filter(Boolean).length >= 2);
+  }, [parsedBulkQuestions]);
+
+  const handleImportBulkQuestions = () => {
+    if (validParsedBulk.length === 0) {
+      showToast('No valid questions parsed. Please check the format template.', 'error');
+      return;
+    }
+
+    const imported = validParsedBulk.map((q, idx) => ({
+      id: `Q-BULK-${Date.now().toString().slice(-4)}-${idx + 1}`,
+      questionText: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      difficulty: q.difficulty || 'Medium',
+      explanation: q.explanation || 'Bulk imported question.',
+      subjectName: currentSubject?.name || 'Structural Analysis',
+      marks: Number(marksPerQuestion || 1),
+      isCustom: true
+    }));
+
+    setCustomQuestions((prev) => [...imported, ...prev]);
+    setSelectedQuestionIds((prev) => Array.from(new Set([...prev, ...imported.map((q) => q.id)])));
+    setQuestionViewMode('selected');
+
+    setBulkInputText('');
+    setBulkModalOpen(false);
+    showToast(`Successfully imported and selected ${imported.length} questions!`, 'success');
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result;
+      if (typeof content === 'string') {
+        setBulkInputText(content);
+        showToast(`Loaded file: ${file.name}`, 'info');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleCopyTemplate = () => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(BULK_SAMPLE_TEMPLATE);
+      showToast('Copied question template format to clipboard!', 'success');
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const blob = new Blob([BULK_SAMPLE_TEMPLATE], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'CohesionTech_Exam_Questions_Template.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Downloaded sample template file', 'success');
+  };
+
+  // -------------------------------------------------------------------------
+  // Students Filtering
+  // -------------------------------------------------------------------------
   const filteredStudents = useMemo(() => {
     return STUDENTS.filter((s) => {
       if (batchFilter !== 'All' && s.batch !== batchFilter) return false;
@@ -177,7 +391,9 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
     setAssignedStudentIds([]);
   };
 
-  // Validation
+  // -------------------------------------------------------------------------
+  // Validation & Navigation
+  // -------------------------------------------------------------------------
   const validateStep = (step) => {
     if (step === 1) {
       if (!title.trim()) {
@@ -188,7 +404,7 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
     }
     if (step === 2) {
       if (selectedQuestionIds.length === 0) {
-        showToast('Please select at least one question for the examination', 'error');
+        showToast('Please select or add at least one question for the examination', 'error');
         return false;
       }
       return true;
@@ -272,7 +488,6 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
     if (onExamCreated) onExamCreated(newExamPayload);
   };
 
-  // Steps definition for header
   const steps = [
     { num: 1, label: 'Basic Info' },
     { num: 2, label: 'Questions' },
@@ -308,7 +523,6 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
       {/* Stepper Progress Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
         <div className="flex items-center justify-between relative">
-          {/* Background Connecting Line */}
           <div className="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-0.5 bg-slate-200 dark:bg-slate-800 z-0" />
           <div
             className="absolute left-8 top-1/2 -translate-y-1/2 h-0.5 bg-[#087F8C] transition-all duration-300 z-0"
@@ -477,63 +691,72 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
         )}
 
         {/* =========================================================================
-            STEP 2: QUESTIONS SELECTION & CONFIGURATION
+            STEP 2: QUESTIONS & SCORING STRATEGY (WITH SINGLE + BULK + SELECTOR)
         ========================================================================= */}
         {currentStep === 2 && (
           <div className="space-y-5 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Header with Title and Single / Bulk Action Buttons */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">
-                  Step 2: Questions & Scoring Strategy
+                  Step 2: Questions & Question Selection
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Select questions from the Civil Engineering Question Bank or compose custom items.
+                  Select questions from the Question Bank, author single questions, or bulk upload your test items.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Action Buttons: Add Single Question & Bulk Upload */}
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
-                  onClick={selectAllFiltered}
-                  className="px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 text-xs font-bold"
+                  onClick={() => setSingleQuestionModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
                 >
-                  Select 30 Technical Questions
+                  <Plus className="w-4 h-4" />
+                  <span>+ Add Single Question</span>
                 </button>
+
                 <button
                   type="button"
-                  onClick={deselectAll}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold"
+                  onClick={() => setBulkModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-[#092B32] hover:bg-[#0E3B44] text-[#2DD4BF] border border-[#20B8C7]/40 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
                 >
-                  Clear Selection
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Bulk Upload Questions</span>
                 </button>
               </div>
             </div>
 
             {/* Selected Questions Summary Banner */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#07242B] to-[#0A3944] text-white flex flex-wrap items-center justify-between gap-4 border border-[#145663]/60">
-              <div className="flex items-center gap-4 text-xs font-bold">
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#07242B] to-[#0A3944] text-white flex flex-wrap items-center justify-between gap-4 border border-[#145663]/60 shadow-md">
+              <div className="flex items-center gap-4 text-xs font-bold flex-wrap">
                 <div>
-                  <span className="text-slate-400 block text-[10px]">Questions</span>
-                  <span className="text-lg font-extrabold text-white">
-                    {selectedQuestionIds.length} Selected
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                    Selected for Exam
+                  </span>
+                  <span className="text-xl font-extrabold text-white">
+                    {selectedQuestionIds.length} Questions
                   </span>
                 </div>
-                <div className="h-6 w-px bg-slate-700" />
+                <div className="h-7 w-px bg-slate-700 hidden sm:block" />
                 <div>
-                  <span className="text-slate-400 block text-[10px]">Total Marks</span>
-                  <span className="text-lg font-extrabold text-[#2DD4BF]">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                    Total Marks
+                  </span>
+                  <span className="text-xl font-extrabold text-[#2DD4BF]">
                     {selectedQuestionIds.length * marksPerQuestion} Marks
                   </span>
                 </div>
-                <div className="h-6 w-px bg-slate-700" />
+                <div className="h-7 w-px bg-slate-700 hidden sm:block" />
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[10px]">
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30">
                     🟢 {difficultyStats.easy} Easy
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold text-[10px]">
+                  <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-bold text-[10px] border border-amber-500/30">
                     🟡 {difficultyStats.medium} Medium
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-bold text-[10px]">
+                  <span className="px-2 py-0.5 rounded-lg bg-red-500/20 text-red-300 font-bold text-[10px] border border-red-500/30">
                     🔴 {difficultyStats.hard} Hard
                   </span>
                 </div>
@@ -542,7 +765,7 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
               {/* Scoring and Randomization Controls */}
               <div className="flex items-center gap-3 text-xs flex-wrap">
                 <div className="flex items-center gap-1.5 bg-[#092B32] px-3 py-1.5 rounded-xl border border-teal-500/30">
-                  <span className="text-slate-300 font-medium">Marks / Q:</span>
+                  <span className="text-slate-300 font-medium">Marks/Q:</span>
                   <input
                     type="number"
                     min="0.5"
@@ -550,7 +773,7 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                     max="10"
                     value={marksPerQuestion}
                     onChange={(e) => setMarksPerQuestion(Number(e.target.value))}
-                    className="w-12 bg-transparent font-bold text-white text-center focus:outline-none"
+                    className="w-10 bg-transparent font-bold text-white text-center focus:outline-none"
                   />
                 </div>
 
@@ -561,7 +784,7 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                     onChange={(e) => setNegativeMarking(e.target.checked)}
                     className="rounded text-teal-500 focus:ring-0"
                   />
-                  <span className="text-slate-200 font-bold">Negative Marking (-0.25)</span>
+                  <span className="text-slate-200 font-bold">Negative (-0.25)</span>
                 </label>
 
                 <label className="flex items-center gap-1.5 bg-[#092B32] px-3 py-1.5 rounded-xl border border-teal-500/30 cursor-pointer">
@@ -571,25 +794,105 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                     onChange={(e) => setRandomizeQuestions(e.target.checked)}
                     className="rounded text-teal-500 focus:ring-0"
                   />
-                  <span className="text-slate-200 font-bold">Randomize Order</span>
+                  <span className="text-slate-200 font-bold">Randomize</span>
                 </label>
               </div>
             </div>
 
-            {/* Search & Difficulty Filter Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            {/* Question Selector Tabs: [ Question Bank ] vs [ Selected for Exam (X) ] */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+              {/* Tab Selector */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setQuestionViewMode('bank')}
+                  className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                    questionViewMode === 'bank'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Question Bank ({allAvailableQuestions.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setQuestionViewMode('selected')}
+                  className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                    questionViewMode === 'selected'
+                      ? 'bg-[#087F8C] text-white shadow-2xs'
+                      : 'text-teal-700 dark:text-teal-400'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Selected for Exam ({selectedQuestionIds.length})</span>
+                </button>
+              </div>
+
+              {/* Quick Select Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={selectQuick30}
+                  className="px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 text-[11px] font-bold hover:bg-teal-100 transition-colors"
+                  title="Quick-fill first 30 technical questions"
+                >
+                  Select 30 Technical Qs
+                </button>
+
+                {questionViewMode === 'bank' && (
+                  <button
+                    type="button"
+                    onClick={selectAllFiltered}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold hover:bg-slate-200 transition-colors"
+                  >
+                    Select Filtered ({filteredBank.length})
+                  </button>
+                )}
+
+                {selectedQuestionIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={deselectAll}
+                    className="px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-[11px] font-bold hover:bg-red-100 transition-colors"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Filter Bar: Search, Subject Dropdown, Difficulty Pills */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Filter question bank..."
+                  placeholder="Search questions by keyword or topic..."
                   value={questionSearch}
                   onChange={(e) => setQuestionSearch(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
                 />
               </div>
 
-              <div className="flex items-center gap-1.5">
+              {/* Subject Filter Dropdown */}
+              <div className="shrink-0">
+                <select
+                  value={subjectFilter}
+                  onChange={(e) => setSubjectFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#14B8A6] cursor-pointer"
+                >
+                  {availableSubjectNames.map((subj) => (
+                    <option key={subj} value={subj}>
+                      {subj === 'All' ? 'All Subjects' : subj}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Difficulty Filter Pills */}
+              <div className="flex items-center gap-1 shrink-0">
                 {['All', 'Easy', 'Medium', 'Hard'].map((diff) => (
                   <button
                     key={diff}
@@ -597,8 +900,8 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
                     onClick={() => setDifficultyFilter(diff)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                       difficultyFilter === diff
-                        ? 'bg-[#087F8C] text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        ? 'bg-[#087F8C] text-white shadow-2xs'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
                     }`}
                   >
                     {diff}
@@ -607,69 +910,130 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
               </div>
             </div>
 
-            {/* Questions Bank List */}
-            <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
-              {filteredBank.slice(0, 40).map((q, idx) => {
-                const isSelected = selectedQuestionIds.includes(q.id);
-                return (
-                  <div
-                    key={q.id || idx}
-                    onClick={() => toggleSelectQuestion(q.id)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
-                      isSelected
-                        ? 'bg-teal-50/50 dark:bg-teal-950/20 border-teal-500 dark:border-teal-600 shadow-2xs'
-                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => {}}
-                      className="mt-1 rounded text-teal-600 focus:ring-0"
-                    />
+            {/* Questions List */}
+            {filteredBank.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-center space-y-3 border border-dashed border-slate-200 dark:border-slate-700">
+                <HelpCircle className="w-8 h-8 text-slate-400 mx-auto" />
+                <div className="text-xs text-slate-600 dark:text-slate-300 font-semibold">
+                  {questionViewMode === 'selected'
+                    ? 'No questions selected for this examination yet.'
+                    : 'No questions match your current search and filters.'}
+                </div>
+                {questionViewMode === 'selected' && (
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setQuestionViewMode('bank')}
+                      className="px-3 py-1.5 rounded-xl bg-[#087F8C] text-white text-xs font-bold"
+                    >
+                      Browse Question Bank
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSingleQuestionModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold"
+                    >
+                      + Add Question
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+                {filteredBank.map((q, idx) => {
+                  const isSelected = selectedQuestionIds.includes(q.id);
+                  return (
+                    <div
+                      key={q.id || idx}
+                      onClick={() => toggleSelectQuestion(q.id)}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
+                        isSelected
+                          ? 'bg-teal-50/50 dark:bg-teal-950/20 border-teal-500 dark:border-teal-600 shadow-2xs ring-1 ring-teal-500/30'
+                          : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="mt-1 rounded text-teal-600 focus:ring-0 shrink-0 cursor-pointer"
+                      />
 
-                    <div className="flex-1 space-y-1 text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-400">
-                          {q.id}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            q.difficulty === 'Easy'
-                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
-                              : q.difficulty === 'Hard'
-                              ? 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300'
-                              : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
-                          }`}
-                        >
-                          {q.difficulty}
-                        </span>
-                        <span className="text-slate-400">{q.subjectName}</span>
-                      </div>
-
-                      <p className="font-semibold text-slate-800 dark:text-slate-200 leading-snug">
-                        {q.questionText}
-                      </p>
-
-                      <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
-                        {q.options.map((opt, oIdx) => (
-                          <div
-                            key={oIdx}
-                            className={`px-2 py-1 rounded-lg border ${
-                              oIdx === q.correctAnswer
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 font-bold'
-                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                            }`}
-                          >
-                            <span className="font-bold mr-1">{String.fromCharCode(65 + oIdx)}.</span> {opt}
+                      <div className="flex-1 space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono font-bold text-slate-400">
+                              {q.id}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                q.difficulty === 'Easy'
+                                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                                  : q.difficulty === 'Hard'
+                                  ? 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300'
+                                  : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
+                              }`}
+                            >
+                              {q.difficulty}
+                            </span>
+                            <span className="text-slate-500 dark:text-slate-400 font-semibold">
+                              {q.subjectName}
+                            </span>
+                            {q.isCustom && (
+                              <span className="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 text-[9px] font-extrabold uppercase">
+                                Author / Uploaded
+                              </span>
+                            )}
                           </div>
-                        ))}
+
+                          {questionViewMode === 'selected' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSelectQuestion(q.id);
+                              }}
+                              className="text-red-500 hover:text-red-700 text-[11px] font-bold flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Remove</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 leading-snug">
+                          {q.questionText}
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                          {q.options.map((opt, oIdx) => (
+                            <div
+                              key={oIdx}
+                              className={`px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 ${
+                                oIdx === q.correctAnswer
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 font-bold'
+                                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                              }`}
+                            >
+                              <span className="font-bold mr-1">
+                                {String.fromCharCode(65 + oIdx)}.
+                              </span>
+                              <span>{opt}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {q.explanation && (
+                          <div className="text-[10px] text-slate-400 pt-0.5 italic">
+                            Ref: {q.explanation}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -687,7 +1051,6 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
               </p>
             </div>
 
-            {/* Critical Time Window Clarification Alert (As required in prompt) */}
             <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-1 text-xs">
@@ -783,7 +1146,6 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
               </div>
             </div>
 
-            {/* Checkbox Configuration Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
               <label className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-start gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <input
@@ -886,7 +1248,6 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
               </div>
             </div>
 
-            {/* Filter and Search Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="relative sm:col-span-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -924,7 +1285,6 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
               </select>
             </div>
 
-            {/* Students Selection Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-1">
               {filteredStudents.map((s) => {
                 const isSelected = assignedStudentIds.includes(s.id);
@@ -1117,6 +1477,336 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
           </div>
         </div>
       </div>
+
+      {/* =========================================================================
+          MODAL 1: ADD SINGLE QUESTION
+      ========================================================================= */}
+      {singleQuestionModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-teal-600" />
+                  <span>Author Single Examination Question</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Compose a new question item. It will be immediately selected for this exam.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSingleQuestionModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Question Statement */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 dark:text-slate-200">
+                  Question Statement <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Enter the complete question statement or engineering problem..."
+                  value={singleQText}
+                  onChange={(e) => setSingleQText(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+                />
+              </div>
+
+              {/* 4 Options with Correct Answer Radio */}
+              <div className="space-y-2">
+                <label className="font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                  <span>Multiple Choice Options (Select Correct Answer)</span>
+                  <span className="text-[10px] text-teal-600 font-semibold">
+                    Click radio button to mark correct key
+                  </span>
+                </label>
+
+                {singleQOptions.map((opt, optIdx) => {
+                  const letter = String.fromCharCode(65 + optIdx);
+                  const isCorrect = singleQCorrect === optIdx;
+
+                  return (
+                    <div
+                      key={optIdx}
+                      className={`p-2.5 rounded-xl border flex items-center gap-3 transition-colors ${
+                        isCorrect
+                          ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300'
+                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setSingleQCorrect(optIdx)}
+                        className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${
+                          isCorrect
+                            ? 'bg-emerald-500 text-white shadow-xs'
+                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                        }`}
+                        title={`Mark ${letter} as correct answer`}
+                      >
+                        {isCorrect ? '✓' : letter}
+                      </button>
+
+                      <input
+                        type="text"
+                        placeholder={`Option ${letter} statement...`}
+                        value={opt}
+                        onChange={(e) => {
+                          const updated = [...singleQOptions];
+                          updated[optIdx] = e.target.value;
+                          setSingleQOptions(updated);
+                        }}
+                        className="flex-1 bg-transparent text-slate-900 dark:text-white focus:outline-none font-medium"
+                      />
+
+                      {isCorrect && (
+                        <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 uppercase shrink-0">
+                          Correct Key
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Difficulty & Marks Row */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-200">
+                    Difficulty Level
+                  </label>
+                  <select
+                    value={singleQDiff}
+                    onChange={(e) => setSingleQDiff(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none"
+                  >
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-200">
+                    Marks Assigned
+                  </label>
+                  <input
+                    type="number"
+                    min="0.5"
+                    step="0.5"
+                    value={singleQMarks}
+                    onChange={(e) => setSingleQMarks(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Explanation / Solution */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 dark:text-slate-200">
+                  Explanation / IS Code Reference (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Provide formula derivation, clause reference, or technical reasoning..."
+                  value={singleQExpl}
+                  onChange={(e) => setSingleQExpl(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSingleQuestionModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveSingleQuestion}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white text-xs font-extrabold shadow-sm active:scale-95 transition-all"
+              >
+                Add & Select Question
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL 2: BULK QUESTION UPLOAD (A4 / CSV / PASTE FORMAT)
+      ========================================================================= */}
+      {bulkModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-3xl w-full p-6 space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-teal-600" />
+                  <span>Bulk Upload Questions for Examination</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Paste questions in standard text format or upload a .txt / .csv file.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setBulkModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Template Actions Banner */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <FileText className="w-4 h-4 text-teal-600 shrink-0" />
+                <span>
+                  <strong>Standard Format:</strong> 1. Question / A) ... / B) ... / Answer: X / Difficulty: Easy
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyTemplate}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1 hover:bg-slate-100"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>Copy Template</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-[11px] font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1 hover:bg-teal-100"
+                >
+                  <Download className="w-3 h-3" />
+                  <span>Download .txt</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Paste Textarea */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-slate-700 dark:text-slate-200">
+                  Paste Formatted Questions Below:
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full font-mono font-extrabold text-[11px] ${
+                    validParsedBulk.length > 0
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  {validParsedBulk.length} Questions Detected
+                </span>
+              </div>
+
+              <textarea
+                rows={9}
+                placeholder={`Paste your question paper text here...\n\nExample:\n1. Question text here\nA) Option 1\nB) Option 2\nC) Option 3\nD) Option 4\nAnswer: B\nDifficulty: Medium\nExplanation: Solution reference...`}
+                value={bulkInputText}
+                onChange={(e) => setBulkInputText(e.target.value)}
+                className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+              />
+            </div>
+
+            {/* File Upload Selector */}
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".txt,.csv,.json"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload from File (.txt / .csv)</span>
+                </button>
+                <span className="text-[11px] text-slate-400">
+                  Supported: plain text, CSV, or formatted notes
+                </span>
+              </div>
+            </div>
+
+            {/* Parsed Preview Section */}
+            {validParsedBulk.length > 0 && (
+              <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200/80 dark:border-emerald-900/40 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Parsed Preview: {validParsedBulk.length} Questions Ready</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                    Will be added to exam selection automatically
+                  </span>
+                </div>
+
+                <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                  {validParsedBulk.slice(0, 5).map((q, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2 rounded-xl bg-white dark:bg-slate-800 text-[11px] border border-emerald-200 dark:border-emerald-800 flex items-center justify-between"
+                    >
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 truncate flex-1 pr-2">
+                        {idx + 1}. {q.question}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold shrink-0">
+                        Ans: {String.fromCharCode(65 + q.correctAnswer)}
+                      </span>
+                    </div>
+                  ))}
+                  {validParsedBulk.length > 5 && (
+                    <div className="text-[10px] text-slate-400 text-center">
+                      + {validParsedBulk.length - 5} more questions...
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setBulkModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={validParsedBulk.length === 0}
+                onClick={handleImportBulkQuestions}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold shadow-sm active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                <span>Import {validParsedBulk.length} Questions</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
