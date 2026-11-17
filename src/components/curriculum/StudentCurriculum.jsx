@@ -924,6 +924,29 @@ export const StudentCurriculum = () => {
                         <span className="font-bold truncate">{totalQuestions} Questions</span>
                       </div>
                     </div>
+
+                    {/* Difficulty Badges for Students */}
+                    {totalQuestions > 0 && (
+                      <div className="flex items-center gap-1 mt-2 text-[9px] font-bold text-slate-500 flex-wrap">
+                        <span className="text-slate-400 font-semibold">Modes:</span>
+                        {difficultyLevels.map((lvl) => {
+                          const count = (mod.questions || []).filter((q) =>
+                            matchesDifficulty(q.difficulty, lvl.id)
+                          ).length;
+                          const badgeColor =
+                            lvl.color === 'emerald'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
+                              : lvl.color === 'red'
+                              ? 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60'
+                              : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60';
+                          return (
+                            <span key={lvl.id} className={`px-1.5 py-0.5 rounded font-semibold ${badgeColor}`}>
+                              {count} {lvl.label}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Dual Action Buttons */}
