@@ -16,6 +16,10 @@ import { AdminSubscriptions } from './components/curriculum/AdminSubscriptions';
 // Live & Scheduled Examination Module
 import { ExaminationsMain } from './components/examinations/ExaminationsMain';
 
+// Announcements & Notifications Module
+import { AdminNotificationDashboard } from './components/notifications/AdminNotificationDashboard';
+import { StudentNoticeBoard } from './components/notifications/StudentNoticeBoard';
+
 const AppContent = () => {
   const {
     currentRole,
@@ -42,6 +46,14 @@ const AppContent = () => {
     // If Results view
     if (activeView === 'results') {
       return <CurriculumResults />;
+    }
+
+    // If Announcements & Notifications view
+    if (activeView === 'notifications' || activeView === 'announcements') {
+      if (currentRole === 'teacher' || currentRole === 'admin') {
+        return <AdminNotificationDashboard />;
+      }
+      return <StudentNoticeBoard />;
     }
 
     // If Payment Approvals view (Admin only)

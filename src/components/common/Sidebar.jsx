@@ -8,7 +8,9 @@ import {
   Radio,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Megaphone,
+  Bell
 } from 'lucide-react';
 
 export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) => {
@@ -21,10 +23,25 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     curriculumAttempts,
     pendingSubscriptionsCount,
     examinations,
+    notifications,
     showToast
   } = useApp();
 
   const liveExamsCount = (examinations || []).filter((e) => e.status === 'Live Now').length;
+  const unreadNotifsCount = (notifications || []).filter((n) => !n.read).length;
+
+  const studentNotifs = (notifications || []).filter((n) => {
+    if (n.forRole === 'teacher') return false;
+    if (n.targetAudience === 'students') {
+      return Array.isArray(n.targetStudentIds) && n.targetStudentIds.includes(currentUser?.id || 'STU001');
+    }
+    if (n.targetAudience === 'batch') {
+      if (n.targetBatch && n.targetBatch !== 'All' && currentUser?.batch && n.targetBatch !== currentUser.batch) return false;
+      return true;
+    }
+    return true;
+  });
+  const studentUnreadCount = studentNotifs.filter((n) => !n.read).length;
 
   const teacherNavItems = [
     {
@@ -56,6 +73,14 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       icon: FileQuestion,
       targetView: 'results',
       badge: curriculumAttempts?.length || undefined
+    },
+    {
+      id: 'notifications',
+      label: 'Announcements & Alerts',
+      icon: Megaphone,
+      targetView: 'notifications',
+      badge: unreadNotifsCount > 0 ? unreadNotifsCount : undefined,
+      badgeColor: 'bg-teal-500 text-white'
     }
   ];
 
@@ -83,6 +108,14 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badge: (curriculumAttempts || []).filter(
         (a) => a.studentId === (currentUser?.id || 'STU001')
       ).length || undefined
+    },
+    {
+      id: 'notifications',
+      label: 'Notice Board',
+      icon: Bell,
+      targetView: 'notifications',
+      badge: studentUnreadCount > 0 ? studentUnreadCount : undefined,
+      badgeColor: 'bg-teal-500 text-white'
     }
   ];
 
@@ -102,6 +135,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     if (item.id === 'students' && activeView === 'subscriptions') return true;
     if (item.id === 'examinations' && activeView === 'examinations') return true;
     if (item.id === 'quizzes' && activeView === 'results') return true;
+    if (item.id === 'notifications' && (activeView === 'notifications' || activeView === 'announcements')) return true;
     return false;
   };
 

@@ -19,7 +19,11 @@ import {
   Check,
   Sparkles,
   Link2,
-  Copy
+  Copy,
+  Radio,
+  Megaphone,
+  AlertCircle,
+  ChevronRight
 } from 'lucide-react';
 
 export const Navbar = ({ onMobileMenuToggle }) => {
@@ -31,6 +35,8 @@ export const Navbar = ({ onMobileMenuToggle }) => {
     setDarkMode,
     notifications,
     markNotificationsRead,
+    markNotificationRead,
+    getFilteredNotificationsForUser,
     resetDemoData,
     logout,
     setActiveView,
@@ -64,7 +70,12 @@ export const Navbar = ({ onMobileMenuToggle }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const unreadNotifs = notifications.filter((n) => !n.read);
+  // Filtered notifications specifically for the logged-in persona
+  const userNotifs = (getFilteredNotificationsForUser
+    ? getFilteredNotificationsForUser(currentUser, currentRole)
+    : notifications) || [];
+
+  const unreadNotifs = userNotifs.filter((n) => !n.read);
 
   return (
     <header className="sticky top-0 z-30 h-14 sm:h-16 bg-white dark:bg-surface-darkCard border-b border-slate-200 dark:border-slate-800 transition-colors shadow-xs">
@@ -549,41 +560,70 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                     </div>
 
                     <div className="overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 flex-1 max-h-72">
-                      {notifications.length === 0 ? (
+                      {userNotifs.length === 0 ? (
                         <div className="py-8 text-center text-xs text-slate-400">
                           No notifications at this time
                         </div>
                       ) : (
-                        notifications.map((item) => (
+                        userNotifs.map((item) => (
                           <div
                             key={item.id}
-                            className={`p-3 text-xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
-                              !item.read ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+                            onClick={() => {
+                              if (markNotificationRead) markNotificationRead(item.id);
+                              if (item.actionView) {
+                                setNotificationsOpen(false);
+                                setActiveView(item.actionView);
+                              }
+                            }}
+                            className={`p-3 text-xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer ${
+                              !item.read ? 'bg-teal-50/40 dark:bg-teal-950/20' : ''
                             }`}
                           >
                             <div className="flex items-start gap-2.5">
-                              {item.type === 'success' ? (
-                                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                              ) : item.type === 'danger' ? (
-                                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                              {item.type === 'exam_alert' ? (
+                                <Radio className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5 animate-pulse" />
+                              ) : item.type === 'urgent' ? (
+                                <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                              ) : item.type === 'important' ? (
+                                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                              ) : item.type === 'announcement' ? (
+                                <Megaphone className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
                               ) : (
-                                <BookOpen className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                               )}
                               <div className="flex-1">
-                                <div className="font-semibold text-slate-900 dark:text-slate-100 text-xs">
-                                  {item.title}
+                                <div className="font-semibold text-slate-900 dark:text-slate-100 text-xs flex items-center justify-between gap-1">
+                                  <span>{item.title}</span>
+                                  {!item.read && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />
+                                  )}
                                 </div>
-                                <p className="text-slate-600 dark:text-slate-300 text-[11px] mt-0.5 leading-relaxed">
+                                <p className="text-slate-600 dark:text-slate-300 text-[11px] mt-0.5 leading-relaxed line-clamp-2">
                                   {item.message}
                                 </p>
-                                <span className="text-[9px] text-slate-400 mt-0.5 block font-mono">
-                                  {item.time}
+                                <span className="text-[9px] text-slate-400 mt-1 block font-mono">
+                                  {item.time || 'Recently'}
                                 </span>
                               </div>
                             </div>
                           </div>
                         ))
                       )}
+                    </div>
+
+                    {/* Bottom CTA to Notice Board */}
+                    <div className="p-2 border-t border-slate-100 dark:border-slate-800 text-center bg-slate-50/50 dark:bg-slate-900/50">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNotificationsOpen(false);
+                          setActiveView('notifications');
+                        }}
+                        className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-700 flex items-center justify-center gap-1.5 w-full py-1.5"
+                      >
+                        <span>Open Full Notice Board & Alerts</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -596,7 +636,7 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                         Notifications
                       </span>
                       {unreadNotifs.length > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300 font-semibold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 font-semibold">
                           {unreadNotifs.length} new
                         </span>
                       )}
@@ -604,7 +644,7 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                     {unreadNotifs.length > 0 && (
                       <button
                         onClick={markNotificationsRead}
-                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                        className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline font-medium"
                       >
                         Mark read
                       </button>
@@ -612,41 +652,70 @@ export const Navbar = ({ onMobileMenuToggle }) => {
                   </div>
 
                   <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-                    {notifications.length === 0 ? (
+                    {userNotifs.length === 0 ? (
                       <div className="py-8 text-center text-xs text-slate-400">
                         No notifications at this time
                       </div>
                     ) : (
-                      notifications.map((item) => (
+                      userNotifs.map((item) => (
                         <div
                           key={item.id}
-                          className={`p-3 text-xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
-                            !item.read ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+                          onClick={() => {
+                            if (markNotificationRead) markNotificationRead(item.id);
+                            if (item.actionView) {
+                              setNotificationsOpen(false);
+                              setActiveView(item.actionView);
+                            }
+                          }}
+                          className={`p-3 text-xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer ${
+                            !item.read ? 'bg-teal-50/40 dark:bg-teal-950/20' : ''
                           }`}
                         >
                           <div className="flex items-start gap-2">
-                            {item.type === 'success' ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                            ) : item.type === 'danger' ? (
-                              <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                            {item.type === 'exam_alert' ? (
+                              <Radio className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5 animate-pulse" />
+                            ) : item.type === 'urgent' ? (
+                              <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                            ) : item.type === 'important' ? (
+                              <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                            ) : item.type === 'announcement' ? (
+                              <Megaphone className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5" />
                             ) : (
-                              <BookOpen className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                             )}
                             <div className="flex-1">
-                              <div className="font-semibold text-slate-900 dark:text-slate-100 text-[11px]">
-                                {item.title}
+                              <div className="font-semibold text-slate-900 dark:text-slate-100 text-[11px] flex items-center justify-between gap-1">
+                                <span>{item.title}</span>
+                                {!item.read && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />
+                                )}
                               </div>
-                              <p className="text-slate-600 dark:text-slate-300 text-[11px] mt-0.5 leading-relaxed">
+                              <p className="text-slate-600 dark:text-slate-300 text-[11px] mt-0.5 leading-relaxed line-clamp-2">
                                 {item.message}
                               </p>
                               <span className="text-[9px] text-slate-400 mt-0.5 block font-mono">
-                                {item.time}
+                                {item.time || 'Recently'}
                               </span>
                             </div>
                           </div>
                         </div>
                       ))
                     )}
+                  </div>
+
+                  {/* Desktop CTA to Notice Board */}
+                  <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 text-center bg-slate-50/60 dark:bg-slate-900/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationsOpen(false);
+                        setActiveView('notifications');
+                      }}
+                      className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-700 flex items-center justify-center gap-1.5 w-full"
+                    >
+                      <span>Open Full Notice Board</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </>

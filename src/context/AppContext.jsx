@@ -1110,9 +1110,90 @@ export const AppProvider = ({ children }) => {
     showToast('Platform reset to default Civil Engineering demo data', 'info');
   };
 
+  // =========================================================================
+  // ANNOUNCEMENTS & NOTIFICATIONS MANAGEMENT
+  // =========================================================================
+  const createAnnouncement = (data) => {
+    const newNotif = {
+      id: `NOTIF-${Date.now()}`,
+      title: data.title || 'Untitled Faculty Notice',
+      message: data.message || '',
+      type: data.type || 'announcement', // 'announcement', 'exam_alert', 'important', 'urgent', 'system'
+      priority: data.priority || 'normal', // 'normal', 'high', 'urgent'
+      targetAudience: data.targetAudience || 'all', // 'all', 'batch', 'students'
+      targetBatch: data.targetBatch || 'All',
+      targetSemester: data.targetSemester || 'All',
+      targetStudentIds: Array.isArray(data.targetStudentIds) ? data.targetStudentIds : [],
+      author: data.author || (currentUser?.name || 'Dr. Rajesh Sharma'),
+      authorRole: data.authorRole || (currentRole === 'teacher' ? 'Admin / Faculty' : 'Department Faculty'),
+      authorAvatar: data.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+      time: 'Just now',
+      createdAt: new Date().toISOString(),
+      read: false,
+      pinned: !!data.pinned,
+      forRole: data.forRole || 'student', // 'student', 'all', 'teacher'
+      actionView: data.actionView || null,
+      actionLabel: data.actionLabel || null,
+      attachmentName: data.attachmentName || null
+    };
+
+    setNotifications((prev) => [newNotif, ...prev]);
+    showToast(`Notice "${newNotif.title}" published & broadcasted!`, 'success');
+    return newNotif;
+  };
+
+  const deleteAnnouncement = (id) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    showToast('Announcement removed', 'info');
+  };
+
+  const togglePinAnnouncement = (id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n))
+    );
+  };
+
+  const markNotificationRead = (id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  };
+
   // Mark all notifications as read
   const markNotificationsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    showToast('All notifications marked as read', 'info');
+  };
+
+  // Filter notifications for a specific user persona
+  const getFilteredNotificationsForUser = (user = currentUser, role = currentRole) => {
+    if (role === 'teacher' || role === 'admin') {
+      return notifications;
+    }
+
+    // For student persona
+    return notifications.filter((n) => {
+      if (n.forRole === 'teacher') return false;
+
+      // If targeted to specific students
+      if (n.targetAudience === 'students') {
+        return Array.isArray(n.targetStudentIds) && n.targetStudentIds.includes(user?.id);
+      }
+
+      // If targeted to specific batch or semester
+      if (n.targetAudience === 'batch') {
+        if (n.targetBatch && n.targetBatch !== 'All' && user?.batch && n.targetBatch !== user.batch) {
+          return false;
+        }
+        if (n.targetSemester && n.targetSemester !== 'All' && user?.semester && n.targetSemester !== user.semester) {
+          return false;
+        }
+        return true;
+      }
+
+      // Default: broadcast to all students
+      return true;
+    });
   };
 
   // CSV Export utility
@@ -1191,6 +1272,12 @@ export const AppProvider = ({ children }) => {
         quizzes,
         attempts,
         notifications,
+        setNotifications,
+        createAnnouncement,
+        deleteAnnouncement,
+        togglePinAnnouncement,
+        markNotificationRead,
+        getFilteredNotificationsForUser,
         toasts,
         showToast,
         removeToast,
