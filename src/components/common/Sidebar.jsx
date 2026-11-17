@@ -11,7 +11,7 @@ import {
   X,
   Megaphone,
   Bell,
-  User,
+  Settings,
   LogOut
 } from 'lucide-react';
 
@@ -84,12 +84,6 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       targetView: 'notifications',
       badge: unreadNotifsCount > 0 ? unreadNotifsCount : undefined,
       badgeColor: 'bg-teal-500 text-white'
-    },
-    {
-      id: 'profile',
-      label: 'My Profile & Settings',
-      icon: User,
-      targetView: 'profile'
     }
   ];
 
@@ -125,12 +119,6 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       targetView: 'notifications',
       badge: studentUnreadCount > 0 ? studentUnreadCount : undefined,
       badgeColor: 'bg-teal-500 text-white'
-    },
-    {
-      id: 'profile',
-      label: 'My Profile & Settings',
-      icon: User,
-      targetView: 'profile'
     }
   ];
 
@@ -246,84 +234,55 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
         </nav>
       </div>
 
-      {/* User Profile Card & Sign Out */}
-      <div className="px-3 pt-2 relative z-10">
-        <div
-          className={`flex items-center justify-between gap-2 p-2 rounded-2xl bg-[#061B20]/60 border border-[#144752]/70 ${
-            collapsed ? 'justify-center p-1.5' : ''
-          }`}
+      {/* Bottom Settings Menu */}
+      <div className="p-3 border-t border-[#14424D]/60 space-y-1 relative z-10 bg-[#06191E]/60">
+        <button
+          onClick={() => {
+            setActiveView('profile');
+            if (mobileOpen) setMobileOpen(false);
+          }}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all group ${
+            activeView === 'profile'
+              ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white border border-[#20B8C7]/50 shadow-[0_4px_16px_rgba(20,184,166,0.25)]'
+              : 'text-[#9BB7BE] hover:text-white hover:bg-[#0E323A]/70 border border-transparent'
+          } ${collapsed ? 'justify-center px-0' : ''}`}
+          title="Settings & Profile"
         >
-          <button
-            onClick={() => {
-              setActiveView('profile');
-              if (mobileOpen) setMobileOpen(false);
-            }}
-            className={`flex items-center gap-2.5 min-w-0 flex-1 text-left ${
-              collapsed ? 'justify-center' : ''
+          <Settings
+            className={`w-4 h-4 shrink-0 transition-colors ${
+              activeView === 'profile' ? 'text-white' : 'text-[#6B919A] group-hover:text-white'
             }`}
-            title="My Profile & Settings"
-          >
-            {currentUser?.avatar ? (
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-8 h-8 rounded-xl object-cover ring-1 ring-[#20B8C7]/40 shrink-0"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-xl bg-[#0E353E] text-[#2DD4BF] flex items-center justify-center shrink-0">
-                <User className="w-4 h-4" />
-              </div>
-            )}
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-white truncate">
-                  {currentUser?.name || 'Account'}
-                </div>
-                <div className="text-[10px] text-[#2DD4BF] font-medium capitalize truncate">
-                  {currentRole === 'teacher' ? 'Faculty Member' : 'Student Account'}
-                </div>
-              </div>
-            )}
-          </button>
-
+          />
           {!collapsed && (
-            <button
-              onClick={() => {
-                logout();
-                if (mobileOpen) setMobileOpen(false);
-              }}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors shrink-0"
-              title="Sign Out"
+            <span
+              className={`text-left flex-1 whitespace-nowrap ${
+                activeView === 'profile'
+                  ? 'font-bold text-white text-[13px]'
+                  : 'text-xs text-[#9BB7BE] group-hover:text-white'
+              }`}
             >
-              <LogOut className="w-4 h-4" />
-            </button>
+              Settings
+            </span>
           )}
-        </div>
-      </div>
+        </button>
 
-      {/* Bottom Live Prototype Card */}
-      <div className="p-3 relative z-10">
-        {!collapsed ? (
-          <div className="p-3.5 rounded-2xl bg-[#061B20]/90 border border-[#144752] text-slate-300 shadow-sm space-y-1 backdrop-blur-md">
-            <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-[#10B981] uppercase tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-              <span>LIVE PROTOTYPE</span>
-            </div>
-            <div className="text-xs font-bold text-white">
-              CohesionTech LMS v2.0.0
-            </div>
-            <div className="text-[10px] text-[#70959E] font-mono">
-              Build: 2025.01.27
-            </div>
-            <div className="text-[10px] text-[#70959E] font-mono">
-              Environment: Staging
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-center py-2" title="CohesionTech LMS Live Prototype">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse" />
-          </div>
-        )}
+        <button
+          onClick={() => {
+            logout();
+            if (mobileOpen) setMobileOpen(false);
+          }}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-[#9BB7BE] hover:text-red-400 hover:bg-red-950/20 border border-transparent transition-all group ${
+            collapsed ? 'justify-center px-0' : ''
+          }`}
+          title="Sign Out"
+        >
+          <LogOut className="w-4 h-4 shrink-0 text-[#6B919A] group-hover:text-red-400 transition-colors" />
+          {!collapsed && (
+            <span className="text-left flex-1 whitespace-nowrap text-xs">
+              Sign Out
+            </span>
+          )}
+        </button>
       </div>
     </aside>
   );
