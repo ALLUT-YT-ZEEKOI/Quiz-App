@@ -83,55 +83,6 @@ export const TeacherResults = () => {
         </button>
       </div>
 
-      {/* 4 Summary Highlight Tiles */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-800 shadow-subtle">
-          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 mb-1">
-            <span>Pass Rate</span>
-            <Award className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-xl sm:text-3xl font-extrabold text-navy-900 dark:text-white font-mono">
-            {passRate}%
-          </div>
-          <div className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold mt-0.5 truncate">
-            {passedAttempts.length} of {totalAttempts} Passed
-          </div>
-        </div>
-
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-800 shadow-subtle">
-          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 mb-1">
-            <span>Highest Mark</span>
-            <TrendingUp className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="text-xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 font-mono">
-            {highestScore}%
-          </div>
-          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">Top cohort 100%</div>
-        </div>
-
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-800 shadow-subtle">
-          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 mb-1">
-            <span>Lowest Mark</span>
-            <TrendingDown className="w-4 h-4 text-red-500" />
-          </div>
-          <div className="text-xl sm:text-3xl font-extrabold text-red-600 dark:text-red-400 font-mono">
-            {lowestScore}%
-          </div>
-          <div className="text-[10px] sm:text-[11px] text-red-500 mt-0.5 truncate">For remedial review</div>
-        </div>
-
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-800 shadow-subtle">
-          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 mb-1">
-            <span>Avg Time</span>
-            <Clock className="w-4 h-4 text-purple-500" />
-          </div>
-          <div className="text-xl sm:text-3xl font-extrabold text-purple-600 dark:text-purple-400 font-mono">
-            {Math.floor(avgTimeSeconds / 60)}m {avgTimeSeconds % 60}s
-          </div>
-          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">Under 15m limit</div>
-        </div>
-      </div>
-
       {/* Filter and Search Ribbon */}
       <div className="p-3.5 sm:p-4 bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200 dark:border-slate-800 shadow-subtle flex flex-col md:flex-row items-stretch md:items-center gap-3">
         <div className="relative flex-1">

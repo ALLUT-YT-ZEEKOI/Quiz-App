@@ -59,12 +59,6 @@ export const AdminNotificationDashboard = () => {
   const [formActionView, setFormActionView] = useState('none');
   const [formPinned, setFormPinned] = useState(false);
 
-  // Summary Metrics
-  const totalBroadcasts = notifications.length;
-  const examAlertsCount = notifications.filter((n) => n.type === 'exam_alert').length;
-  const urgentAlertsCount = notifications.filter((n) => n.type === 'urgent').length;
-  const targetedCount = notifications.filter((n) => n.targetAudience === 'students' || n.targetAudience === 'batch').length;
-
   // Filtered Notifications Feed
   const filteredNotifications = useMemo(() => {
     return notifications.filter((n) => {
@@ -213,125 +207,64 @@ export const AdminNotificationDashboard = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-16">
-      {/* Top Banner Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#07242B] via-[#0A333C] to-[#0D4450] p-6 sm:p-8 text-white border border-[#145663]/60 shadow-[0_8px_32px_rgba(4,20,24,0.35)]">
-        <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-[#14B8A6]/15 blur-3xl pointer-events-none" />
-        <div className="absolute left-1/2 bottom-0 w-80 h-32 rounded-full bg-[#087F8C]/20 blur-2xl pointer-events-none" />
+    <div className="relative space-y-4 sm:space-y-6 animate-in fade-in duration-300 pb-28 sm:pb-16">
+      {/* Compact hero */}
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#07242B] via-[#0A333C] to-[#0D4450] p-3.5 sm:p-8 text-white border border-[#145663]/60 shadow-premium sm:shadow-[0_8px_32px_rgba(4,20,24,0.35)]">
+        <div className="absolute -right-10 -top-10 w-36 h-36 sm:w-64 sm:h-64 rounded-full bg-[#14B8A6]/15 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D4E5B]/80 border border-[#20B8C7]/30 text-[#2DD4BF] text-xs font-bold uppercase tracking-wider backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
-              <span>Faculty Communications Center</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white">
-              Announcements & Student Alerts
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Broadcast academic notices, scheduled examination windows, and personalized notifications to specific student cohorts across Civil Engineering programs.
-            </p>
+        <div className="relative z-10 min-w-0 space-y-1 sm:space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0D4E5B]/80 border border-[#20B8C7]/30 text-[#2DD4BF] text-[10px] sm:text-xs font-extrabold uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#10B981] animate-ping" />
+            <span className="sm:hidden">Communications</span>
+            <span className="hidden sm:inline">Faculty Communications Center</span>
           </div>
-
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white font-extrabold text-xs sm:text-sm shadow-[0_4px_20px_rgba(20,184,166,0.35)] flex items-center justify-center gap-2.5 transition-all active:scale-95 shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Announcement</span>
-          </button>
+          <h1 className="text-base sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-snug">
+            <span className="sm:hidden">Announcements</span>
+            <span className="hidden sm:inline">Announcements & Student Alerts</span>
+          </h1>
+          <p className="hidden sm:block text-sm text-slate-300 max-w-2xl leading-relaxed">
+            Broadcast academic notices, exam windows, and personalized alerts to student cohorts.
+          </p>
         </div>
       </div>
 
-      {/* 4 Summary Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        {/* Total Broadcasts */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Total Notices</span>
-            <Megaphone className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            {totalBroadcasts}
-          </div>
-          <div className="text-[10px] text-slate-400 font-medium">Published circulars</div>
-        </div>
-
-        {/* Exam Alerts */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-50 to-teal-50/40 dark:from-cyan-950/40 dark:to-teal-950/20 border border-cyan-300 dark:border-cyan-800/60 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-cyan-800 dark:text-cyan-300">
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Exam Alerts</span>
-            <Radio className="w-4 h-4 text-cyan-600 animate-pulse" />
-          </div>
-          <div className="text-2xl font-extrabold text-cyan-950 dark:text-cyan-200">
-            {examAlertsCount}
-          </div>
-          <div className="text-[10px] text-cyan-700 dark:text-cyan-400 font-bold">Live Window Reminders</div>
-        </div>
-
-        {/* Targeted Notices */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Targeted</span>
-            <Users className="w-4 h-4 text-indigo-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            {targetedCount}
-          </div>
-          <div className="text-[10px] text-slate-400 font-medium">Cohort-specific</div>
-        </div>
-
-        {/* Urgent Alerts */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Urgent Alerts</span>
-            <AlertTriangle className="w-4 h-4 text-red-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-red-600">
-            {urgentAlertsCount}
-          </div>
-          <div className="text-[10px] text-slate-400 font-medium">Critical action items</div>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-        {/* Type Filter Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold overflow-x-auto scrollbar-none">
+      {/* Filters */}
+      <div className="flex flex-col gap-3 sm:gap-3.5 p-3 sm:p-3.5 md:p-4 bg-white dark:bg-slate-900 rounded-2xl border border-[#087F8C]/15 dark:border-slate-800 shadow-premium">
+        {/* All tabs in one row on mobile */}
+        <div className="grid grid-cols-4 gap-1 p-1 sm:p-1.5 rounded-xl bg-[#E8F3F4] dark:bg-slate-800/80 border border-[#087F8C]/15 dark:border-slate-700/60 text-[11px] sm:text-xs font-bold">
           {[
-            { id: 'All', label: 'All Notices' },
-            { id: 'announcement', label: 'Announcements' },
-            { id: 'exam_alert', label: 'Exam Alerts' },
-            { id: 'urgent', label: 'Urgent' },
-            { id: 'important', label: 'Important' }
+            { id: 'All', short: 'All', label: 'All Notices' },
+            { id: 'announcement', short: 'Notice', label: 'Announcements' },
+            { id: 'exam_alert', short: 'Exams', label: 'Exam Alerts' },
+            { id: 'urgent', short: 'Urgent', label: 'Urgent' }
           ].map((tab) => (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setSelectedType(tab.id)}
-              className={`px-3 py-1.5 rounded-lg transition-all shrink-0 ${
+              className={`min-h-[2.5rem] px-2.5 sm:px-3 py-2 rounded-xl transition-all flex items-center justify-center whitespace-nowrap ${
                 selectedType === tab.id
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  ? 'bg-[#087F8C] text-white shadow-md shadow-[#087F8C]/25'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-[#07242B] hover:bg-white/70 dark:hover:bg-slate-700/50'
               }`}
             >
-              {tab.label}
+              <span className="md:hidden truncate">{tab.short}</span>
+              <span className="hidden md:inline truncate">{tab.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Search & Audience Selector & View Toggle */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <div className="relative w-full sm:w-60">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Search announcements..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+              className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20 focus:border-[#087F8C]/50 shadow-subtle"
             />
           </div>
-
           <CustomDropdown
             options={[
               { value: 'All', label: 'All Audiences' },
@@ -343,57 +276,21 @@ export const AdminNotificationDashboard = () => {
             onChange={setSelectedAudience}
             size="sm"
           />
-
-          {/* View Mode Toggle: 4 in Row vs List */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0 self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-slate-700 text-[#087F8C] dark:text-[#2DD4BF] shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-              title="Grid View (4 Cards in a Row)"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="text-[11px]">4 in Row</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                viewMode === 'list'
-                  ? 'bg-white dark:bg-slate-700 text-[#087F8C] dark:text-[#2DD4BF] shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-              title="Compact List View"
-            >
-              <List className="w-3.5 h-3.5" />
-              <span className="text-[11px]">List</span>
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Announcements Feed: Grid (4 in a row) or List */}
-      <div
-        className={
-          viewMode === 'grid'
-            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5'
-            : 'space-y-3'
-        }
-      >
+      {/* Announcements — 1 per row on mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         {filteredNotifications.length === 0 ? (
-          <div className="col-span-full p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
-              <Megaphone className="w-6 h-6" />
+          <div className="col-span-full p-8 sm:p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+              <Megaphone className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+            <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">
               No Announcements Found
             </h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              No announcements match your search or filter criteria. Click "+ Create Announcement" to broadcast a new notice.
+              No notices match your filters. Tap Announce to broadcast a new notice.
             </p>
           </div>
         ) : (
@@ -410,13 +307,14 @@ export const AdminNotificationDashboard = () => {
               audienceBadge = `${count} Specific Students`;
             }
 
-            if (viewMode === 'grid') {
+            // Always card grid on mobile/desktop (list toggle removed)
+            {
               return (
                 <div
                   key={notif.id}
-                  className={`p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border transition-all duration-200 shadow-2xs hover:shadow-lg flex flex-col justify-between hover:-translate-y-0.5 group ${
+                  className={`p-3 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all duration-200 shadow-subtle hover:shadow-md flex flex-col justify-between group ${
                     notif.pinned
-                      ? 'border-[#087F8C] ring-2 ring-[#087F8C]/20 shadow-teal-500/5'
+                      ? 'border-[#087F8C] ring-2 ring-[#087F8C]/20'
                       : 'border-slate-200/90 dark:border-slate-800 hover:border-[#087F8C]/40'
                   }`}
                 >
@@ -528,111 +426,25 @@ export const AdminNotificationDashboard = () => {
                 </div>
               );
             }
-
-            // List View Mode
-            return (
-              <div
-                key={notif.id}
-                className={`p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all space-y-3 shadow-2xs hover:shadow-md ${
-                  notif.pinned
-                    ? 'border-[#087F8C] ring-2 ring-[#087F8C]/20'
-                    : 'border-slate-200/90 dark:border-slate-800'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {notif.pinned && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 text-[10px] font-extrabold flex items-center gap-1 border border-teal-300 dark:border-teal-800">
-                        <Pin className="w-3 h-3 fill-current rotate-45" />
-                        <span>PINNED NOTICE</span>
-                      </span>
-                    )}
-
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border flex items-center gap-1 ${meta.badgeBg}`}
-                    >
-                      <Icon className="w-3 h-3" />
-                      <span>{meta.label}</span>
-                    </span>
-
-                    <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
-                      👥 {audienceBadge}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                    <button
-                      type="button"
-                      onClick={() => togglePinAnnouncement(notif.id)}
-                      className={`p-1.5 rounded-xl text-xs transition-colors ${
-                        notif.pinned
-                          ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-600'
-                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                      }`}
-                      title={notif.pinned ? 'Unpin Notice' : 'Pin Notice to Top'}
-                    >
-                      <Pin className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => deleteAnnouncement(notif.id)}
-                      className="p-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-                      title="Delete Announcement"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">
-                    {notif.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                    {notif.message}
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400">
-                  <div className="flex items-center gap-2.5">
-                    {notif.authorAvatar ? (
-                      <img
-                        src={notif.authorAvatar}
-                        alt={notif.author}
-                        className="w-6 h-6 rounded-full object-cover shrink-0"
-                      />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300 font-bold flex items-center justify-center text-[10px]">
-                        CT
-                      </div>
-                    )}
-                    <div>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">
-                        {notif.author}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {notif.authorRole || 'Faculty'} • {notif.time || 'Recently'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {notif.actionView && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveView(notif.actionView)}
-                      className="px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-bold text-xs flex items-center gap-1.5 hover:bg-teal-100 transition-colors w-fit"
-                    >
-                      <span>{notif.actionLabel || 'View Details'}</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
           })
         )}
       </div>
+
+      {/* FAB — Create Announcement */}
+      {!isCreateModalOpen && (
+        <button
+          type="button"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="fixed z-40 bottom-20 right-4 sm:bottom-8 sm:right-8 inline-flex items-center gap-2 pl-3.5 pr-4 py-3 rounded-full bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white font-bold text-xs sm:text-sm shadow-[0_8px_28px_rgba(20,184,166,0.45)] border border-[#20B8C7]/40 active:scale-95 transition-all"
+          aria-label="Create Announcement"
+        >
+          <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
+            <Plus className="w-4 h-4" />
+          </span>
+          <span className="sm:hidden">Announce</span>
+          <span className="hidden sm:inline">Create Announcement</span>
+        </button>
+      )}
 
       {/* =========================================================================
           CREATE ANNOUNCEMENT / NOTIFICATION MODAL

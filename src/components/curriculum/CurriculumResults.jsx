@@ -11,17 +11,19 @@ import {
   Search,
   Download,
   Calendar,
-  BarChart3,
-  Percent,
   X,
-  Target
+  Target,
+  Layers,
+  ChevronDown
 } from 'lucide-react';
 
 export const CurriculumResults = () => {
   const { currentRole, currentUser, curriculumAttempts, showToast } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState('All');
+  const [filterModule, setFilterModule] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Filter attempts based on role:
   // If Student, only show their own attempts; if Teacher, show all students' attempts
@@ -30,20 +32,6 @@ export const CurriculumResults = () => {
     : (curriculumAttempts || []).filter(
         (a) => a.studentId === (currentUser?.id || 'STU001')
       );
-
-  const totalSubmissions = attempts.length;
-  const avgScore =
-    totalSubmissions > 0
-      ? Math.round(
-          attempts.reduce((sum, a) => sum + (Number(a.scorePct) || 0), 0) /
-            totalSubmissions
-        )
-      : 0;
-  const passCount = attempts.filter(
-    (a) => a.status === 'Passed' || Number(a.scorePct) >= 60
-  ).length;
-  const passRate =
-    totalSubmissions > 0 ? Math.round((passCount / totalSubmissions) * 100) : 0;
 
   const filteredAttempts = attempts.filter((att) => {
     const matchesSearch =
@@ -54,22 +42,39 @@ export const CurriculumResults = () => {
     const matchesSubject =
       filterSubject === 'All' || att.subjectName === filterSubject;
 
+    const matchesModule =
+      filterModule === 'All' || att.moduleTitle === filterModule;
+
     const isPassed = att.status === 'Passed' || Number(att.scorePct) >= 60;
     const matchesStatus =
       filterStatus === 'All' ||
       (filterStatus === 'Passed' && isPassed) ||
       (filterStatus === 'Failed' && !isPassed);
 
-    return matchesSearch && matchesSubject && matchesStatus;
+    return matchesSearch && matchesSubject && matchesModule && matchesStatus;
   });
 
   const uniqueSubjects = Array.from(
     new Set((attempts || []).map((a) => a.subjectName).filter(Boolean))
   );
 
+  const uniqueModules = Array.from(
+    new Set(
+      (attempts || [])
+        .filter((a) => filterSubject === 'All' || a.subjectName === filterSubject)
+        .map((a) => a.moduleTitle)
+        .filter(Boolean)
+    )
+  );
+
   const subjectOptions = [
-    { value: 'All', label: `All Subjects (${uniqueSubjects.length})` },
+    { value: 'All', label: `All Courses (${uniqueSubjects.length})` },
     ...uniqueSubjects.map((sub) => ({ value: sub, label: sub }))
+  ];
+
+  const moduleOptions = [
+    { value: 'All', label: `All Modules (${uniqueModules.length})` },
+    ...uniqueModules.map((mod) => ({ value: mod, label: mod }))
   ];
 
   const statusOptions = [
@@ -77,6 +82,18 @@ export const CurriculumResults = () => {
     { value: 'Passed', label: 'Passed (≥60%)' },
     { value: 'Failed', label: 'Needs Practice (<60%)' }
   ];
+
+  const filterFieldCount = 3; // Course, Module, Status
+  const activeFilterCount = [
+    filterSubject !== 'All',
+    filterModule !== 'All',
+    filterStatus !== 'All'
+  ].filter(Boolean).length;
+
+  const handleSubjectChange = (value) => {
+    setFilterSubject(value);
+    setFilterModule('All');
+  };
 
   const handleExportCSV = () => {
     if (filteredAttempts.length === 0) {
@@ -138,125 +155,64 @@ export const CurriculumResults = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200">
-      {/* Modern App Header Banner */}
-      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#07242B] via-[#0A333C] to-[#0D4450] text-white p-4 sm:p-6 border border-[#145663]/60 shadow-lg">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-white/10 text-emerald-300 border border-white/10 backdrop-blur-xs">
-                <Award className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{currentRole === 'teacher' ? 'Faculty Analytics' : 'Student Record'}</span>
-              </span>
-              <span className="text-xs text-slate-300 font-medium hidden sm:inline">
-                Quiz Submissions & Performance
-              </span>
-            </div>
-
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white mt-1.5 tracking-tight">
-              {currentRole === 'teacher'
-                ? 'Student Quiz Submissions'
-                : 'My Quiz Results & Scores'}
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200 pb-16">
+      {/* Compact hero */}
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#07242B] via-[#0A333C] to-[#0D4450] text-white p-3.5 sm:p-6 border border-[#145663]/60 shadow-premium">
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-extrabold uppercase tracking-wider bg-white/10 text-emerald-300 border border-white/10">
+              <Award className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
+              <span>{currentRole === 'teacher' ? 'Analytics' : 'My Record'}</span>
+            </span>
+            <h1 className="text-base sm:text-3xl font-black text-white mt-1.5 tracking-tight leading-snug">
+              {currentRole === 'teacher' ? (
+                <>
+                  <span className="sm:hidden">Quiz Submissions</span>
+                  <span className="hidden sm:inline">Student Quiz Submissions</span>
+                </>
+              ) : (
+                'My Quiz Results'
+              )}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed">
+            <p className="hidden sm:block text-sm text-slate-300 mt-1 max-w-xl">
               {currentRole === 'teacher'
                 ? 'Real-time record of all student attempts across subjects with score breakdown.'
-                : 'Your complete examination history across all subject modules and practice modes.'}
+                : 'Your complete examination history across modules and practice modes.'}
             </p>
           </div>
 
           {currentRole === 'teacher' && (
             <button
+              type="button"
               onClick={handleExportCSV}
-              className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 transition-all self-start md:self-auto shrink-0 border border-white/15 backdrop-blur-xs shadow-sm active:scale-95"
+              className="shrink-0 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] sm:text-xs inline-flex items-center gap-1.5 border border-white/15 active:scale-95"
             >
-              <Download className="w-4 h-4 text-emerald-400" />
-              <span>Export CSV</span>
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+              <span className="sm:hidden">CSV</span>
+              <span className="hidden sm:inline">Export CSV</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* KPI Stats Cards - Mobile Optimized 2x2 Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* Total Quizzes */}
-        <div className="bg-white dark:bg-surface-darkCard p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 transition-all hover:border-blue-400/50">
-          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <Award className="w-4 h-4 sm:w-5 sm:h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-              {totalSubmissions}
-            </div>
-            <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
-              {currentRole === 'teacher' ? 'Submissions' : 'Quizzes Taken'}
-            </div>
-          </div>
-        </div>
-
-        {/* Average Score */}
-        <div className="bg-white dark:bg-surface-darkCard p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 transition-all hover:border-indigo-400/50">
-          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-            <Percent className="w-4 h-4 sm:w-5 sm:h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-              {avgScore}%
-            </div>
-            <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
-              Average Score
-            </div>
-          </div>
-        </div>
-
-        {/* Pass Rate */}
-        <div className="bg-white dark:bg-surface-darkCard p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 transition-all hover:border-emerald-400/50">
-          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-              {passRate}%
-            </div>
-            <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
-              Pass Rate (≥60%)
-            </div>
-          </div>
-        </div>
-
-        {/* Subjects Assessed */}
-        <div className="bg-white dark:bg-surface-darkCard p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3 transition-all hover:border-amber-400/50">
-          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight truncate">
-              {uniqueSubjects.length}
-            </div>
-            <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
-              Subjects Assessed
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar: 2-column dropdowns on mobile */}
-      <div className="space-y-2.5 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
-        <div className="relative flex-1 w-full">
+      {/* Search + collapsible Filters */}
+      <div className="flex flex-col gap-2.5 sm:gap-3">
+        <div className="relative w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder={
               currentRole === 'teacher'
-                ? 'Search student, subject, or module...'
-                : 'Search by subject or module...'
+                ? 'Search student, course, or module...'
+                : 'Search by course or module...'
             }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-8 py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#07242B]/15 transition-all shadow-2xs"
+            className="w-full pl-10 pr-9 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20 focus:border-[#087F8C]/50 shadow-subtle"
           />
           {searchTerm && (
             <button
+              type="button"
               onClick={() => setSearchTerm('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
             >
@@ -265,29 +221,74 @@ export const CurriculumResults = () => {
           )}
         </div>
 
-        {/* Responsive filters: 2 columns on mobile */}
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2.5 shrink-0">
-          {uniqueSubjects.length > 0 && (
-            <CustomDropdown
-              value={filterSubject}
-              onChange={setFilterSubject}
-              options={subjectOptions}
-              icon={BookOpen}
-              className="w-full sm:w-48"
+        <div className="bg-white dark:bg-surface-darkCard rounded-2xl border border-[#087F8C]/15 dark:border-slate-800 shadow-premium overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+            className="w-full flex items-center gap-2 px-3.5 sm:px-4 py-2.5 sm:py-3 text-left hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+          >
+            <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Filters</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#E8F3F4] dark:bg-[#087F8C]/20 text-[#0C6D7C] dark:text-[#2DD4BF]">
+              {activeFilterCount > 0
+                ? `${activeFilterCount} active`
+                : `${filterFieldCount} fields`}
+            </span>
+            <ChevronDown
+              className={`w-4 h-4 text-slate-400 ml-auto shrink-0 transition-transform ${
+                filtersOpen ? 'rotate-180' : ''
+              }`}
             />
-          )}
+          </button>
 
-          <CustomDropdown
-            value={filterStatus}
-            onChange={setFilterStatus}
-            options={statusOptions}
-            icon={Filter}
-            className="w-full sm:w-48"
-          />
+          {filtersOpen && (
+            <div className="px-3.5 sm:px-4 pb-3.5 sm:pb-4 pt-1 border-t border-slate-100 dark:border-slate-800 space-y-2.5 sm:space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                <CustomDropdown
+                  value={filterSubject}
+                  onChange={handleSubjectChange}
+                  options={subjectOptions}
+                  icon={BookOpen}
+                  className="w-full"
+                  placeholder="Course"
+                />
+                <CustomDropdown
+                  value={filterModule}
+                  onChange={setFilterModule}
+                  options={moduleOptions}
+                  icon={Layers}
+                  className="w-full"
+                  placeholder="Module"
+                />
+                <CustomDropdown
+                  value={filterStatus}
+                  onChange={setFilterStatus}
+                  options={statusOptions}
+                  icon={Filter}
+                  className="w-full"
+                  placeholder="Status"
+                />
+              </div>
+              {(filterSubject !== 'All' || filterModule !== 'All' || filterStatus !== 'All') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterSubject('All');
+                    setFilterModule('All');
+                    setFilterStatus('All');
+                  }}
+                  className="text-xs font-bold text-[#087F8C] dark:text-[#2DD4BF] hover:underline"
+                >
+                  Clear filter fields
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Results List */}
+      {/* Results — 2 cards per row on mobile */}
       {filteredAttempts.length === 0 ? (
         <div className="p-8 sm:p-12 text-center bg-white dark:bg-surface-darkCard rounded-2xl sm:rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
           <Award className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
@@ -299,11 +300,13 @@ export const CurriculumResults = () => {
               ? 'No student attempts matched your search or filter settings.'
               : 'You have not completed any quizzes matching these filters.'}
           </p>
-          {(searchTerm || filterSubject !== 'All' || filterStatus !== 'All') && (
+          {(searchTerm || filterSubject !== 'All' || filterModule !== 'All' || filterStatus !== 'All') && (
             <button
+              type="button"
               onClick={() => {
                 setSearchTerm('');
                 setFilterSubject('All');
+                setFilterModule('All');
                 setFilterStatus('All');
               }}
               className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all"
@@ -313,7 +316,7 @@ export const CurriculumResults = () => {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-3.5">
           {filteredAttempts.map((att) => {
             const isPassed = att.status === 'Passed' || Number(att.scorePct) >= 60;
             const scoreNum = Number(att.scorePct) || 0;
@@ -321,19 +324,19 @@ export const CurriculumResults = () => {
             return (
               <div
                 key={att.id}
-                className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-2xs hover:border-[#07242B]/30 dark:hover:border-slate-600 transition-all card-hover-lift"
+                className="h-full flex flex-col bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 shadow-subtle hover:border-[#087F8C]/40 dark:hover:border-slate-600 transition-all"
               >
                 {/* Top Row: Subject / Student & Status Badge */}
-                <div className="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
+                <div className="flex items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
                   {currentRole === 'teacher' ? (
                     <div className="flex items-center gap-2.5 min-w-0">
                       <img
                         src={att.studentAvatar}
                         alt={att.studentName}
-                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800 shrink-0"
+                        className="w-8 h-8 sm:w-7 sm:h-7 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800 shrink-0"
                       />
                       <div className="min-w-0">
-                        <div className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                        <div className="font-extrabold text-sm sm:text-xs text-slate-900 dark:text-white truncate">
                           {att.studentName}
                         </div>
                         <div className="text-[11px] text-slate-400 truncate">
@@ -342,7 +345,7 @@ export const CurriculumResults = () => {
                       </div>
                     </div>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#07242B]/5 dark:bg-white/10 text-[#07242B] dark:text-emerald-400 border border-[#07242B]/10 dark:border-white/10 truncate max-w-[240px]">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs sm:text-[11px] font-bold bg-[#07242B]/5 dark:bg-white/10 text-[#07242B] dark:text-emerald-400 border border-[#07242B]/10 dark:border-white/10 truncate min-w-0">
                       <BookOpen className="w-3.5 h-3.5 shrink-0 text-[#07242B] dark:text-emerald-400" />
                       <span className="truncate">{att.subjectName}</span>
                     </span>
@@ -350,7 +353,7 @@ export const CurriculumResults = () => {
 
                   {/* High Contrast Status Pill */}
                   <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider shrink-0 ${
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${
                       isPassed
                         ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800'
                         : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800'
@@ -366,15 +369,15 @@ export const CurriculumResults = () => {
                 </div>
 
                 {/* Module Title */}
-                <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white mt-2.5 leading-snug">
+                <h3 className="font-black text-base sm:text-sm text-slate-900 dark:text-white mt-3 sm:mt-2.5 leading-snug line-clamp-2 sm:min-h-[2.5rem]">
                   {att.moduleTitle}
                 </h3>
 
-                {/* Score Section: Clean visual scorecard */}
-                <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
+                {/* Score Section */}
+                <div className="mt-3 p-3.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2.5 flex-1">
+                  <div className="flex items-center gap-3 sm:gap-2.5 min-w-0">
                     <div
-                      className={`text-2xl sm:text-3xl font-black tracking-tight leading-none ${
+                      className={`text-3xl sm:text-2xl font-black tracking-tight leading-none shrink-0 ${
                         isPassed
                           ? 'text-emerald-600 dark:text-emerald-400'
                           : 'text-amber-600 dark:text-amber-400'
@@ -383,10 +386,10 @@ export const CurriculumResults = () => {
                       {scoreNum}%
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        {att.correctCount} of {att.totalQuestions} Questions Correct
+                      <div className="text-sm sm:text-xs font-bold text-slate-800 dark:text-slate-200 leading-snug">
+                        {att.correctCount} of {att.totalQuestions} Correct
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">
+                      <div className="text-[11px] sm:text-[10px] text-slate-400 mt-0.5 leading-snug">
                         {isPassed
                           ? 'Passed examination threshold'
                           : 'Below 60% passing criteria'}
@@ -394,38 +397,36 @@ export const CurriculumResults = () => {
                     </div>
                   </div>
 
-                  <div className="hidden sm:block w-32 shrink-0">
-                    <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          isPassed ? 'bg-emerald-500' : 'bg-amber-500'
-                        }`}
-                        style={{ width: `${Math.min(100, Math.max(0, scoreNum))}%` }}
-                      />
-                    </div>
+                  <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isPassed ? 'bg-emerald-500' : 'bg-amber-500'
+                      }`}
+                      style={{ width: `${Math.min(100, Math.max(0, scoreNum))}%` }}
+                    />
                   </div>
                 </div>
 
                 {/* Bottom Metadata: Difficulty, Time, Date */}
-                <div className="flex items-center justify-between gap-2 mt-3 pt-2 text-[11px] text-slate-400 dark:text-slate-500 flex-wrap">
-                  <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center justify-between gap-2 mt-3.5 sm:mt-3 pt-1 sm:pt-2 text-xs sm:text-[11px] text-slate-400 dark:text-slate-500 flex-wrap">
+                  <div className="flex items-center gap-2 sm:gap-1.5 flex-wrap min-w-0">
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] border ${getDifficultyColor(
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-2 sm:py-0.5 rounded-lg sm:rounded-md font-bold text-[11px] sm:text-[10px] border ${getDifficultyColor(
                         att.difficultyMode
                       )}`}
                     >
-                      <Target className="w-3 h-3" />
-                      <span>{att.difficultyMode || 'Practice'}</span>
+                      <Target className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                      <span className="truncate max-w-[10rem] sm:max-w-[7rem]">{att.difficultyMode || 'Practice'}</span>
                     </span>
 
                     <span className="inline-flex items-center gap-1 font-mono font-medium text-slate-500 dark:text-slate-400">
-                      <Clock className="w-3 h-3 text-slate-400" />
+                      <Clock className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-slate-400" />
                       <span>{att.timeTaken}</span>
                     </span>
                   </div>
 
-                  <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                    <Calendar className="w-3 h-3 text-slate-400" />
+                  <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400 shrink-0">
+                    <Calendar className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-slate-400" />
                     <span>{att.date}</span>
                   </span>
                 </div>

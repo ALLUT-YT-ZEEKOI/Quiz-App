@@ -144,10 +144,10 @@ export const StudentQuizzes = () => {
         ))}
       </div>
 
-      {/* Quizzes 10 Sample Listing Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* Quizzes — 1 card per row on mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {filteredQuizzes.length === 0 ? (
-          <div className="col-span-2 p-12 text-center text-slate-400 bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200 dark:border-slate-800 text-xs">
+          <div className="col-span-full p-12 text-center text-slate-400 bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200 dark:border-slate-800 text-xs">
             No quizzes match your current search filters.
           </div>
         ) : (
@@ -161,7 +161,7 @@ export const StudentQuizzes = () => {
             return (
               <div
                 key={quiz.id}
-                className="p-6 bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200 dark:border-slate-800 shadow-subtle hover:border-blue-400 dark:hover:border-blue-500 transition-all flex flex-col justify-between space-y-4 group"
+                className="p-3 sm:p-6 bg-white dark:bg-surface-darkCard rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-subtle hover:border-blue-400 dark:hover:border-blue-500 transition-all flex flex-col justify-between space-y-3 sm:space-y-4 group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2.5">

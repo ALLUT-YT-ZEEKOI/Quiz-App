@@ -23,12 +23,24 @@ import { StudentNoticeBoard } from './components/notifications/StudentNoticeBoar
 // Profile Management
 import { ProfileManagement } from './components/profile/ProfileManagement';
 
+// Answer review, subject marks, retests & doubts
+import { StudentAnswersDashboard } from './components/review/StudentAnswersDashboard';
+import { AdminAnswersDashboard } from './components/review/AdminAnswersDashboard';
+import { DoubtsDashboard } from './components/doubts/DoubtsDashboard';
+import { StudentRegistrations } from './components/students/StudentRegistrations';
+import { DataImportBanner, ServerLoadingScreen } from './components/admin/DataImportBanner';
+
 const AppContent = () => {
   const {
     currentRole,
     activeView,
     setActiveView,
-    isAuthenticated
+    isAuthenticated,
+    backendEnabled,
+    dataReady,
+    loadError,
+    loadServerData,
+    serverInitialized
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -37,6 +49,11 @@ const AppContent = () => {
   // If user is logged out, show the login modal / portal
   if (!isAuthenticated) {
     return <AuthModal isOpen={true} />;
+  }
+
+  // Backend mode: wait for this user's data from the server
+  if (backendEnabled && !dataReady) {
+    return <ServerLoadingScreen error={loadError} onRetry={() => loadServerData().catch(() => {})} />;
   }
 
   // Streamlined view router: Focused exclusively on Subjects -> Modules -> Videos & Q&A + Live Examinations + Results + Approvals
@@ -62,6 +79,23 @@ const AppContent = () => {
     // If Payment Approvals view (Admin only)
     if (activeView === 'subscriptions') {
       return <AdminSubscriptions />;
+    }
+
+    // Marks & Answers (student) / Student Answers (admin)
+    if (activeView === 'review' || activeView === 'answers') {
+      return currentRole === 'teacher' || currentRole === 'admin'
+        ? <AdminAnswersDashboard />
+        : <StudentAnswersDashboard />;
+    }
+
+    // Registered students (admin only)
+    if (activeView === 'registrations' && (currentRole === 'teacher' || currentRole === 'admin')) {
+      return <StudentRegistrations />;
+    }
+
+    // Doubts: students ask, admin replies
+    if (activeView === 'doubts') {
+      return <DoubtsDashboard />;
     }
 
     // Institutional Profile & Account Settings view
@@ -94,6 +128,7 @@ const AppContent = () => {
 
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto w-full max-w-full pb-24 md:pb-8">
           <div className="max-w-[1600px] w-full mx-auto">
+            {backendEnabled && currentRole === 'teacher' && !serverInitialized && <DataImportBanner />}
             {renderCurrentView()}
           </div>
         </main>

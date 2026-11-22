@@ -12,7 +12,10 @@ import {
   Megaphone,
   Bell,
   Settings,
-  LogOut
+  LogOut,
+  ClipboardCheck,
+  MessageCircleQuestion,
+  UserPlus
 } from 'lucide-react';
 
 export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) => {
@@ -27,8 +30,17 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     examinations,
     notifications,
     showToast,
-    logout
+    logout,
+    pendingRetestCount,
+    openDoubtsCount,
+    doubts,
+    retests,
+    studentAccounts
   } = useApp();
+
+  const myId = currentUser?.id || 'STU001';
+  const myNewDoubtReplies = (doubts || []).filter((d) => d.studentId === myId && !d.seenByStudent).length;
+  const myGrantedRetests = (retests || []).filter((r) => r.studentId === myId && r.status === 'granted').length;
 
   const liveExamsCount = (examinations || []).filter((e) => e.status === 'Live Now').length;
   const unreadNotifsCount = (notifications || []).filter((n) => !n.read).length;
@@ -55,6 +67,14 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badge: curriculumSubjects?.length || 0
     },
     {
+      id: 'registrations',
+      label: 'Registered Students',
+      icon: UserPlus,
+      targetView: 'registrations',
+      badge: (studentAccounts || []).length || undefined,
+      badgeColor: 'bg-blue-500 text-white'
+    },
+    {
       id: 'students',
       label: 'Student Management',
       icon: Users,
@@ -76,6 +96,22 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       icon: FileQuestion,
       targetView: 'results',
       badge: curriculumAttempts?.length || undefined
+    },
+    {
+      id: 'answers',
+      label: 'Student Answers',
+      icon: ClipboardCheck,
+      targetView: 'answers',
+      badge: pendingRetestCount > 0 ? pendingRetestCount : undefined,
+      badgeColor: 'bg-amber-500 text-white'
+    },
+    {
+      id: 'doubts',
+      label: 'Doubts',
+      icon: MessageCircleQuestion,
+      targetView: 'doubts',
+      badge: openDoubtsCount > 0 ? openDoubtsCount : undefined,
+      badgeColor: 'bg-violet-500 text-white'
     },
     {
       id: 'notifications',
@@ -113,6 +149,22 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       ).length || undefined
     },
     {
+      id: 'review',
+      label: 'Marks & Answers',
+      icon: ClipboardCheck,
+      targetView: 'review',
+      badge: myGrantedRetests > 0 ? 'Retest' : undefined,
+      badgeColor: 'bg-emerald-500 text-white'
+    },
+    {
+      id: 'doubts',
+      label: 'My Doubts',
+      icon: MessageCircleQuestion,
+      targetView: 'doubts',
+      badge: myNewDoubtReplies > 0 ? myNewDoubtReplies : undefined,
+      badgeColor: 'bg-violet-500 text-white'
+    },
+    {
       id: 'notifications',
       label: 'Notice Board',
       icon: Bell,
@@ -140,6 +192,10 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     if (item.id === 'quizzes' && activeView === 'results') return true;
     if (item.id === 'notifications' && (activeView === 'notifications' || activeView === 'announcements')) return true;
     if (item.id === 'profile' && activeView === 'profile') return true;
+    if (item.id === 'answers' && (activeView === 'answers' || activeView === 'review')) return true;
+    if (item.id === 'review' && (activeView === 'review' || activeView === 'answers')) return true;
+    if (item.id === 'doubts' && activeView === 'doubts') return true;
+    if (item.id === 'registrations' && activeView === 'registrations') return true;
     return false;
   };
 
@@ -153,7 +209,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
         {/* Brand Header */}
         <div className="p-4 sm:p-5 flex items-center justify-between border-b border-[#14424D]/60">
           <div className={`flex items-center gap-3 overflow-hidden ${collapsed ? 'justify-center w-full' : ''}`}>
-            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-[#0A242B] border border-[#20B8C7]/40 p-1 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(32,184,199,0.2)]">
+            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-[#0A242B] flex items-center justify-center shrink-0">
               <img src="/logo.jpg" alt="CohesionTech" className="w-full h-full object-contain" />
             </div>
             {!collapsed && (

@@ -30,7 +30,10 @@ import {
   LayoutGrid,
   List,
   Search,
-  GraduationCap
+  GraduationCap,
+  FolderPlus,
+  ListVideo,
+  NotebookText
 } from 'lucide-react';
 import { BulkQuestionUploadModal } from './BulkQuestionUploadModal';
 import { EditDifficultyModal } from './EditDifficultyModal';
@@ -40,33 +43,14 @@ import {
   isEmbeddableVideoUrl,
   getYouTubeThumbnail
 } from '../../utils/videoUtils';
-
-const PRESET_SUBJECT_COVERS = [
-  {
-    label: 'Malayalam / Lit',
-    url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
-  },
-  {
-    label: 'English / Grammar',
-    url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=600'
-  },
-  {
-    label: 'Mathematics',
-    url: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&q=80&w=600'
-  },
-  {
-    label: 'Civil & Eng.',
-    url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186156f?auto=format&fit=crop&q=80&w=600'
-  },
-  {
-    label: 'Physics & Science',
-    url: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&q=80&w=600'
-  },
-  {
-    label: 'Computer & Tech',
-    url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=600'
-  }
-];
+import { groupVideosBySection } from '../../utils/curriculumSections';
+import { NotesList, NotePreviewModal, AddNoteModal } from './ModuleNotes';
+import {
+  VALIDITY_PRESETS,
+  DEFAULT_VALIDITY_DAYS,
+  formatValidity,
+  isLifetime
+} from '../../utils/subscriptionUtils';
 
 export const TeacherCurriculum = () => {
   const {
@@ -76,6 +60,11 @@ export const TeacherCurriculum = () => {
     deleteSubject,
     addModule,
     deleteModule,
+    addSection,
+    updateSection,
+    deleteSection,
+    addNote,
+    deleteNote,
     addVideo,
     deleteVideo,
     addCurriculumQuestion,
@@ -91,7 +80,7 @@ export const TeacherCurriculum = () => {
   // Navigation hierarchy: null = Subjects list; object = selected subject
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
-  const [activeModuleTab, setActiveModuleTab] = useState('videos'); // 'videos' or 'questions'
+  const [activeModuleTab, setActiveModuleTab] = useState('videos'); // 'videos', 'notes' or 'questions'
   const [questionDifficultyFilter, setQuestionDifficultyFilter] = useState('All');
 
   // Modals state
@@ -117,6 +106,7 @@ export const TeacherCurriculum = () => {
     code: '',
     category: 'General',
     price: 499,
+    validityDays: DEFAULT_VALIDITY_DAYS,
     description: '',
     color: '#2563EB',
     thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -129,14 +119,25 @@ export const TeacherCurriculum = () => {
     duration: '45 mins'
   });
 
-  // New Video form state
+  // New Video form state (sectionId = which Section of the module the video belongs to)
   const [newVideo, setNewVideo] = useState({
     title: '',
     duration: '15:00',
     videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     description: '',
-    notes: ''
+    notes: '',
+    sectionId: ''
   });
+
+  // Section form state (add + rename share one modal)
+  const [sectionModalOpen, setSectionModalOpen] = useState(false);
+  const [editingSectionId, setEditingSectionId] = useState(null);
+  const [sectionForm, setSectionForm] = useState({ title: '', description: '' });
+  const [confirmDeleteSectionId, setConfirmDeleteSectionId] = useState(null);
+
+  // Notes tab state
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [viewingNote, setViewingNote] = useState(null);
 
   // New Question form state
   const [newQuestion, setNewQuestion] = useState({
@@ -164,6 +165,7 @@ export const TeacherCurriculum = () => {
       code: '',
       category: 'General',
       price: 499,
+      validityDays: DEFAULT_VALIDITY_DAYS,
       description: '',
       color: '#2563EB',
       thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -178,6 +180,8 @@ export const TeacherCurriculum = () => {
       code: sub.code || '',
       category: sub.category || 'General',
       price: sub.price !== undefined ? sub.price : 499,
+      // Older subjects have no validity set: they were lifetime access
+      validityDays: sub.validityDays !== undefined ? Number(sub.validityDays) : 0,
       description: sub.description || '',
       color: sub.color || '#2563EB',
       thumbnail: sub.thumbnail || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -223,6 +227,8 @@ export const TeacherCurriculum = () => {
       name: '',
       code: '',
       category: 'General',
+      price: 499,
+      validityDays: DEFAULT_VALIDITY_DAYS,
       description: '',
       color: '#2563EB',
       thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -257,8 +263,50 @@ export const TeacherCurriculum = () => {
       duration: '15:00',
       videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
       description: '',
-      notes: ''
+      notes: '',
+      sectionId: ''
     });
+  };
+
+  // Opens the Add Video modal with a section preselected (defaults to the last section)
+  const handleOpenAddVideo = (sectionId) => {
+    const sections = currentModule?.sections || [];
+    setNewVideo((prev) => ({
+      ...prev,
+      sectionId: sectionId || sections[sections.length - 1]?.id || ''
+    }));
+    setVideoModalOpen(true);
+  };
+
+  const handleOpenAddSection = () => {
+    const nextNumber = (currentModule?.sections?.length || 0) + 1;
+    setEditingSectionId(null);
+    setSectionForm({ title: `Section ${nextNumber}`, description: '' });
+    setSectionModalOpen(true);
+  };
+
+  const handleOpenEditSection = (section) => {
+    setEditingSectionId(section.id);
+    setSectionForm({ title: section.title || '', description: section.description || '' });
+    setSectionModalOpen(true);
+  };
+
+  const handleSaveSection = (e) => {
+    e.preventDefault();
+    if (!sectionForm.title.trim() || !currentSubject || !currentModule) {
+      showToast('Section name is required', 'warning');
+      return;
+    }
+    if (editingSectionId) {
+      updateSection(currentSubject.id, currentModule.id, editingSectionId, {
+        title: sectionForm.title.trim(),
+        description: sectionForm.description.trim()
+      });
+    } else {
+      addSection(currentSubject.id, currentModule.id, sectionForm);
+    }
+    setSectionModalOpen(false);
+    setEditingSectionId(null);
   };
 
   const handleCreateQuestion = (e) => {
@@ -299,6 +347,7 @@ export const TeacherCurriculum = () => {
   // VIEW 3: MODULE DETAIL (Manage Videos & Q&A)
   // =========================================================================
   if (currentSubject && currentModule) {
+    const { groups: sectionGroups } = groupVideosBySection(currentModule);
     const filteredQuestions =
       questionDifficultyFilter === 'All'
         ? currentModule.questions || []
@@ -308,8 +357,8 @@ export const TeacherCurriculum = () => {
 
     return (
       <div className="space-y-5 animate-in fade-in duration-200">
-        {/* Breadcrumb Navigation */}
-        <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+        {/* Breadcrumb Navigation — desktop only */}
+        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 flex-wrap">
           <button
             onClick={() => {
               setSelectedSubject(null);
@@ -345,18 +394,35 @@ export const TeacherCurriculum = () => {
           }
           actions={
             activeModuleTab === 'videos' ? (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleOpenAddSection}
+                  className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
+                >
+                  <FolderPlus className="w-4 h-4 text-[#087F8C]" />
+                  <span>Add Section</span>
+                </button>
+                <button
+                  onClick={() => handleOpenAddVideo()}
+                  className="flex-1 sm:flex-none justify-center px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Video</span>
+                </button>
+              </div>
+            ) : activeModuleTab === 'notes' ? (
               <button
-                onClick={() => setVideoModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
+                onClick={() => setNoteModalOpen(true)}
+                className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Video</span>
+                <span>Add Notes</span>
               </button>
             ) : (
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => setBulkModalOpen(true)}
-                  className="px-3 sm:px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
+                  className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
                   title="Bulk upload questions from A4 format"
                 >
                   <FileText className="w-4 h-4 text-emerald-500" />
@@ -365,7 +431,7 @@ export const TeacherCurriculum = () => {
                 </button>
                 <button
                   onClick={() => setQuestionModalOpen(true)}
-                  className="px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
+                  className="flex-1 sm:flex-none justify-center px-3.5 sm:px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Question</span>
@@ -375,165 +441,321 @@ export const TeacherCurriculum = () => {
           }
         />
 
-        {/* Tab Switcher: Videos vs Questions */}
-        <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-1">
+        {/* Tab Switcher: Videos / Notes / Questions */}
+        <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-[#E8F3F4] dark:bg-slate-800/80 border border-[#087F8C]/15 dark:border-slate-700/60 text-[11px] sm:text-xs font-bold">
           <button
+            type="button"
             onClick={() => setActiveModuleTab('videos')}
-            className={`flex items-center gap-2 pb-3 px-3 text-sm font-bold border-b-2 transition-all ${
+            className={`min-h-[2.5rem] px-2 sm:px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
               activeModuleTab === 'videos'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                ? 'bg-[#087F8C] text-white shadow-md shadow-[#087F8C]/25'
+                : 'text-slate-600 dark:text-slate-400 hover:text-[#07242B] hover:bg-white/70 dark:hover:bg-slate-700/50'
             }`}
           >
-            <Video className="w-4 h-4" />
-            <span>Lesson Videos ({currentModule.videos?.length || 0})</span>
+            <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="sm:hidden truncate">Videos ({currentModule.videos?.length || 0})</span>
+            <span className="hidden sm:inline truncate">Lesson Videos ({currentModule.videos?.length || 0})</span>
           </button>
           <button
-            onClick={() => setActiveModuleTab('questions')}
-            className={`flex items-center gap-2 pb-3 px-3 text-sm font-bold border-b-2 transition-all ${
-              activeModuleTab === 'questions'
-                ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+            type="button"
+            onClick={() => setActiveModuleTab('notes')}
+            className={`min-h-[2.5rem] px-2 sm:px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeModuleTab === 'notes'
+                ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25'
+                : 'text-slate-600 dark:text-slate-400 hover:text-[#07242B] hover:bg-white/70 dark:hover:bg-slate-700/50'
             }`}
           >
-            <HelpCircle className="w-4 h-4" />
-            <span>Questions & Answers ({currentModule.questions?.length || 0})</span>
+            <NotebookText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="sm:hidden truncate">Notes ({currentModule.notes?.length || 0})</span>
+            <span className="hidden sm:inline truncate">Study Notes ({currentModule.notes?.length || 0})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveModuleTab('questions')}
+            className={`min-h-[2.5rem] px-2 sm:px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeModuleTab === 'questions'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
+                : 'text-slate-600 dark:text-slate-400 hover:text-[#07242B] hover:bg-white/70 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="sm:hidden truncate">Q&A ({currentModule.questions?.length || 0})</span>
+            <span className="hidden sm:inline truncate">Questions & Answers ({currentModule.questions?.length || 0})</span>
           </button>
         </div>
 
-        {/* TAB 1: VIDEOS LIST */}
+        {/* TAB 1: VIDEOS GROUPED BY SECTION */}
         {activeModuleTab === 'videos' && (
           <div className="space-y-4">
-            {(currentModule.videos || []).length === 0 ? (
-              <div className="p-8 sm:p-10 text-center bg-white dark:bg-surface-darkCard rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
-                <Video className="w-10 h-10 text-slate-300 mx-auto" />
-                <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm sm:text-base">
-                  No Videos Added Yet
-                </h3>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  Add video lectures or embed links so students can watch module lessons before attempting the quiz.
-                </p>
-                <button
-                  onClick={() => setVideoModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs border border-[#20B8C7]/30"
+            {sectionGroups.map(({ section, sectionIndex, videos: sectionVideos }) => {
+              const isConfirmingDelete = confirmDeleteSectionId === section.id;
+              return (
+                <section
+                  key={section.id}
+                  className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden"
                 >
-                  <Plus className="w-4 h-4" /> Add First Video
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-                {currentModule.videos.map((vid, idx) => {
-                  const ytThumb = getYouTubeThumbnail(vid.videoUrl);
-                  return (
-                    <div
-                      key={vid.id || idx}
-                      className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 shadow-2xs card-hover-lift hover:border-[#20B8C7]/50 transition-all flex flex-col justify-between group"
-                    >
-                      <div>
-                        {/* Video Thumbnail Cover with Play Overlay */}
-                        <div
-                          onClick={() => setPlayingVideo(vid)}
-                          className="relative aspect-video rounded-xl overflow-hidden bg-slate-900 mb-2.5 border border-slate-200/80 dark:border-slate-800 cursor-pointer group/thumb shadow-inner"
-                        >
-                          {ytThumb ? (
-                            <img
-                              src={ytThumb}
-                              alt={vid.title}
-                              className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform duration-300"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-white bg-gradient-to-br from-[#092227] via-[#0A262C] to-[#07191E] p-3 text-center">
-                              <Video className="w-8 h-8 text-[#20B8C7]/80 mb-1" />
-                              <span className="text-[11px] font-bold text-slate-200 truncate max-w-full">
-                                {vid.title}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Dark Glass Hover Overlay + Centered Play Button */}
-                          <div className="absolute inset-0 bg-slate-950/35 group-hover/thumb:bg-slate-950/55 transition-colors flex items-center justify-center">
-                            <div className="w-10 h-10 rounded-full bg-white/95 dark:bg-[#0C4E5B] text-[#0C4E5B] dark:text-cyan-300 flex items-center justify-center shadow-lg group-hover/thumb:scale-110 transition-transform border border-white/20">
-                              <Play className="w-4 h-4 fill-current ml-0.5" />
-                            </div>
-                          </div>
-
-                          {/* Top-Left: Lesson Tag */}
-                          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-slate-950/80 backdrop-blur-xs text-[10px] font-bold text-white tracking-wide border border-white/10 shadow-xs">
-                            Lesson {idx + 1}
-                          </span>
-
-                          {/* Bottom-Right: Duration Tag */}
-                          <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-slate-950/80 backdrop-blur-xs text-[10px] font-mono font-semibold text-white border border-white/10 flex items-center gap-1 shadow-xs">
-                            <Clock className="w-2.5 h-2.5 text-cyan-400" />
-                            <span>{vid.duration || '15:00'}</span>
-                          </span>
-                        </div>
-
-                        {/* Title & Description */}
-                        <h4
-                          onClick={() => setPlayingVideo(vid)}
-                          className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug truncate cursor-pointer group-hover:text-[#0C4E5B] dark:group-hover:text-cyan-400 transition-colors"
-                          title={vid.title}
-                        >
-                          {vid.title}
-                        </h4>
-                        {vid.description && (
-                          <p
-                            className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 leading-snug"
-                            title={vid.description}
-                          >
-                            {vid.description}
-                          </p>
-                        )}
-                        {vid.notes && (
-                          <div
-                            className="mt-2 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 text-[10px] text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 line-clamp-1"
-                            title={vid.notes}
-                          >
-                            <strong>Notes:</strong> {vid.notes}
-                          </div>
-                        )}
+                  {/* Section Header */}
+                  <div className="px-3 sm:px-4 py-3 bg-[#F4FAFB] dark:bg-slate-900/60 border-b border-slate-200/70 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-[#087F8C] text-white flex flex-col items-center justify-center shrink-0 shadow-xs leading-none">
+                        <span className="text-[8px] font-bold uppercase tracking-wider opacity-80">Sec</span>
+                        <span className="text-sm font-black">{sectionIndex + 1}</span>
                       </div>
-
-                      {/* Action Row */}
-                      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-1.5">
-                        <button
-                          onClick={() => setPlayingVideo(vid)}
-                          className="px-2.5 py-1 rounded-lg bg-[#E6F4F6] hover:bg-[#d8eef1] dark:bg-[#0E353E] dark:hover:bg-[#12424d] text-[#0C4E5B] dark:text-cyan-300 text-[11px] font-bold flex items-center gap-1 transition-colors active:scale-95"
+                      <div className="min-w-0">
+                        <h3
+                          className="font-extrabold text-sm text-slate-900 dark:text-white truncate"
+                          title={section.title}
                         >
-                          <Play className="w-3 h-3 fill-current" />
-                          <span>Preview</span>
-                        </button>
-
-                        <button
-                          onClick={() => deleteVideo(currentSubject.id, currentModule.id, vid.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                          title="Delete Video"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          {section.title}
+                        </h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                          {sectionVideos.length} {sectionVideos.length === 1 ? 'video' : 'videos'}
+                          {section.description ? ` • ${section.description}` : ''}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+
+                    {isConfirmingDelete ? (
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto animate-in fade-in duration-150">
+                        <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">
+                          Delete section{sectionVideos.length ? ` & ${sectionVideos.length} video${sectionVideos.length === 1 ? '' : 's'}` : ''}?
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteSectionId(null)}
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteSection(currentSubject.id, currentModule.id, section.id);
+                            setConfirmDeleteSectionId(null);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAddVideo(section.id)}
+                          className="px-2.5 py-1.5 rounded-lg bg-[#E6F4F6] hover:bg-[#d8eef1] dark:bg-[#0E353E] dark:hover:bg-[#12424d] text-[#0C4E5B] dark:text-cyan-300 text-[11px] font-bold flex items-center gap-1 transition-colors active:scale-95"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Video</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditSection(section)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-[#0C4E5B] hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                          title="Rename Section"
+                          aria-label={`Rename ${section.title}`}
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        {(sectionGroups.length > 1 || sectionVideos.length > 0) && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              sectionVideos.length === 0
+                                ? deleteSection(currentSubject.id, currentModule.id, section.id)
+                                : setConfirmDeleteSectionId(section.id)
+                            }
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                            title="Delete Section"
+                            aria-label={`Delete ${section.title}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section Videos */}
+                  <div className="p-3 sm:p-3.5">
+                    {sectionVideos.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddVideo(section.id)}
+                        className="w-full py-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:text-[#0C4E5B] hover:border-[#20B8C7]/60 hover:bg-[#F4FAFB] dark:hover:bg-slate-900/40 transition-colors flex flex-col items-center gap-1.5"
+                      >
+                        <ListVideo className="w-6 h-6" />
+                        <span className="text-xs font-bold">No videos in this section yet</span>
+                        <span className="text-[11px]">Tap to add the first video</span>
+                      </button>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-3.5">
+                        {sectionVideos.map((vid, idx) => {
+                          const ytThumb = getYouTubeThumbnail(vid.videoUrl);
+                          return (
+                            <div
+                              key={vid.id || idx}
+                              className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 shadow-2xs card-hover-lift hover:border-[#20B8C7]/50 transition-all flex flex-col justify-between group"
+                            >
+                              <div>
+                                {/* Video Thumbnail Cover with Play Overlay */}
+                                <div
+                                  onClick={() => setPlayingVideo(vid)}
+                                  className="relative aspect-video rounded-xl overflow-hidden bg-slate-900 mb-2.5 border border-slate-200/80 dark:border-slate-800 cursor-pointer group/thumb shadow-inner"
+                                >
+                                  {ytThumb ? (
+                                    <img
+                                      src={ytThumb}
+                                      alt={vid.title}
+                                      className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform duration-300"
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-white bg-gradient-to-br from-[#092227] via-[#0A262C] to-[#07191E] p-3 text-center">
+                                      <Video className="w-8 h-8 text-[#20B8C7]/80 mb-1" />
+                                      <span className="text-[11px] font-bold text-slate-200 truncate max-w-full">
+                                        {vid.title}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Dark Glass Hover Overlay + Centered Play Button */}
+                                  <div className="absolute inset-0 bg-slate-950/35 group-hover/thumb:bg-slate-950/55 transition-colors flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-full bg-white/95 dark:bg-[#0C4E5B] text-[#0C4E5B] dark:text-cyan-300 flex items-center justify-center shadow-lg group-hover/thumb:scale-110 transition-transform border border-white/20">
+                                      <Play className="w-4 h-4 fill-current ml-0.5" />
+                                    </div>
+                                  </div>
+
+                                  {/* Top-Left: Lesson Tag (numbered within the section) */}
+                                  <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-slate-950/80 backdrop-blur-xs text-[10px] font-bold text-white tracking-wide border border-white/10 shadow-xs">
+                                    Lesson {idx + 1}
+                                  </span>
+
+                                  {/* Bottom-Right: Duration Tag */}
+                                  <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-slate-950/80 backdrop-blur-xs text-[10px] font-mono font-semibold text-white border border-white/10 flex items-center gap-1 shadow-xs">
+                                    <Clock className="w-2.5 h-2.5 text-cyan-400" />
+                                    <span>{vid.duration || '15:00'}</span>
+                                  </span>
+                                </div>
+
+                                {/* Title & Description */}
+                                <h4
+                                  onClick={() => setPlayingVideo(vid)}
+                                  className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug truncate cursor-pointer group-hover:text-[#0C4E5B] dark:group-hover:text-cyan-400 transition-colors"
+                                  title={vid.title}
+                                >
+                                  {vid.title}
+                                </h4>
+                                {vid.description && (
+                                  <p
+                                    className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 leading-snug"
+                                    title={vid.description}
+                                  >
+                                    {vid.description}
+                                  </p>
+                                )}
+                                {vid.notes && (
+                                  <div
+                                    className="mt-2 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 text-[10px] text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 line-clamp-1"
+                                    title={vid.notes}
+                                  >
+                                    <strong>Notes:</strong> {vid.notes}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Action Row */}
+                              <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-1.5">
+                                <button
+                                  onClick={() => setPlayingVideo(vid)}
+                                  className="px-2.5 py-1 rounded-lg bg-[#E6F4F6] hover:bg-[#d8eef1] dark:bg-[#0E353E] dark:hover:bg-[#12424d] text-[#0C4E5B] dark:text-cyan-300 text-[11px] font-bold flex items-center gap-1 transition-colors active:scale-95"
+                                >
+                                  <Play className="w-3 h-3 fill-current" />
+                                  <span>Preview</span>
+                                </button>
+
+                                <button
+                                  onClick={() => deleteVideo(currentSubject.id, currentModule.id, vid.id)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                  title="Delete Video"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+
+            {/* Add next section */}
+            <button
+              type="button"
+              onClick={handleOpenAddSection}
+              className="w-full py-3 rounded-2xl border-2 border-dashed border-[#087F8C]/25 dark:border-slate-700 text-[#0C4E5B] dark:text-cyan-300 hover:bg-[#F4FAFB] dark:hover:bg-slate-900/40 hover:border-[#087F8C]/50 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <FolderPlus className="w-4 h-4" />
+              <span>Add Section {sectionGroups.length + 1}</span>
+            </button>
           </div>
         )}
+
+        {/* TAB: STUDY NOTES */}
+        {activeModuleTab === 'notes' && (
+          <div className="space-y-4">
+            <NotesList
+              notes={currentModule.notes || []}
+              onOpen={setViewingNote}
+              onDelete={(note) => deleteNote(currentSubject.id, currentModule.id, note.id)}
+              emptyState={
+                <div className="p-8 sm:p-10 text-center bg-white dark:bg-surface-darkCard rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+                  <NotebookText className="w-10 h-10 text-slate-300 mx-auto" />
+                  <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm sm:text-base">
+                    No Notes Shared Yet
+                  </h3>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Upload your own PDFs, slides or images, share a Drive link, or write notes for students to study.
+                  </p>
+                  <button
+                    onClick={() => setNoteModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs border border-[#20B8C7]/30"
+                  >
+                    <Plus className="w-4 h-4" /> Add First Notes
+                  </button>
+                </div>
+              }
+            />
+          </div>
+        )}
+
+        {noteModalOpen && (
+          <AddNoteModal
+            moduleTitle={currentModule.title}
+            showToast={showToast}
+            onClose={() => setNoteModalOpen(false)}
+            onSave={(noteData, file) => addNote(currentSubject.id, currentModule.id, noteData, file)}
+          />
+        )}
+
+        {viewingNote && <NotePreviewModal note={viewingNote} onClose={() => setViewingNote(null)} />}
 
         {/* TAB 2: QUESTIONS & ANSWERS LIST */}
         {activeModuleTab === 'questions' && (
           <div className="space-y-4">
             {/* Difficulty Filter Tabs & Customization Button */}
-            <div className="flex items-center justify-between flex-wrap gap-2.5">
-              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800 text-xs font-bold shadow-2xs">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800 text-[11px] sm:text-xs font-bold shadow-2xs">
                 <button
+                  type="button"
                   onClick={() => setQuestionDifficultyFilter('All')}
-                  className={`px-3 py-1.5 rounded-xl transition-all ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 ${
                     questionDifficultyFilter === 'All'
                       ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -551,7 +773,7 @@ export const TeacherCurriculum = () => {
                     return (
                       <div
                         key={lvl.id}
-                        className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white dark:bg-slate-800 border border-blue-400 shadow-xs"
+                        className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white dark:bg-slate-800 border border-blue-400 shadow-xs shrink-0"
                       >
                         <span>{lvl.dot}</span>
                         <input
@@ -563,7 +785,7 @@ export const TeacherCurriculum = () => {
                             if (e.key === 'Enter') handleSaveInlineDifficulty(lvl.id);
                             if (e.key === 'Escape') setEditingDifficultyId(null);
                           }}
-                          className="w-20 px-1 py-0.5 text-xs font-bold bg-transparent text-slate-900 dark:text-white focus:outline-none"
+                          className="w-16 sm:w-20 px-1 py-0.5 text-xs font-bold bg-transparent text-slate-900 dark:text-white focus:outline-none"
                         />
                         <button
                           type="button"
@@ -588,21 +810,22 @@ export const TeacherCurriculum = () => {
                   return (
                     <div
                       key={lvl.id}
-                      className={`relative flex items-center rounded-xl transition-all group/chip ${
+                      className={`relative flex items-center rounded-xl transition-all group/chip shrink-0 ${
                         isActive
                           ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
                           : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                       }`}
                     >
                       <button
+                        type="button"
                         onClick={() => setQuestionDifficultyFilter(lvl.label)}
-                        className="px-3 py-1.5 flex items-center gap-1.5"
+                        className="px-2 sm:px-3 py-1.5 flex items-center gap-1 sm:gap-1.5"
                       >
                         <span>{lvl.dot}</span>
                         <span>{lvl.label}</span>
                       </button>
 
-                      {/* Quick Edit Pencil Button */}
+                      {/* Quick Edit Pencil — desktop only; mobile uses Customize */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -610,7 +833,7 @@ export const TeacherCurriculum = () => {
                           setEditingDifficultyId(lvl.id);
                           setInlineDifficultyText(lvl.label);
                         }}
-                        className="pr-2 pl-0.5 py-1 text-slate-400 hover:text-amber-500 transition-colors opacity-70 hover:opacity-100"
+                        className="hidden sm:inline-flex pr-2 pl-0.5 py-1 text-slate-400 hover:text-amber-500 transition-colors opacity-70 hover:opacity-100"
                         title={`Click to edit "${lvl.label}" label`}
                       >
                         <Edit3 className="w-3 h-3" />
@@ -618,25 +841,21 @@ export const TeacherCurriculum = () => {
                     </div>
                   );
                 })}
+              </div>
 
-                <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
-
-                {/* Edit Mode Labels Preset Trigger */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-slate-400">
+                  Showing <strong>{filteredQuestions.length}</strong> questions
+                </span>
                 <button
                   type="button"
                   onClick={() => setDifficultyModalOpen(true)}
-                  className="px-2.5 py-1.5 rounded-xl text-amber-700 dark:text-amber-300 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 text-[11px] font-bold flex items-center gap-1 transition-colors"
+                  className="shrink-0 px-2.5 py-1.5 rounded-xl text-amber-700 dark:text-amber-300 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 text-[11px] font-bold inline-flex items-center gap-1 transition-colors border border-amber-200/70 dark:border-amber-800/50"
                   title="Customize all mode labels (Easy, Medium, Tough)"
                 >
                   <Sliders className="w-3 h-3 text-amber-500" />
                   <span>Customize</span>
                 </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">
-                  Showing <strong>{filteredQuestions.length}</strong> questions
-                </span>
               </div>
             </div>
 
@@ -668,7 +887,7 @@ export const TeacherCurriculum = () => {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
                 {filteredQuestions.map((q, idx) => {
                   const diffMeta = getDifficultyMeta(q.difficulty);
                   const difficultyColor =
@@ -836,8 +1055,8 @@ export const TeacherCurriculum = () => {
         {/* MODAL: ADD VIDEO                                                  */}
         {/* ================================================================= */}
         {videoModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs">
-            <div className="w-full max-w-lg bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs overflow-y-auto">
+            <div className="w-full max-w-lg bg-white dark:bg-surface-darkCard rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 my-auto max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center">
@@ -861,6 +1080,52 @@ export const TeacherCurriculum = () => {
               </div>
 
               <form onSubmit={handleCreateVideo} className="space-y-3.5">
+                {/* Section picker: which section of this module the video goes into */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Section *
+                  </label>
+                  <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Section">
+                    {(currentModule.sections || []).map((sec, sIdx) => {
+                      const isSelected = newVideo.sectionId === sec.id;
+                      return (
+                        <button
+                          key={sec.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          onClick={() => setNewVideo({ ...newVideo, sectionId: sec.id })}
+                          className={`max-w-full px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                            isSelected
+                              ? 'bg-[#087F8C] border-[#087F8C] text-white shadow-xs'
+                              : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-[#20B8C7]/60'
+                          }`}
+                        >
+                          <span
+                            className={`w-4 h-4 rounded-md text-[10px] flex items-center justify-center shrink-0 ${
+                              isSelected ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'
+                            }`}
+                          >
+                            {sIdx + 1}
+                          </span>
+                          <span className="truncate">{sec.title}</span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVideoModalOpen(false);
+                        handleOpenAddSection();
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 hover:text-[#0C4E5B] hover:border-[#20B8C7]/60 flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>New Section</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Video Lesson Title *
@@ -974,6 +1239,82 @@ export const TeacherCurriculum = () => {
                     className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md shadow-blue-500/20"
                   >
                     Save Video
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* MODAL: ADD / RENAME SECTION                                       */}
+        {/* ================================================================= */}
+        {sectionModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs">
+            <div className="w-full max-w-md bg-white dark:bg-surface-darkCard rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#E6F4F6] dark:bg-[#0E353E] text-[#087F8C] dark:text-cyan-300 flex items-center justify-center shrink-0">
+                    <FolderPlus className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                      {editingSectionId ? 'Rename Section' : 'Add Section'}
+                    </h3>
+                    <p className="text-xs text-slate-400 truncate">Module: {currentModule.title}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSectionModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveSection} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Section Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    placeholder="e.g. Section 1 or Introduction"
+                    value={sectionForm.title}
+                    onChange={(e) => setSectionForm({ ...sectionForm, title: e.target.value })}
+                    onFocus={(e) => e.target.select()}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Short Description
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="What does this section cover? (optional)"
+                    value={sectionForm.description}
+                    onChange={(e) => setSectionForm({ ...sectionForm, description: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSectionModalOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-[#087F8C] hover:bg-[#0C4E5B] text-xs font-bold text-white shadow-md shadow-[#087F8C]/20"
+                  >
+                    {editingSectionId ? 'Save Changes' : 'Create Section'}
                   </button>
                 </div>
               </form>
@@ -1182,137 +1523,151 @@ export const TeacherCurriculum = () => {
   // VIEW 2: SUBJECT DETAIL (Manage Modules)
   // =========================================================================
   if (currentSubject) {
+    const moduleCount = currentSubject.modules?.length || 0;
+    const subjectSubtitle = [
+      currentSubject.code,
+      currentSubject.category || 'General',
+      currentSubject.price !== undefined
+        ? Number(currentSubject.price) > 0
+          ? `₹${currentSubject.price} / ${formatValidity(currentSubject.validityDays)}`
+          : 'Free'
+        : null
+    ]
+      .filter(Boolean)
+      .join(' • ');
+
     return (
-      <div className="space-y-6 animate-in fade-in duration-200">
-        {/* Breadcrumb Navigation */}
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+      <div className="relative space-y-3 sm:space-y-5 animate-in fade-in duration-200 pb-28 sm:pb-16">
+        {/* Breadcrumb */}
+        <nav
+          aria-label="Breadcrumb"
+          className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500 min-w-0 px-0.5"
+        >
           <button
+            type="button"
             onClick={() => setSelectedSubject(null)}
-            className="hover:text-blue-600 font-semibold"
+            className="hover:text-[#087F8C] font-semibold shrink-0 py-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             Subjects
           </button>
-          <ChevronRight className="w-3.5 h-3.5" />
+          <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-400" aria-hidden="true" />
           <span className="font-bold text-slate-900 dark:text-white truncate">
             {currentSubject.name}
           </span>
-        </div>
+        </nav>
 
-        {/* Subject Header: App Header Style */}
+        {/* Subject Header — back + title only; Add lives with Modules section */}
         <PageHeader
           onBack={() => setSelectedSubject(null)}
           backLabel="Back to All Subjects"
           title={currentSubject.name}
-          subtitle={`${currentSubject.code || 'CODE'} • ${currentSubject.category} • ${currentSubject.description?.slice(0, 75)}...`}
+          subtitle={subjectSubtitle}
           badge={
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20">
               {currentSubject.code || 'CODE'}
             </span>
           }
-          actions={
-            <button
-              onClick={() => setModuleModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all w-full sm:w-auto justify-center"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Module / Lesson</span>
-            </button>
-          }
         />
 
-        {/* Modules List */}
-        <div>
-          <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white mb-3 flex items-center justify-between">
-            <span>Modules in this Subject ({currentSubject.modules?.length || 0})</span>
-            <span className="text-xs font-normal text-slate-400">Click a module to manage its videos and questions</span>
-          </h3>
-
-          {(currentSubject.modules || []).length === 0 ? (
-            <div className="p-8 sm:p-10 text-center bg-white dark:bg-surface-darkCard rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
-              <Layers className="w-10 h-10 text-slate-300 mx-auto" />
-              <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm sm:text-base">
-                No Modules Added Yet
-              </h4>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Create your first module (e.g. Module 1: Basics) to start adding video lectures and Q&A assessments.
+        {/* Modules section */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
+                Modules ({moduleCount})
+              </h3>
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                Tap a module to manage videos and questions
               </p>
-              <button
-                onClick={() => setModuleModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs border border-[#20B8C7]/30"
-              >
-                <Plus className="w-4 h-4" /> Add First Module
-              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModuleModalOpen(true)}
+              className="hidden sm:inline-flex shrink-0 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm items-center gap-1.5 shadow-md shadow-[#087F8C]/25 border border-[#20B8C7]/40 active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Module</span>
+            </button>
+          </div>
+
+          {moduleCount === 0 ? (
+            <div className="px-4 py-8 sm:px-6 sm:py-10 text-center bg-white dark:bg-surface-darkCard rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 shadow-subtle">
+              <div className="mx-auto max-w-sm flex flex-col items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-[#E8F3F4] dark:bg-slate-800 text-[#087F8C] dark:text-teal-300 flex items-center justify-center">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm sm:text-base leading-tight">
+                    No modules yet
+                  </h4>
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Add Module 1 to start attaching videos and quiz questions.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModuleModalOpen(true)}
+                  className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs shadow-md shadow-[#087F8C]/20 border border-[#20B8C7]/40 active:scale-95 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Module</span>
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {currentSubject.modules.map((mod, idx) => {
                 const totalVideos = mod.videos?.length || 0;
                 const totalQuestions = mod.questions?.length || 0;
-                const easyCount = (mod.questions || []).filter((q) => q.difficulty === 'Easy').length;
-                const medCount = (mod.questions || []).filter((q) => q.difficulty === 'Medium').length;
-                const hardCount = (mod.questions || []).filter((q) => q.difficulty === 'Hard').length;
+                const totalSections = mod.sections?.length || 0;
+                const totalNotes = mod.notes?.length || 0;
 
                 return (
                   <div
                     key={mod.id || idx}
-                    className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 shadow-2xs card-hover-lift hover:border-[#20B8C7]/50 transition-all flex flex-col justify-between group"
+                    className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-3.5 shadow-subtle hover:border-[#087F8C]/40 transition-all flex flex-col justify-between group"
                   >
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="px-2 py-0.5 rounded-md bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 border border-[#20B8C7]/20 text-[10px] font-extrabold tracking-wide">
-                          Module {idx + 1}
+                          Mod {idx + 1}
+                          <span className="font-semibold opacity-70"> · {totalSections} {totalSections === 1 ? 'section' : 'sections'}</span>
                         </span>
-                        <div className="flex items-center gap-1 text-slate-400 text-[11px] font-mono">
-                          <Clock className="w-3 h-3 text-slate-400" />
+                        <div className="flex items-center gap-1 text-slate-400 text-[10px] font-mono shrink-0">
+                          <Clock className="w-3 h-3" />
                           <span>{mod.duration || '45 mins'}</span>
                         </div>
                       </div>
 
-                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-[#0C4E5B] dark:group-hover:text-cyan-400 transition-colors" title={mod.title}>
+                      <h4
+                        className="font-extrabold text-sm text-slate-900 dark:text-white line-clamp-2 leading-snug group-hover:text-[#0C4E5B] dark:group-hover:text-cyan-400 transition-colors"
+                        title={mod.title}
+                      >
                         {mod.title}
                       </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 leading-snug" title={mod.description}>
-                        {mod.description || 'No description provided.'}
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-snug">
+                        {mod.description || 'No description'}
                       </p>
 
-                      {/* Content Counts */}
-                      <div className="grid grid-cols-2 gap-1.5 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
-                        <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 border border-blue-100 dark:border-blue-900/40">
-                          <Video className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                          <span className="font-bold truncate">{totalVideos} Videos</span>
+                      <div className="grid grid-cols-3 gap-1.5 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                        <div className="flex items-center justify-center gap-1 p-1.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 border border-blue-100 dark:border-blue-900/40">
+                          <Video className="w-3 h-3 text-blue-600 shrink-0" />
+                          <span className="font-bold truncate">{totalVideos} videos</span>
                         </div>
-                        <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-100 dark:border-emerald-900/40">
-                          <HelpCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="font-bold truncate">{totalQuestions} Questions</span>
+                        <div className="flex items-center justify-center gap-1 p-1.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-100 dark:border-amber-900/40">
+                          <NotebookText className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span className="font-bold truncate">{totalNotes} notes</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-1 p-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-100 dark:border-emerald-900/40">
+                          <HelpCircle className="w-3 h-3 text-emerald-600 shrink-0" />
+                          <span className="font-bold">{totalQuestions} Qs</span>
                         </div>
                       </div>
-
-                      {/* Difficulty Badges */}
-                      {totalQuestions > 0 && (
-                        <div className="flex items-center gap-1 mt-2 text-[9px] font-bold text-slate-500 flex-wrap">
-                          <span className="text-slate-400 font-semibold">Modes:</span>
-                          {difficultyLevels.map((lvl) => {
-                            const count = (mod.questions || []).filter((q) =>
-                              matchesDifficulty(q.difficulty, lvl.id)
-                            ).length;
-                            const badgeColor =
-                              lvl.color === 'emerald'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
-                                : lvl.color === 'red'
-                                ? 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60'
-                                : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60';
-                            return (
-                              <span key={lvl.id} className={`px-1.5 py-0.5 rounded font-semibold ${badgeColor}`}>
-                                {count} {lvl.label}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
 
-                    <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
                       <button
+                        type="button"
                         onClick={() => deleteModule(currentSubject.id, mod.id)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors shrink-0"
                         title="Delete Module"
@@ -1321,13 +1676,14 @@ export const TeacherCurriculum = () => {
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => {
                           setSelectedModule(mod);
                           setActiveModuleTab('videos');
                         }}
-                        className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center gap-1 shadow-xs border border-[#20B8C7]/30 active:scale-95 transition-all truncate"
+                        className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white font-bold text-xs inline-flex items-center gap-1 shadow-xs border border-[#20B8C7]/30 active:scale-95 transition-all"
                       >
-                        <span>Manage Videos & Q&A</span>
+                        <span>Manage</span>
                         <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                       </button>
                     </div>
@@ -1336,27 +1692,50 @@ export const TeacherCurriculum = () => {
               })}
             </div>
           )}
-        </div>
+        </section>
 
-        {/* MODAL: ADD MODULE */}
+        {/* FAB — Add Module (mobile only; tablet/desktop use inline actions) */}
+        {!moduleModalOpen && (
+          <button
+            type="button"
+            onClick={() => setModuleModalOpen(true)}
+            className="sm:hidden fixed z-40 bottom-20 right-4 inline-flex items-center gap-2 pl-3.5 pr-4 py-3 rounded-full bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs shadow-[0_8px_28px_rgba(8,127,140,0.45)] border border-[#20B8C7]/40 active:scale-95 transition-all"
+            aria-label="Add Module"
+          >
+            <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
+              <Plus className="w-4 h-4" />
+            </span>
+            <span>Add Module</span>
+          </button>
+        )}
+
+        {/* ADD MODULE — full page on mobile, modal on desktop */}
         {moduleModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs">
-            <div className="w-full max-w-md bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
-              <div className="flex items-center justify-between mb-4">
+          <div className="fixed inset-0 z-[60] bg-surface-light dark:bg-surface-darkBg md:bg-navy-950/70 md:backdrop-blur-xs md:flex md:items-center md:justify-center md:p-4 overflow-y-auto animate-in fade-in duration-200">
+            <div className="min-h-full md:min-h-0 w-full md:max-w-md md:my-auto bg-surface-light dark:bg-surface-darkBg md:bg-white md:dark:bg-surface-darkCard md:rounded-3xl md:shadow-2xl md:border md:border-slate-200 md:dark:border-slate-800">
+              <div className="md:hidden sticky top-0 z-10 p-3 bg-surface-light/95 dark:bg-surface-darkBg/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
+                <PageHeader
+                  onBack={() => setModuleModalOpen(false)}
+                  backLabel="Back"
+                  title="Add Module"
+                  subtitle={currentSubject.name}
+                />
+              </div>
+
+              <div className="hidden md:flex items-center justify-between p-6 pb-0 mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-[#087F8C] flex items-center justify-center">
                     <Layers className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="font-bold text-base text-slate-900 dark:text-white">
                       Add New Module
                     </h3>
-                    <p className="text-xs text-slate-400">
-                      Subject: {currentSubject.name}
-                    </p>
+                    <p className="text-xs text-slate-400">Subject: {currentSubject.name}</p>
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setModuleModalOpen(false)}
                   className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
                 >
@@ -1364,58 +1743,60 @@ export const TeacherCurriculum = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateModule} className="space-y-3.5">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Module Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Module 1: Grammar & Sandhi"
-                    value={newModule.title}
-                    onChange={(e) => setNewModule({ ...newModule, title: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
+              <form onSubmit={handleCreateModule} className="p-3 md:p-6 pt-3 md:pt-0 space-y-3.5 pb-28 md:pb-6">
+                <div className="bg-white dark:bg-surface-darkCard md:bg-transparent rounded-2xl md:rounded-none border border-slate-200/80 dark:border-slate-800 md:border-0 p-3.5 md:p-0 space-y-3.5 shadow-subtle md:shadow-none">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Module Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Module 1: Grammar & Sandhi"
+                      value={newModule.title}
+                      onChange={(e) => setNewModule({ ...newModule, title: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Duration
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 45 mins"
+                      value={newModule.duration}
+                      onChange={(e) => setNewModule({ ...newModule, duration: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Module Description
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Briefly describe what this module covers"
+                      value={newModule.description}
+                      onChange={(e) => setNewModule({ ...newModule, description: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Duration
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 45 mins"
-                    value={newModule.duration}
-                    onChange={(e) => setNewModule({ ...newModule, duration: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Module Description
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Briefly describe what this module covers"
-                    value={newModule.description}
-                    onChange={(e) => setNewModule({ ...newModule, description: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2">
+                <div className="fixed md:static bottom-0 left-0 right-0 z-10 p-3 md:p-0 bg-white/95 dark:bg-surface-darkCard/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border-t border-slate-200/80 dark:border-slate-800 md:border-0 flex gap-2">
                   <button
                     type="button"
                     onClick={() => setModuleModalOpen(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                    className="flex-1 min-h-[2.75rem] py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md shadow-blue-500/20"
+                    className="flex-1 min-h-[2.75rem] py-2.5 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-xs font-bold text-white shadow-md shadow-[#087F8C]/25"
                   >
                     Create Module
                   </button>
@@ -1431,20 +1812,6 @@ export const TeacherCurriculum = () => {
   // =========================================================================
   // VIEW 1: SUBJECTS DIRECTORY (Root Studio)
   // =========================================================================
-  const grandTotalSubjects = curriculumSubjects.length;
-  const grandTotalModules = curriculumSubjects.reduce(
-    (acc, s) => acc + (s.modules?.length || 0),
-    0
-  );
-  const grandTotalVideos = curriculumSubjects.reduce(
-    (acc, s) => acc + (s.modules || []).reduce((mAcc, m) => mAcc + (m.videos?.length || 0), 0),
-    0
-  );
-  const grandTotalQuestions = curriculumSubjects.reduce(
-    (acc, s) => acc + (s.modules || []).reduce((mAcc, m) => mAcc + (m.questions?.length || 0), 0),
-    0
-  );
-
   // Filter subjects based on tab and search
   const filteredSubjectsList = (curriculumSubjects || []).filter((sub) => {
     if (subjectTab === 'draft') return false;
@@ -1459,220 +1826,76 @@ export const TeacherCurriculum = () => {
   });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-        <Home className="w-3.5 h-3.5 text-slate-400" />
+    <div className="relative space-y-4 sm:space-y-6 animate-in fade-in duration-200 pb-28 sm:pb-24">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500 font-medium">
+        <Home className="w-3.5 h-3.5 text-slate-400 shrink-0" />
         <span>/</span>
-        <span className="font-semibold text-slate-800 dark:text-slate-200">Subjects & Curriculum</span>
+        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">Curriculum</span>
       </div>
 
-      {/* Page Header with 3D Illustration & Action Buttons */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative">
-        <div className="max-w-2xl">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            Subjects & Curriculum Manager
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-            Create and manage subjects, modules, lessons, videos and assessments for your learning programs.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 self-start lg:self-auto shrink-0">
-          {/* 3D Stack of books & graduation cap illustration */}
-          <div className="hidden sm:flex items-center justify-center w-16 h-16 relative shrink-0">
-            <div className="w-14 h-14 bg-gradient-to-br from-teal-500/20 via-cyan-500/10 to-blue-500/10 rounded-2xl flex items-center justify-center shadow-xs border border-teal-500/20">
-              <GraduationCap className="w-8 h-8 text-[#0E3B43] dark:text-teal-400" />
-            </div>
-          </div>
-
-          <button
-            onClick={() => setDifficultyModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-2 shadow-2xs transition-all active:scale-95"
-            title="Edit difficulty labels and layout"
-          >
-            <LayoutGrid className="w-4 h-4 text-slate-500" />
-            <span>Edit Mode: Layout</span>
-          </button>
-
-          <button
-            onClick={handleOpenAddSubject}
-            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 transition-all active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Subject</span>
-          </button>
-        </div>
+      {/* Page Header — no Layout / Add buttons here (FAB below) */}
+      <div className="min-w-0">
+        <h1 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">
+          <span className="sm:hidden">Curriculum Manager</span>
+          <span className="hidden sm:inline">Subjects & Curriculum Manager</span>
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 sm:mt-1.5 leading-relaxed max-w-2xl">
+          Create and manage subjects, modules, videos and quizzes.
+        </p>
       </div>
 
-      {/* 4 KPI Metric Cards in a Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-        {/* Card 1: Subjects */}
-        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-500 flex items-center justify-center shrink-0">
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-              {grandTotalSubjects}
-            </div>
-            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Subjects
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Modules */}
-        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-500 flex items-center justify-center shrink-0">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-              {grandTotalModules}
-            </div>
-            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Lesson Modules
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Videos */}
-        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-500 flex items-center justify-center shrink-0">
-            <PlayCircle className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-              {grandTotalVideos}
-            </div>
-            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Lesson Videos
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Quiz Assessments */}
-        <div className="bg-white dark:bg-surface-darkCard p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs card-hover-lift flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-              {grandTotalQuestions}
-            </div>
-            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Quiz Assessments
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs and Search Bar Filter Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          <button
-            onClick={() => setSubjectTab('all')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
-              subjectTab === 'all'
-                ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white border border-[#20B8C7]/50 shadow-[0_4px_16px_rgba(20,184,166,0.22)]'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            All Subjects ({curriculumSubjects.length})
-          </button>
-          <button
-            onClick={() => setSubjectTab('active')}
-            className={`px-4 py-2 rounded-2xl text-xs font-semibold transition-all whitespace-nowrap ${
-              subjectTab === 'active'
-                ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white border border-[#20B8C7]/50 shadow-[0_4px_16px_rgba(20,184,166,0.22)]'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Active ({curriculumSubjects.length})
-          </button>
-          <button
-            onClick={() => setSubjectTab('draft')}
-            className={`px-4 py-2 rounded-2xl text-xs font-semibold transition-all whitespace-nowrap ${
-              subjectTab === 'draft'
-                ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white border border-[#20B8C7]/50 shadow-[0_4px_16px_rgba(20,184,166,0.22)]'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Draft (0)
-          </button>
-          <button
-            onClick={() => setSubjectTab('archived')}
-            className={`px-4 py-2 rounded-2xl text-xs font-semibold transition-all whitespace-nowrap ${
-              subjectTab === 'archived'
-                ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white border border-[#20B8C7]/50 shadow-[0_4px_16px_rgba(20,184,166,0.22)]'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            Archived (0)
-          </button>
-        </div>
-
-        {/* Right Search & Grid/List View Toggles */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search subjects..."
-              value={subjectSearch}
-              onChange={(e) => setSubjectSearch(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl text-xs bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            />
-          </div>
-
-          <div className="flex items-center gap-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-surface-darkCard rounded-xl p-1">
+      {/* Filters card — theme track + search */}
+      <div className="flex flex-col gap-3 sm:gap-3.5 p-3 sm:p-3.5 md:p-4 bg-white dark:bg-surface-darkCard rounded-2xl border border-[#087F8C]/15 dark:border-slate-800 shadow-premium">
+        {/* All tabs in one row on mobile */}
+        <div className="grid grid-cols-4 gap-1 p-1 sm:p-1.5 rounded-xl bg-[#E8F3F4] dark:bg-slate-800/80 border border-[#087F8C]/15 dark:border-slate-700/60 text-[11px] sm:text-xs font-bold">
+          {[
+            { id: 'all', short: 'All', label: `All Subjects (${curriculumSubjects.length})` },
+            { id: 'active', short: 'Active', label: `Active (${curriculumSubjects.length})` },
+            { id: 'draft', short: 'Draft', label: 'Draft (0)' },
+            { id: 'archived', short: 'Archive', label: 'Archived (0)' }
+          ].map((tab) => (
             <button
-              onClick={() => setLayoutView('grid')}
-              className={`p-1.5 rounded-lg text-xs transition-colors ${
-                layoutView === 'grid'
-                  ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-600'
+              key={tab.id}
+              type="button"
+              onClick={() => setSubjectTab(tab.id)}
+              className={`min-h-[2.25rem] sm:min-h-[2.5rem] px-1.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all flex items-center justify-center whitespace-nowrap ${
+                subjectTab === tab.id
+                  ? 'bg-[#087F8C] text-white shadow-md shadow-[#087F8C]/25'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-[#07242B] hover:bg-white/70 dark:hover:bg-slate-700/50'
               }`}
-              title="Grid View"
             >
-              <LayoutGrid className="w-4 h-4" />
+              <span className="md:hidden truncate">{tab.short}</span>
+              <span className="hidden md:inline truncate">{tab.label}</span>
             </button>
-            <button
-              onClick={() => setLayoutView('list')}
-              className={`p-1.5 rounded-lg text-xs transition-colors ${
-                layoutView === 'list'
-                  ? 'bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-              title="List View"
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
+          ))}
+        </div>
+
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search subjects..."
+            value={subjectSearch}
+            onChange={(e) => setSubjectSearch(e.target.value)}
+            className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20 focus:border-[#087F8C]/50 shadow-subtle"
+          />
         </div>
       </div>
 
-      {/* Subjects Grid & List (Compact 4 Cards in a Row) */}
+      {/* Subjects — 2 cards per row on mobile & laptop */}
       {filteredSubjectsList.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+        <div className="p-8 sm:p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
           <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
           <h3 className="font-bold text-slate-700 dark:text-slate-300 text-base">
             No Subjects Found
           </h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            No subjects match your search or filter. Click below to create your first subject.
+            No subjects match your search or filter. Tap Add Subject to create one.
           </p>
-          <button
-            onClick={handleOpenAddSubject}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs inline-flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> Add New Subject
-          </button>
         </div>
       ) : (
-        <div className={layoutView === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5" : "space-y-3"}>
+        <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3.5">
           {filteredSubjectsList.map((sub, sIdx) => {
             const totalModules = sub.modules?.length || 0;
             const totalVideos = (sub.modules || []).reduce(
@@ -1688,11 +1911,11 @@ export const TeacherCurriculum = () => {
             return (
               <div
                 key={sub.id || sIdx}
-                className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs card-hover-lift flex flex-col justify-between group"
+                className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-subtle sm:shadow-premium card-hover-lift flex flex-col justify-between group"
               >
                 <div>
-                  {/* Banner Thumbnail (Compact Aspect Ratio) */}
-                  <div className="h-32 w-full relative overflow-hidden bg-slate-900">
+                  {/* Banner Thumbnail */}
+                  <div className="h-24 sm:h-32 w-full relative overflow-hidden bg-slate-900">
                     <img
                       src={sub.thumbnail || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'}
                       alt={sub.name}
@@ -1704,64 +1927,70 @@ export const TeacherCurriculum = () => {
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#07191E] via-[#0A262C]/70 to-transparent" />
-                    
-                    {/* Top Row: Code Pill & Price Pill */}
-                    <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/95 text-slate-800 shadow-2xs">
+
+                    <div className="absolute top-1.5 left-1.5 right-1.5 sm:top-2.5 sm:left-2.5 sm:right-2.5 flex items-center justify-between gap-1">
+                      <span className="px-1.5 sm:px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-white/95 text-slate-800 shadow-2xs truncate max-w-[55%]">
                         {sub.code || `C0${sIdx + 1}`}
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-black text-white shadow-2xs ${
+                        className={`px-1.5 sm:px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black text-white shadow-2xs shrink-0 ${
                           priceVal > 0 ? 'bg-[#00897B]' : 'bg-[#10B981]'
                         }`}
                       >
-                        {priceVal > 0 ? `₹${priceVal}` : 'Free'}
+                        {priceVal > 0 ? (
+                          <>
+                            ₹{priceVal}
+                            <span className="font-semibold opacity-80"> / {formatValidity(sub.validityDays)}</span>
+                          </>
+                        ) : (
+                          'Free'
+                        )}
                       </span>
                     </div>
 
-                    {/* Bottom Title & Category */}
-                    <div className="absolute bottom-2.5 left-2.5 right-2.5">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-300 block leading-tight">
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 sm:bottom-2.5 sm:left-2.5 sm:right-2.5">
+                      <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-cyan-300 block leading-tight">
                         {sub.category || 'GENERAL'}
                       </span>
-                      <h3 className="font-extrabold text-sm sm:text-base text-white truncate drop-shadow-sm">
+                      <h3 className="font-extrabold text-xs sm:text-base text-white truncate drop-shadow-sm">
                         {sub.name}
                       </h3>
                     </div>
                   </div>
 
                   {/* Body Content Info */}
-                  <div className="p-3 sm:p-3.5 space-y-2">
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-snug">
-                      {sub.description || sub.name}
+                  <div className="p-2 sm:p-3.5 space-y-1.5 sm:space-y-2">
+                    <p className="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-snug">
+                      {sub.description && sub.description !== sub.name
+                        ? sub.description
+                        : `${sub.category || 'General'} · ${totalModules} modules`}
                     </p>
 
-                    {/* 3 Metric Boxes: Module, Video, Quiz */}
-                    <div className="grid grid-cols-3 gap-1.5 pt-0.5 text-center">
-                      <div className="p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-center gap-1 text-[11px] text-slate-700 dark:text-slate-300 font-semibold truncate">
-                        <Layers className="w-3 h-3 text-blue-500 shrink-0" />
-                        <span className="truncate">{totalModules} {totalModules === 1 ? 'Mod' : 'Mods'}</span>
+                    <div className="grid grid-cols-3 gap-1 sm:gap-1.5 text-center">
+                      <div className="p-1 sm:p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-center gap-0.5 sm:gap-1 text-[9px] sm:text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
+                        <Layers className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-500 shrink-0" />
+                        <span>{totalModules}</span>
                       </div>
-                      <div className="p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-center gap-1 text-[11px] text-slate-700 dark:text-slate-300 font-semibold truncate">
-                        <Video className="w-3 h-3 text-teal-500 shrink-0" />
-                        <span className="truncate">{totalVideos} {totalVideos === 1 ? 'Vid' : 'Vids'}</span>
+                      <div className="p-1 sm:p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-center gap-0.5 sm:gap-1 text-[9px] sm:text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
+                        <Video className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-teal-500 shrink-0" />
+                        <span>{totalVideos}</span>
                       </div>
-                      <div className="p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-center gap-1 text-[11px] text-slate-700 dark:text-slate-300 font-semibold truncate">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                        <span className="truncate">{totalQuestions} Quiz</span>
+                      <div className="p-1 sm:p-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 flex items-center justify-center gap-0.5 sm:gap-1 text-[9px] sm:text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
+                        <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500 shrink-0" />
+                        <span>{totalQuestions}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Card Footer Actions */}
-                <div className="p-3 sm:p-3.5 pt-0 flex items-center justify-between gap-1.5 border-t border-slate-100 dark:border-slate-800/60 pt-2.5">
-                  <div className="flex items-center gap-0.5">
+                <div className="p-2 sm:p-3.5 pt-0 flex items-center justify-between gap-1 border-t border-slate-100 dark:border-slate-800/60 pt-2">
+                  <div className="flex items-center">
                     <button
                       type="button"
                       onClick={() => handleOpenEditSubject(sub)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      title="Edit Subject, Price & Cover"
+                      title="Edit Subject"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
@@ -1778,10 +2007,11 @@ export const TeacherCurriculum = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedSubject(sub)}
-                    className="py-2 px-3 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs flex items-center gap-1 shadow-[0_4px_14px_rgba(20,184,166,0.2)] border border-[#20B8C7]/30 active:scale-95 transition-all group/btn"
+                    className="py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] text-white font-bold text-[10px] sm:text-xs flex items-center gap-0.5 sm:gap-1 shadow-sm border border-[#20B8C7]/30 active:scale-95 transition-all"
                   >
-                    <span>Modules ({totalModules})</span>
-                    <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+                    <span className="sm:hidden">Open</span>
+                    <span className="hidden sm:inline">Modules ({totalModules})</span>
+                    <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -1790,13 +2020,39 @@ export const TeacherCurriculum = () => {
         </div>
       )}
 
-      {/* MODAL: ADD / EDIT SUBJECT WITH COVER IMAGE */}
+      {/* Floating Action Button — Add Subject */}
+      {!subjectModalOpen && (
+        <button
+          type="button"
+          onClick={handleOpenAddSubject}
+          className="fixed z-40 bottom-20 right-4 sm:bottom-8 sm:right-8 inline-flex items-center gap-2 pl-3.5 pr-4 py-3 rounded-full bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm shadow-[0_8px_28px_rgba(8,127,140,0.45)] border border-[#20B8C7]/40 active:scale-95 transition-all"
+          aria-label="Add Subject"
+        >
+          <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
+            <Plus className="w-4 h-4" />
+          </span>
+          <span>Add Subject</span>
+        </button>
+      )}
+
+      {/* ADD / EDIT SUBJECT — full page on mobile, modal on desktop */}
       {subjectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs overflow-y-auto">
-          <div className="w-full max-w-lg bg-white dark:bg-surface-darkCard rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 my-auto max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
+        <div className="fixed inset-0 z-[60] bg-surface-light dark:bg-surface-darkBg md:bg-navy-950/70 md:backdrop-blur-xs md:flex md:items-center md:justify-center md:p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="min-h-full md:min-h-0 w-full md:max-w-lg md:my-auto md:max-h-[92vh] md:overflow-y-auto bg-surface-light dark:bg-surface-darkBg md:bg-white md:dark:bg-surface-darkCard md:rounded-3xl md:shadow-2xl md:border md:border-slate-200 md:dark:border-slate-800">
+            {/* Mobile page header */}
+            <div className="md:hidden sticky top-0 z-10 p-3 bg-surface-light/95 dark:bg-surface-darkBg/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
+              <PageHeader
+                onBack={() => setSubjectModalOpen(false)}
+                backLabel="Back to subjects"
+                title={editingSubjectId ? 'Edit Subject' : 'Add New Subject'}
+                subtitle="Name, fee, cover & description"
+              />
+            </div>
+
+            {/* Desktop modal header */}
+            <div className="hidden md:flex items-center justify-between p-6 pb-0 mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-[#087F8C] dark:text-teal-300 flex items-center justify-center">
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <div>
@@ -1809,6 +2065,7 @@ export const TeacherCurriculum = () => {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSubjectModalOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
@@ -1816,92 +2073,156 @@ export const TeacherCurriculum = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubject} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Subject Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Malayalam or English Grammar"
-                  value={newSubject.name}
-                  onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2.5">
+            <form
+              onSubmit={handleCreateSubject}
+              className="p-3 md:p-6 pt-3 md:pt-0 space-y-3.5 pb-28 md:pb-6"
+            >
+              <div className="bg-white dark:bg-surface-darkCard md:bg-transparent rounded-2xl md:rounded-none border border-slate-200/80 dark:border-slate-800 md:border-0 p-3.5 md:p-0 space-y-3.5 shadow-subtle md:shadow-none">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Subject Code
+                    Subject Name *
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. MAL-101"
-                    value={newSubject.code}
-                    onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    required
+                    placeholder="e.g. Malayalam or English Grammar"
+                    value={newSubject.name}
+                    onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Category
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Language"
-                    value={newSubject.category}
-                    onChange={(e) => setNewSubject({ ...newSubject, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Subject Code
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. MAL-101"
+                      value={newSubject.code}
+                      onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Category
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Language"
+                      value={newSubject.category}
+                      onChange={(e) => setNewSubject({ ...newSubject, category: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
+                    />
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Rate / Fee (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="499"
+                      value={newSubject.price !== undefined ? newSubject.price : 499}
+                      onChange={(e) => setNewSubject({ ...newSubject, price: Number(e.target.value) })}
+                      className="w-full px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Rate / Fee (₹) *
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="499"
-                    value={newSubject.price !== undefined ? newSubject.price : 499}
-                    onChange={(e) => setNewSubject({ ...newSubject, price: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl text-xs font-bold bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  />
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-slate-400 font-medium">Quick Rates:</span>
+                  {[0, 299, 499, 999, 1499].map((amt) => (
+                    <button
+                      type="button"
+                      key={amt}
+                      onClick={() => setNewSubject({ ...newSubject, price: amt })}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                        Number(newSubject.price) === amt
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border-emerald-500'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-transparent hover:bg-slate-200'
+                      }`}
+                    >
+                      {amt === 0 ? 'Free (₹0)' : `₹${amt}`}
+                    </button>
+                  ))}
                 </div>
+
+                {/* Access duration: how long one payment unlocks this subject */}
+                {Number(newSubject.price) > 0 && (
+                  <div className="pt-2.5 border-t border-slate-200/70 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-[#087F8C]" />
+                        <span>Access Duration *</span>
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min="1"
+                          max="3650"
+                          aria-label="Custom number of days"
+                          placeholder="Days"
+                          value={isLifetime(newSubject.validityDays) ? '' : newSubject.validityDays}
+                          onChange={(e) =>
+                            setNewSubject({
+                              ...newSubject,
+                              validityDays: Math.max(0, Math.min(3650, Math.round(Number(e.target.value) || 0)))
+                            })
+                          }
+                          className="w-20 px-2.5 py-1.5 rounded-lg text-xs font-bold text-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
+                        />
+                        <span className="text-[11px] text-slate-400 font-medium">days</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {VALIDITY_PRESETS.map((preset) => {
+                        const selected = isLifetime(preset.days)
+                          ? isLifetime(newSubject.validityDays)
+                          : Number(newSubject.validityDays) === preset.days;
+                        return (
+                          <button
+                            type="button"
+                            key={preset.label}
+                            onClick={() => setNewSubject({ ...newSubject, validityDays: preset.days })}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                              selected
+                                ? 'bg-[#E6F4F6] dark:bg-[#0E353E] text-[#0C4E5B] dark:text-cyan-300 border-[#087F8C]'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-transparent hover:bg-slate-200'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 px-2.5 py-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
+                      Students pay <strong className="text-emerald-700 dark:text-emerald-300">₹{Number(newSubject.price) || 0}</strong>
+                      {isLifetime(newSubject.validityDays) ? (
+                        <> once for <strong className="text-emerald-700 dark:text-emerald-300">lifetime access</strong>.</>
+                      ) : (
+                        <> for <strong className="text-emerald-700 dark:text-emerald-300">{formatValidity(newSubject.validityDays)}</strong> of access, counted from the day you approve their payment.</>
+                      )}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Quick Fee Presets */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[10px] text-slate-400 font-medium">Quick Rates:</span>
-                {[0, 299, 499, 999, 1499].map((amt) => (
-                  <button
-                    type="button"
-                    key={amt}
-                    onClick={() => setNewSubject({ ...newSubject, price: amt })}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all ${
-                      Number(newSubject.price) === amt
-                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border-emerald-500'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-transparent hover:bg-slate-200'
-                    }`}
-                  >
-                    {amt === 0 ? 'Free (₹0)' : `₹${amt}`}
-                  </button>
-                ))}
-              </div>
-
-              {/* Subject Cover Image Section */}
-              <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 space-y-2.5">
-                <div className="flex items-center justify-between">
+              {/* Cover Image */}
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-surface-darkCard md:bg-slate-50/80 md:dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-2.5 shadow-subtle md:shadow-none">
+                <div className="flex items-center justify-between gap-2">
                   <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                    <ImageIcon className="w-3.5 h-3.5 text-[#087F8C]" />
                     <span>Subject Cover Image</span>
                   </label>
-                  <span className="text-[10px] text-slate-400 font-medium">Device upload or URL</span>
+                  <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
+                    Upload or URL
+                  </span>
                 </div>
 
-                {/* Live Preview Box */}
-                <div className="relative w-full aspect-[21/9] rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-inner">
+                <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-800">
                   {newSubject.thumbnail ? (
                     <img
                       src={newSubject.thumbnail}
@@ -1909,7 +2230,8 @@ export const TeacherCurriculum = () => {
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
+                        e.target.src =
+                          'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600';
                       }}
                     />
                   ) : (
@@ -1917,15 +2239,14 @@ export const TeacherCurriculum = () => {
                       <ImageIcon className="w-8 h-8" />
                     </div>
                   )}
-                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
-                    <Camera className="w-3 h-3 text-blue-400" />
+                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <Camera className="w-3 h-3 text-teal-300" />
                     <span>Cover Preview</span>
                   </div>
                 </div>
 
-                {/* Upload or URL Inputs */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <label className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-dashed border-blue-400 dark:border-blue-600 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-xs font-bold hover:bg-blue-50 dark:hover:bg-slate-700/80 cursor-pointer transition-all shadow-2xs">
+                <div className="grid grid-cols-1 gap-2">
+                  <label className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-dashed border-[#087F8C]/50 dark:border-teal-600 bg-slate-50 dark:bg-slate-800 text-[#087F8C] dark:text-teal-300 text-xs font-bold hover:bg-teal-50 dark:hover:bg-slate-700/80 cursor-pointer transition-all">
                     <Upload className="w-4 h-4" />
                     <span>Upload from Device</span>
                     <input
@@ -1943,67 +2264,37 @@ export const TeacherCurriculum = () => {
                       placeholder="Or paste image URL"
                       value={newSubject.thumbnail}
                       onChange={(e) => setNewSubject({ ...newSubject, thumbnail: e.target.value })}
-                      className="w-full pl-8 pr-3 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full pl-8 pr-3 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
                     />
-                  </div>
-                </div>
-
-                {/* 1-Click Quick Presets */}
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold block mb-1 uppercase tracking-wider">
-                    Or Pick a Preset Cover:
-                  </span>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {PRESET_SUBJECT_COVERS.map((preset, pIdx) => {
-                      const isSelected = newSubject.thumbnail === preset.url;
-                      return (
-                        <button
-                          type="button"
-                          key={pIdx}
-                          onClick={() => setNewSubject({ ...newSubject, thumbnail: preset.url })}
-                          className={`p-1.5 rounded-xl border text-[10px] font-semibold flex items-center gap-1.5 transition-all truncate text-left ${
-                            isSelected
-                              ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/30'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
-                          }`}
-                        >
-                          <img
-                            src={preset.url}
-                            alt=""
-                            className="w-5 h-5 rounded-md object-cover shrink-0"
-                          />
-                          <span className="truncate">{preset.label}</span>
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
               </div>
 
-              <div>
+              <div className="bg-white dark:bg-surface-darkCard md:bg-transparent rounded-2xl md:rounded-none border border-slate-200/80 dark:border-slate-800 md:border-0 p-3.5 md:p-0 shadow-subtle md:shadow-none">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Description
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   placeholder="Overview of curriculum and objectives"
                   value={newSubject.description}
                   onChange={(e) => setNewSubject({ ...newSubject, description: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
                 />
               </div>
 
-              <div className="flex gap-2 pt-2">
+              {/* Actions — sticky on mobile */}
+              <div className="fixed md:static bottom-0 left-0 right-0 z-10 p-3 md:p-0 bg-white/95 dark:bg-surface-darkCard/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border-t border-slate-200/80 dark:border-slate-800 md:border-0 flex gap-2">
                 <button
                   type="button"
                   onClick={() => setSubjectModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                  className="flex-1 min-h-[2.75rem] py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+                  className="flex-1 min-h-[2.75rem] py-2.5 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-xs font-bold text-white shadow-md shadow-[#087F8C]/25 active:scale-95 transition-all"
                 >
                   {editingSubjectId ? 'Update Subject' : 'Create Subject'}
                 </button>

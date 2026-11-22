@@ -53,18 +53,6 @@ export const ExamDashboard = ({
     return examMonitoringSessions.filter((s) => s.status === 'In Progress').length;
   }, [examMonitoringSessions]);
 
-  const submittedCount = useMemo(() => {
-    return examMonitoringSessions.filter((s) => s.status === 'Submitted').length;
-  }, [examMonitoringSessions]);
-
-  const pendingSubmissions = Math.max(0, 21 - submittedCount);
-
-  const averageScore = useMemo(() => {
-    if (examAttempts.length === 0) return 81.5;
-    const total = examAttempts.reduce((acc, curr) => acc + (curr.percentage || 0), 0);
-    return Math.round(total / examAttempts.length);
-  }, [examAttempts]);
-
   // Filter examinations based on tab, subject, search
   const filteredExams = useMemo(() => {
     return examinations.filter((exam) => {
@@ -99,202 +87,89 @@ export const ExamDashboard = ({
   }, [examinations]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-12">
-      {/* Top Banner Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#07242B] via-[#0A333C] to-[#0D4450] p-6 sm:p-8 text-white border border-[#145663]/60 shadow-[0_8px_32px_rgba(4,20,24,0.35)]">
-        {/* Ambient Decorative Lighting */}
-        <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-[#14B8A6]/15 blur-3xl pointer-events-none" />
-        <div className="absolute left-1/2 bottom-0 w-80 h-32 rounded-full bg-[#087F8C]/20 blur-2xl pointer-events-none" />
+    <div className="relative space-y-4 sm:space-y-6 animate-in fade-in duration-300 pb-28 sm:pb-16">
+      {/* Compact hero — matches admin home mobile pattern */}
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#07242B] via-[#0A333C] to-[#0D4450] p-3.5 sm:p-8 text-white border border-[#145663]/60 shadow-premium sm:shadow-[0_8px_32px_rgba(4,20,24,0.35)]">
+        <div className="absolute -right-10 -top-10 w-36 h-36 sm:w-64 sm:h-64 rounded-full bg-[#14B8A6]/15 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D4E5B]/80 border border-[#20B8C7]/30 text-[#2DD4BF] text-xs font-bold uppercase tracking-wider backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
-              <span>CohesionTech Examination Hub</span>
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          <div className="min-w-0 space-y-1 sm:space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0D4E5B]/80 border border-[#20B8C7]/30 text-[#2DD4BF] text-[10px] sm:text-xs font-extrabold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#10B981] animate-ping" />
+              <span className="sm:hidden">Exam Hub</span>
+              <span className="hidden sm:inline">CohesionTech Examination Hub</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white">
+            <h1 className="text-base sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-snug">
               Live & Scheduled Examinations
             </h1>
-            <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
-              Real-time proctored examination engine with strict availability windows, automated timer synchronizations, and live candidate tracking for Civil Engineering programs.
+            <p className="hidden sm:block text-base text-slate-300 max-w-2xl leading-relaxed">
+              Real-time proctored examination engine with strict availability windows, automated timers, and live candidate tracking.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {liveExams.length > 0 && (
-              <button
-                onClick={() => onMonitorExam(liveExams[0].id)}
-                className="px-4 py-3 rounded-2xl bg-[#092B32] hover:bg-[#0E3B44] text-[#2DD4BF] font-bold text-xs sm:text-sm border border-[#20B8C7]/50 shadow-sm flex items-center gap-2 transition-all active:scale-95"
-              >
-                <Radio className="w-4 h-4 text-[#10B981] animate-pulse" />
-                <span>Live Monitor ({attendingCount})</span>
-              </button>
-            )}
-
+          {liveExams.length > 0 && (
             <button
-              onClick={onCreateExam}
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white font-extrabold text-xs sm:text-sm shadow-[0_4px_20px_rgba(20,184,166,0.35)] flex items-center gap-2.5 transition-all active:scale-95"
+              type="button"
+              onClick={() => onMonitorExam(liveExams[0].id)}
+              className="shrink-0 px-2.5 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl bg-[#092B32] hover:bg-[#0E3B44] text-[#2DD4BF] font-bold text-[11px] sm:text-sm border border-[#20B8C7]/50 flex items-center gap-1.5 transition-all active:scale-95"
             >
-              <Plus className="w-4 h-4" />
-              <span>Create Examination</span>
+              <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#10B981] animate-pulse" />
+              <span className="sm:hidden">Live</span>
+              <span className="hidden sm:inline">Live Monitor ({attendingCount})</span>
             </button>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* KPI Overview Summary Cards (7 Metrics as requested) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
-        {/* 1. Total Scheduled */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Scheduled</span>
-            <Calendar className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            {totalScheduled}
-          </div>
-          <div className="text-[10px] text-slate-400 font-medium">All sessions</div>
+      {/* Filters + search */}
+      <div className="flex flex-col gap-3 sm:gap-3.5 p-3 sm:p-3.5 md:p-4 bg-white dark:bg-slate-900 rounded-2xl border border-[#087F8C]/15 dark:border-slate-800 shadow-premium">
+        {/* All tabs in one row on mobile */}
+        <div className="grid grid-cols-4 gap-1 p-1 sm:p-1.5 rounded-xl bg-[#E8F3F4] dark:bg-slate-800/80 border border-[#087F8C]/15 dark:border-slate-700/60 text-[11px] sm:text-xs font-bold">
+          {[
+            { id: 'all', short: `All (${totalScheduled})`, label: `All Exams (${totalScheduled})` },
+            { id: 'live', short: `Live (${liveExams.length})`, label: `Live Now (${liveExams.length})`, live: true },
+            { id: 'upcoming', short: `Soon (${upcomingExams.length})`, label: `Upcoming (${upcomingExams.length})` },
+            { id: 'completed', short: `Done (${completedExams.length})`, label: `Completed (${completedExams.length})` }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`min-h-[2.5rem] px-2.5 sm:px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                activeTab === tab.id
+                  ? tab.live
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25'
+                    : 'bg-[#087F8C] text-white shadow-md shadow-[#087F8C]/25'
+                  : tab.live
+                  ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-[#07242B] hover:bg-white/70 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              {tab.live && (
+                <span
+                  className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${
+                    activeTab === 'live' ? 'bg-white animate-pulse' : 'bg-emerald-400 animate-pulse'
+                  }`}
+                />
+              )}
+              <span className="md:hidden truncate">{tab.short}</span>
+              <span className="hidden md:inline truncate">{tab.label}</span>
+            </button>
+          ))}
         </div>
 
-        {/* 2. Exams Live Now */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50/40 dark:from-emerald-950/40 dark:to-teal-950/20 border border-emerald-300 dark:border-emerald-800/60 shadow-2xs space-y-1 relative overflow-hidden">
-          <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-300">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Live Now</span>
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-          </div>
-          <div className="text-2xl font-extrabold text-emerald-900 dark:text-emerald-200">
-            {liveExams.length}
-          </div>
-          <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
-            <Radio className="w-3 h-3 animate-pulse" /> Active Sessions
-          </div>
-        </div>
-
-        {/* 3. Completed Exams */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Completed</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            {completedExams.length}
-          </div>
-          <div className="text-[10px] text-slate-400 font-medium">Evaluated</div>
-        </div>
-
-        {/* 4. Total Registered Students */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Students</span>
-            <Users className="w-4 h-4 text-indigo-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            21
-          </div>
-          <div className="text-[10px] text-slate-400 font-medium">Civil Eng. Batch</div>
-        </div>
-
-        {/* 5. Currently Attending */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-50 to-blue-50/40 dark:from-cyan-950/40 dark:to-blue-950/20 border border-cyan-300 dark:border-cyan-800/60 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-cyan-800 dark:text-cyan-300">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Attending</span>
-            <Radio className="w-4 h-4 text-cyan-600 animate-pulse" />
-          </div>
-          <div className="text-2xl font-extrabold text-cyan-950 dark:text-cyan-200">
-            {attendingCount}
-          </div>
-          <div className="text-[10px] text-cyan-700 dark:text-cyan-400 font-bold">Candidates Online</div>
-        </div>
-
-        {/* 6. Pending Submissions */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Pending</span>
-            <AlertCircle className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400">
-            {pendingSubmissions}
-          </div>
-          <div className="text-[10px] text-slate-400 font-medium">In live pipeline</div>
-        </div>
-
-        {/* 7. Average Exam Score */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1 col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Avg Score</span>
-            <TrendingUp className="w-4 h-4 text-teal-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            {averageScore}%
-          </div>
-          <div className="text-[10px] text-emerald-600 font-bold">High performance</div>
-        </div>
-      </div>
-
-      {/* Filter and Tab Navigation Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-        {/* Status Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl overflow-x-auto text-xs font-bold scrollbar-none">
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all shrink-0 ${
-              activeTab === 'all'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            All Exams ({totalScheduled})
-          </button>
-          <button
-            onClick={() => setActiveTab('live')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all shrink-0 flex items-center gap-1.5 ${
-              activeTab === 'live'
-                ? 'bg-emerald-500 text-white shadow-sm'
-                : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-            <span>Live Now ({liveExams.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('upcoming')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all shrink-0 ${
-              activeTab === 'upcoming'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            Upcoming ({upcomingExams.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('completed')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all shrink-0 ${
-              activeTab === 'completed'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            Completed ({completedExams.length})
-          </button>
-        </div>
-
-        {/* Search & Subject Dropdown Filter */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search by title, subject, code..."
+              placeholder="Search exams..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+              className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20 focus:border-[#087F8C]/50 shadow-subtle"
             />
           </div>
-
-          <div className="relative w-full sm:w-auto shrink-0">
+          <div className="w-full sm:w-auto shrink-0">
             <CustomDropdown
               options={subjectOptions.map((subj) => ({
                 value: subj,
@@ -310,23 +185,23 @@ export const ExamDashboard = ({
 
       {/* Main Section 1: LIVE EXAMINATIONS (If any) */}
       {(activeTab === 'all' || activeTab === 'live') && liveExams.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                <span>Active Live Examinations</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold">
-                  Proctoring Active
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+              <h2 className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <span className="truncate">Live Exams</span>
+                <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold shrink-0">
+                  Active
                 </span>
               </h2>
             </div>
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="hidden sm:inline text-xs font-semibold text-slate-500">
               Auto-updating every 5s
             </span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
             {liveExams.map((exam) => {
               const liveAttending = examMonitoringSessions.filter(
                 (s) => s.status === 'In Progress' && (s.examId === exam.id || !s.examId)
@@ -338,7 +213,7 @@ export const ExamDashboard = ({
               return (
                 <div
                   key={exam.id}
-                  className="rounded-3xl p-6 bg-gradient-to-br from-white via-white to-emerald-50/20 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 border-2 border-emerald-400/80 dark:border-emerald-500/50 shadow-md relative overflow-hidden space-y-5"
+                  className="rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 bg-gradient-to-br from-white via-white to-emerald-50/20 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 border-2 border-emerald-400/80 dark:border-emerald-500/50 shadow-md relative overflow-hidden space-y-3 sm:space-y-5"
                 >
                   {/* Subtle pulsing background glow */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -438,22 +313,23 @@ export const ExamDashboard = ({
 
       {/* Main Section 2: UPCOMING EXAMINATIONS */}
       {(activeTab === 'all' || activeTab === 'upcoming') && (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <span>Upcoming Scheduled Examinations</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold">
+            <h2 className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5 sm:gap-2">
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span className="sm:hidden">Upcoming</span>
+              <span className="hidden sm:inline">Upcoming Scheduled Examinations</span>
+              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold">
                 {upcomingExams.length}
               </span>
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
             {upcomingExams.map((exam) => (
               <div
                 key={exam.id}
-                className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                className="p-3 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle hover:shadow-md transition-all flex flex-col justify-between space-y-3 sm:space-y-4"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
@@ -523,18 +399,19 @@ export const ExamDashboard = ({
 
       {/* Main Section 3: COMPLETED EXAMINATIONS */}
       {(activeTab === 'all' || activeTab === 'completed') && (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              <span>Completed Examinations & Official Reports</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold">
-                {completedExams.length} Evaluated
+            <h2 className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5 sm:gap-2">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="sm:hidden">Completed</span>
+              <span className="hidden sm:inline">Completed Examinations & Official Reports</span>
+              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold">
+                {completedExams.length}
               </span>
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
             {completedExams.map((exam) => {
               const attemptsForThisExam = examAttempts.filter((a) => a.examId === exam.id);
               const subCount = attemptsForThisExam.length > 0 ? attemptsForThisExam.length : 21;
@@ -604,6 +481,20 @@ export const ExamDashboard = ({
           </div>
         </div>
       )}
+
+      {/* Floating Action Button — Create Examination */}
+      <button
+        type="button"
+        onClick={onCreateExam}
+        className="fixed z-40 bottom-20 right-4 sm:bottom-8 sm:right-8 inline-flex items-center gap-2 pl-3.5 pr-4 py-3 rounded-full bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white font-bold text-xs sm:text-sm shadow-[0_8px_28px_rgba(20,184,166,0.45)] border border-[#20B8C7]/40 active:scale-95 transition-all"
+        aria-label="Create Examination"
+      >
+        <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
+          <Plus className="w-4 h-4" />
+        </span>
+        <span className="sm:hidden">Create Exam</span>
+        <span className="hidden sm:inline">Create Examination</span>
+      </button>
     </div>
   );
 };

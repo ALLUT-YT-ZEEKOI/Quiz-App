@@ -1,10 +1,26 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { TEACHERS, STUDENTS, SUBJECTS } from '../data/initialData';
 import { QUESTIONS_BANK } from '../data/questionsData';
 import { INITIAL_QUIZZES, INITIAL_ATTEMPTS, INITIAL_NOTIFICATIONS } from '../data/quizzesData';
-import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS, INITIAL_SUBSCRIPTIONS } from '../data/curriculumData';
+import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS, INITIAL_SUBSCRIPTIONS, INITIAL_DOUBTS } from '../data/curriculumData';
 import { INITIAL_EXAMINATIONS, generateLiveMonitoringData, generateCompletedExamAttempts } from '../data/examinationsData';
 import { formatEmbedUrl } from '../utils/videoUtils';
+import { createSectionId, normalizeCurriculumSections } from '../utils/curriculumSections';
+import { saveNoteFile, deleteNoteFiles, collectFileNoteIds } from '../utils/notesStorage';
+import { addDays, isLifetime, pickLatestApproved } from '../utils/subscriptionUtils';
+import { hashPassword, verifyPassword } from '../utils/passwordHash';
+import { buildStudentFromRegistration, normalizePhone } from '../utils/studentRegistration';
+import { api, backendEnabled, getToken, setToken, clearToken, setUnauthorizedHandler } from '../api/client';
+import { SyncManager } from '../api/syncManager';
+
+// With the backend enabled, data lives in MongoDB: this browser's copy is NOT overwritten,
+// so it can still be imported once by the admin.
+const persistLocal = (key, value) => {
+  if (backendEnabled) return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {}
+};
 
 const AppContext = createContext();
 
@@ -35,7 +51,7 @@ export const AppProvider = ({ children }) => {
       localStorage.setItem('qsap_data_version', CURRENT_DATA_VERSION);
       localStorage.setItem('qsap_questions', JSON.stringify(QUESTIONS_BANK));
       localStorage.setItem('qsap_quizzes', JSON.stringify(INITIAL_QUIZZES));
-      localStorage.setItem('qsap_students', JSON.stringify(STUDENTS));
+      persistLocal('qsap_students', STUDENTS);
       localStorage.setItem('qsap_attempts', JSON.stringify(INITIAL_ATTEMPTS));
     } catch (e) {
       console.warn('LocalStorage initialization notice:', e);
@@ -79,17 +95,18 @@ export const AppProvider = ({ children }) => {
 
   // Auth / Role state
   const [currentRole, setCurrentRole] = useState(() => {
-    if (initialRoute.role) return initialRoute.role;
+    if (initialRoute.role && !backendEnabled) return initialRoute.role;
     return localStorage.getItem('qsap_role') || 'teacher';
   });
 
   const [currentUserId, setCurrentUserId] = useState(() => {
-    if (initialRoute.role === 'teacher') return 'T001';
-    if (initialRoute.role === 'student') return 'STU001';
+    if (!backendEnabled && initialRoute.role === 'teacher') return 'T001';
+    if (!backendEnabled && initialRoute.role === 'student') return 'STU001';
     return localStorage.getItem('qsap_user_id') || 'T001';
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (backendEnabled) return Boolean(getToken());
     return localStorage.getItem('qsap_auth') !== 'false';
   });
 
@@ -102,11 +119,38 @@ export const AppProvider = ({ children }) => {
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState(null);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
 
+  // Self-registered student accounts. Each holds the login credentials (password HASH only)
+  // plus the registration details, so the student can always be restored to the list below.
+  const [studentAccounts, setStudentAccounts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_student_accounts');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      persistLocal('cohesion_student_accounts', studentAccounts);
+    } catch (e) {}
+  }, [studentAccounts]);
+
   // Core Data States (persisted in localStorage)
   const [students, setStudents] = useState(() => {
-    if (needsDataReset) return STUDENTS;
-    const saved = localStorage.getItem('qsap_students');
-    return saved ? JSON.parse(saved) : STUDENTS;
+    let list = STUDENTS;
+    if (!needsDataReset) {
+      const saved = localStorage.getItem('qsap_students');
+      if (saved) list = JSON.parse(saved);
+    }
+    // Make sure every registered student is present (a demo-data reset must not drop them)
+    const known = new Set(list.map((st) => st.id));
+    const missing = studentAccounts
+      .filter((a) => !known.has(a.studentId))
+      .map((a) => buildStudentFromRegistration(a));
+    return missing.length ? [...missing, ...list] : list;
   });
 
   const [teachers] = useState(TEACHERS);
@@ -142,23 +186,26 @@ export const AppProvider = ({ children }) => {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Normalize all video URLs to valid embed format
-          return parsed.map((s) => ({
-            ...s,
-            modules: (s.modules || []).map((m) => ({
-              ...m,
-              videos: (m.videos || []).map((v) => ({
-                ...v,
-                videoUrl: formatEmbedUrl(v.videoUrl)
+          // Normalize all video URLs to valid embed format, and migrate
+          // legacy modules (flat videos) into Section-based modules
+          return normalizeCurriculumSections(
+            parsed.map((s) => ({
+              ...s,
+              modules: (s.modules || []).map((m) => ({
+                ...m,
+                videos: (m.videos || []).map((v) => ({
+                  ...v,
+                  videoUrl: formatEmbedUrl(v.videoUrl)
+                }))
               }))
             }))
-          }));
+          );
         }
       }
     } catch (e) {
       console.warn('Curriculum parse notice:', e);
     }
-    return INITIAL_CURRICULUM;
+    return normalizeCurriculumSections(INITIAL_CURRICULUM);
   });
 
   const [curriculumAttempts, setCurriculumAttempts] = useState(() => {
@@ -189,19 +236,19 @@ export const AppProvider = ({ children }) => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('cohesion_curriculum', JSON.stringify(curriculumSubjects));
+      persistLocal('cohesion_curriculum', curriculumSubjects);
     } catch (e) {}
   }, [curriculumSubjects]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('cohesion_curriculum_attempts', JSON.stringify(curriculumAttempts));
+      persistLocal('cohesion_curriculum_attempts', curriculumAttempts);
     } catch (e) {}
   }, [curriculumAttempts]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('cohesion_subscriptions', JSON.stringify(subscriptions));
+      persistLocal('cohesion_subscriptions', subscriptions);
     } catch (e) {}
   }, [subscriptions]);
 
@@ -221,7 +268,7 @@ export const AppProvider = ({ children }) => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('cohesion_difficulty_levels', JSON.stringify(difficultyLevels));
+      persistLocal('cohesion_difficulty_levels', difficultyLevels);
     } catch (e) {}
   }, [difficultyLevels]);
 
@@ -277,6 +324,43 @@ export const AppProvider = ({ children }) => {
     return generateLiveMonitoringData('EXAM-2026-001');
   });
 
+  // Retests: a student asks (status 'requested') or the admin grants directly ('granted').
+  // A granted retest allows one more attempt of that exam; submitting it marks it 'used'.
+  const [retests, setRetests] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_retests');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  // Doubts: student questions to the admin, optionally tied to an exam/quiz question
+  const [doubts, setDoubts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cohesion_doubts');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return INITIAL_DOUBTS;
+  });
+
+  useEffect(() => {
+    try {
+      persistLocal('cohesion_retests', retests);
+    } catch (e) {}
+  }, [retests]);
+
+  useEffect(() => {
+    try {
+      persistLocal('cohesion_doubts', doubts);
+    } catch (e) {}
+  }, [doubts]);
+
   const [activeExamForAttempt, setActiveExamForAttempt] = useState(null);
   const [lastExamResult, setLastExamResult] = useState(null);
   const [selectedExamForMonitoring, setSelectedExamForMonitoring] = useState('EXAM-2026-001');
@@ -284,19 +368,19 @@ export const AppProvider = ({ children }) => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('cohesion_examinations', JSON.stringify(examinations));
+      persistLocal('cohesion_examinations', examinations);
     } catch (e) {}
   }, [examinations]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('cohesion_exam_attempts', JSON.stringify(examAttempts));
+      persistLocal('cohesion_exam_attempts', examAttempts);
     } catch (e) {}
   }, [examAttempts]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('cohesion_exam_monitoring', JSON.stringify(examMonitoringSessions));
+      persistLocal('cohesion_exam_monitoring', examMonitoringSessions);
     } catch (e) {}
   }, [examMonitoringSessions]);
 
@@ -328,6 +412,13 @@ export const AppProvider = ({ children }) => {
     if (!exam) {
       showToast('Examination not found', 'error');
       return;
+    }
+    if (currentRole === 'student') {
+      const access = getExamAccess(currentUserId, exam);
+      if (!access.allowed) {
+        showToast(access.reason, 'warning');
+        return;
+      }
     }
     setActiveExamForAttempt(exam);
     // Update monitoring session for this student
@@ -372,6 +463,45 @@ export const AppProvider = ({ children }) => {
   const submitStudentExamAttempt = (examId, studentAnswers, timeSpentMinutes = 45) => {
     const exam = examinations.find((e) => e.id === examId) || activeExamForAttempt;
     if (!exam) return null;
+
+    if (backendEnabled) {
+      // The server checks access, scores the answers and consumes a granted retest
+      return (async () => {
+        try {
+          const { attempt, retest } = await api(`/exams/${examId}/submit`, {
+            method: 'POST',
+            body: { answers: studentAnswers, timeSpentMinutes }
+          });
+          syncRef.current.insertSynced('examAttempts', attempt);
+          if (retest) syncRef.current.insertSynced('retests', retest);
+          setLastExamResult(attempt);
+          setActiveExamForAttempt(null);
+          setExamMonitoringSessions((prev) =>
+            prev.map((s) =>
+              s.studentId === attempt.studentId && s.examId === exam.id
+                ? {
+                    ...s,
+                    status: 'Submitted',
+                    connectionStatus: 'Connected',
+                    answeredCount: attempt.totalQuestions - attempt.unattemptedCount,
+                    progressPct: 100,
+                    score: attempt.score,
+                    submitTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    lastActivityText: 'Submitted examination',
+                    timeSpentMinutes
+                  }
+                : s
+            )
+          );
+          syncRef.current.refetch('examinations'); // answers become visible for review
+          showToast(`Examination submitted successfully! You scored ${attempt.score}/${attempt.totalMarks} (${attempt.percentage}%)`, 'success');
+          return attempt;
+        } catch (err) {
+          showToast(`${err.message} Your answers are saved on this device. Please try submitting again.`, 'warning', 7000);
+          return null;
+        }
+      })();
+    }
 
     const student = currentUser || STUDENTS[0];
     const totalQuestions = exam.questions?.length || 30;
@@ -431,6 +561,21 @@ export const AppProvider = ({ children }) => {
         isCorrect: studentAnswers[idx] === q.correctAnswer
       }))
     };
+
+    // If this attempt used a granted retest, record that and consume the grant
+    const grant = retests.find(
+      (r) => r.studentId === student.id && r.examId === exam.id && r.status === 'granted'
+    );
+    if (grant) {
+      newAttempt.isRetest = true;
+      setRetests((prev) =>
+        prev.map((r) =>
+          r.id === grant.id
+            ? { ...r, status: 'used', usedAt: new Date().toISOString(), attemptId: newAttempt.id }
+            : r
+        )
+      );
+    }
 
     setExamAttempts((prev) => [newAttempt, ...prev]);
     setLastExamResult(newAttempt);
@@ -551,23 +696,23 @@ export const AppProvider = ({ children }) => {
 
   // Sync with localStorage
   useEffect(() => {
-    localStorage.setItem('qsap_students', JSON.stringify(students));
+    persistLocal('qsap_students', students);
   }, [students]);
 
   useEffect(() => {
-    localStorage.setItem('qsap_questions', JSON.stringify(questions));
+    persistLocal('qsap_questions', questions);
   }, [questions]);
 
   useEffect(() => {
-    localStorage.setItem('qsap_quizzes', JSON.stringify(quizzes));
+    persistLocal('qsap_quizzes', quizzes);
   }, [quizzes]);
 
   useEffect(() => {
-    localStorage.setItem('qsap_attempts', JSON.stringify(attempts));
+    persistLocal('qsap_attempts', attempts);
   }, [attempts]);
 
   useEffect(() => {
-    localStorage.setItem('qsap_notifications', JSON.stringify(notifications));
+    persistLocal('qsap_notifications', notifications);
   }, [notifications]);
 
   useEffect(() => {
@@ -575,6 +720,119 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('qsap_user_id', currentUserId);
     localStorage.setItem('qsap_auth', isAuthenticated ? 'true' : 'false');
   }, [currentRole, currentUserId, isAuthenticated]);
+
+  // =========================================================================
+  // BACKEND SYNC (active when VITE_API_URL is set)
+  // =========================================================================
+  const [dataReady, setDataReady] = useState(!backendEnabled);
+  const [serverInitialized, setServerInitialized] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const syncRef = useRef(null);
+  if (backendEnabled && !syncRef.current) {
+    syncRef.current = new SyncManager({ onError: (err) => showToast(err.message, 'warning') });
+  }
+
+  // Collection name (same as the API) -> React setter
+  useEffect(() => {
+    if (!backendEnabled) return;
+    const m = syncRef.current;
+    m.register('curriculum', setCurriculumSubjects);
+    m.register('curriculumAttempts', setCurriculumAttempts);
+    m.register('subscriptions', setSubscriptions);
+    m.register('examinations', setExaminations);
+    m.register('examAttempts', setExamAttempts);
+    m.register('examMonitoring', setExamMonitoringSessions);
+    m.register('retests', setRetests);
+    m.register('doubts', setDoubts);
+    m.register('notifications', setNotifications);
+    m.register('students', setStudents);
+    m.register('questions', setQuestions);
+    m.register('quizzes', setQuizzes);
+    m.register('attempts', setAttempts);
+    m.register('difficultyLevels', setDifficultyLevels);
+    m.register('accounts', setStudentAccounts, { readOnly: true });
+  }, []);
+
+  // Send local changes to the server
+  useEffect(() => { syncRef.current?.track('curriculum', curriculumSubjects); }, [curriculumSubjects]);
+  useEffect(() => { syncRef.current?.track('curriculumAttempts', curriculumAttempts); }, [curriculumAttempts]);
+  useEffect(() => { syncRef.current?.track('subscriptions', subscriptions); }, [subscriptions]);
+  useEffect(() => { syncRef.current?.track('examinations', examinations); }, [examinations]);
+  useEffect(() => { syncRef.current?.track('examAttempts', examAttempts); }, [examAttempts]);
+  useEffect(() => { syncRef.current?.track('examMonitoring', examMonitoringSessions); }, [examMonitoringSessions]);
+  useEffect(() => { syncRef.current?.track('retests', retests); }, [retests]);
+  useEffect(() => { syncRef.current?.track('doubts', doubts); }, [doubts]);
+  useEffect(() => { syncRef.current?.track('notifications', notifications); }, [notifications]);
+  useEffect(() => { syncRef.current?.track('students', students); }, [students]);
+  useEffect(() => { syncRef.current?.track('questions', questions); }, [questions]);
+  useEffect(() => { syncRef.current?.track('quizzes', quizzes); }, [quizzes]);
+  useEffect(() => { syncRef.current?.track('attempts', attempts); }, [attempts]);
+  useEffect(() => { syncRef.current?.track('difficultyLevels', difficultyLevels); }, [difficultyLevels]);
+
+  /** Loads everything the signed-in user may see from the server. */
+  const loadServerData = useCallback(async () => {
+    const m = syncRef.current;
+    m.reset();
+    setDataReady(false);
+    setLoadError(null);
+    const { user } = await api('/auth/me');
+    const data = await api('/sync/bootstrap');
+    setCurrentRole(user.role === 'admin' ? 'teacher' : 'student');
+    setCurrentUserId(user.role === 'admin' ? user.teacherId || 'T001' : user.studentId);
+    m.load(data);
+    setServerInitialized(data.initialized !== false);
+    setIsAuthenticated(true);
+    setDataReady(true);
+    m.start();
+  }, []);
+
+  const endServerSession = useCallback(() => {
+    clearToken();
+    syncRef.current?.reset();
+    setIsAuthenticated(false);
+    setDataReady(false);
+  }, []);
+
+  // Restore the session on page load
+  useEffect(() => {
+    if (!backendEnabled) return undefined;
+    setUnauthorizedHandler(() => {
+      endServerSession();
+      showToast('Your session has expired. Please sign in again.', 'warning');
+    });
+    if (getToken()) {
+      loadServerData().catch((err) => {
+        if (err.status === 401) endServerSession();
+        else setLoadError(err.message);
+      });
+    }
+    return () => syncRef.current?.stop();
+  }, []);
+
+  const startServerSession = async (token) => {
+    setToken(token);
+    await loadServerData();
+    setActiveView('dashboard');
+  };
+
+  /** Password sign-in against the backend (admin or student). */
+  const loginWithPassword = async (role, identifier, password) => {
+    try {
+      const res = await api('/auth/login', {
+        method: 'POST',
+        auth: false,
+        body: { identifier, password, role: role === 'student' ? 'student' : 'admin' }
+      });
+      if (res.mustChangePassword) {
+        return { ok: true, mustChangePassword: true, accountId: res.resetToken, name: res.name };
+      }
+      await startServerSession(res.token);
+      showToast(`Welcome, ${res.user.name}!`, 'success');
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('qsap_dark_mode', darkMode ? 'true' : 'false');
@@ -617,6 +875,8 @@ export const AppProvider = ({ children }) => {
   // Keep browser URL synchronized with role and activeView
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    // Signed out (backend mode): keep /student or /admin as typed, so the right login tab opens
+    if (backendEnabled && (!isAuthenticated || !dataReady)) return;
     const basePath = currentRole === 'teacher' ? '/admin' : '/student';
     let targetPath = basePath;
     if (activeView && activeView !== 'dashboard') {
@@ -626,14 +886,14 @@ export const AppProvider = ({ children }) => {
     if (window.location.pathname !== targetPath) {
       window.history.replaceState({ role: currentRole, view: activeView }, '', targetPath);
     }
-  }, [currentRole, activeView]);
+  }, [currentRole, activeView, isAuthenticated, dataReady]);
 
   // Handle browser back / forward navigation
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handlePopState = () => {
       const route = parseInitialUrl();
-      if (route.role && route.role !== currentRole) {
+      if (!backendEnabled && route.role && route.role !== currentRole) {
         setCurrentRole(route.role);
         setCurrentUserId(route.role === 'teacher' ? 'T001' : 'STU001');
       }
@@ -650,6 +910,13 @@ export const AppProvider = ({ children }) => {
 
   // Role Switching Helper
   const switchRole = (newRole, newUserId) => {
+    if (backendEnabled) {
+      // Real accounts: switching roles means signing in as someone else
+      endServerSession();
+      window.history.replaceState(null, '', newRole === 'teacher' ? '/admin' : '/student');
+      showToast('Signed out. Sign in with the other account.', 'info');
+      return;
+    }
     setCurrentRole(newRole);
     if (newUserId) {
       setCurrentUserId(newUserId);
@@ -664,6 +931,10 @@ export const AppProvider = ({ children }) => {
 
   // Login handler
   const login = (role, userId) => {
+    if (backendEnabled) {
+      showToast('Demo logins are disabled. Sign in with your account.', 'warning');
+      return;
+    }
     setCurrentRole(role);
     setCurrentUserId(userId || (role === 'teacher' ? 'T001' : 'STU001'));
     setIsAuthenticated(true);
@@ -673,8 +944,191 @@ export const AppProvider = ({ children }) => {
 
   // Logout handler
   const logout = () => {
+    if (backendEnabled) endServerSession();
     setIsAuthenticated(false);
     showToast('Logged out of CohesionTech', 'info');
+  };
+
+  // =========================================================================
+  // STUDENT SELF-REGISTRATION & PASSWORD LOGIN
+  // =========================================================================
+
+  const findAccount = (identifier) => {
+    const raw = (identifier || '').trim().toLowerCase();
+    if (!raw) return null;
+    const phone = normalizePhone(raw);
+    return (
+      studentAccounts.find((a) => a.email === raw) ||
+      (phone.length === 10 ? studentAccounts.find((a) => a.phone === phone) : null) ||
+      studentAccounts.find((a) => a.registrationId.toLowerCase() === raw) ||
+      null
+    );
+  };
+
+  const stampLogin = (accountId) => {
+    const now = new Date().toISOString();
+    setStudentAccounts((prev) =>
+      prev.map((a) =>
+        a.id === accountId
+          ? {
+              ...a,
+              lastLoginAt: now,
+              loginCount: (a.loginCount || 0) + 1,
+              loginHistory: [now, ...(a.loginHistory || [])].slice(0, 20)
+            }
+          : a
+      )
+    );
+  };
+
+  /**
+   * New student signs up. `form` = { email, name, qualification, phone, civilLevel,
+   * preparation, district, password }. Logs the student in on success.
+   */
+  const registerStudent = async (form) => {
+    if (backendEnabled) {
+      try {
+        const res = await api('/auth/register', { method: 'POST', auth: false, body: form });
+        await startServerSession(res.token);
+        showToast(`Welcome, ${res.user.name}! Your registration ID is ${res.user.registrationId}.`, 'success', 6000);
+        return { ok: true, registrationId: res.user.registrationId };
+      } catch (err) {
+        return { ok: false, field: err.data?.field || 'email', error: err.message };
+      }
+    }
+    const email = form.email.trim().toLowerCase();
+    const phone = normalizePhone(form.phone);
+    if (studentAccounts.some((a) => a.email === email)) {
+      return { ok: false, field: 'email', error: 'This email is already registered. Please sign in instead.' };
+    }
+    if (studentAccounts.some((a) => a.phone === phone)) {
+      return { ok: false, field: 'phone', error: 'This WhatsApp number is already registered. Please sign in instead.' };
+    }
+
+    const credentials = await hashPassword(form.password);
+    const now = new Date();
+    const seq = studentAccounts.length + 1;
+    const account = {
+      id: `acc-${now.getTime()}`,
+      studentId: `STU-R${now.getTime().toString().slice(-6)}`,
+      registrationId: `CT-${now.getFullYear()}-${String(seq).padStart(4, '0')}`,
+      email,
+      phone,
+      name: form.name.trim(),
+      qualification: form.qualification,
+      civilLevel: form.civilLevel,
+      preparation: form.preparation,
+      district: form.district.trim(),
+      registeredAt: now.toISOString(),
+      credentials,
+      passwordUpdatedAt: now.toISOString(),
+      mustChangePassword: false,
+      lastLoginAt: now.toISOString(),
+      loginCount: 1,
+      loginHistory: [now.toISOString()]
+    };
+
+    setStudentAccounts((prev) => [...prev, account]);
+    setStudents((prev) => [buildStudentFromRegistration(account), ...prev]);
+    setCurrentRole('student');
+    setCurrentUserId(account.studentId);
+    setIsAuthenticated(true);
+    setActiveView('dashboard');
+    showToast(`Welcome, ${account.name}! Your registration ID is ${account.registrationId}.`, 'success', 6000);
+    return { ok: true, registrationId: account.registrationId };
+  };
+
+  /**
+   * Student signs in with email / WhatsApp number / registration ID + password.
+   * If the admin reset their password, returns { ok: true, mustChangePassword, accountId }
+   * without signing in, so they can set a new password first.
+   */
+  const loginStudentWithPassword = async (identifier, password) => {
+    if (backendEnabled) return loginWithPassword('student', identifier, password);
+    const account = findAccount(identifier);
+    if (!account || !(await verifyPassword(password, account.credentials))) {
+      return { ok: false, error: 'Incorrect email/phone or password.' };
+    }
+    if (account.mustChangePassword) {
+      return { ok: true, mustChangePassword: true, accountId: account.id, name: account.name };
+    }
+    stampLogin(account.id);
+    login('student', account.studentId);
+    return { ok: true };
+  };
+
+  // After an admin reset: the student chooses their own new password, then is signed in
+  const completePasswordChange = async (accountId, newPassword) => {
+    if (backendEnabled) {
+      // accountId is the short-lived reset token from the login response
+      try {
+        const res = await api('/auth/set-password', { method: 'POST', auth: false, body: { resetToken: accountId, newPassword } });
+        await startServerSession(res.token);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+    const account = studentAccounts.find((a) => a.id === accountId);
+    if (!account) return { ok: false, error: 'Account not found.' };
+    const credentials = await hashPassword(newPassword);
+    const now = new Date().toISOString();
+    setStudentAccounts((prev) =>
+      prev.map((a) => (a.id === accountId ? { ...a, credentials, mustChangePassword: false, passwordUpdatedAt: now } : a))
+    );
+    stampLogin(accountId);
+    login('student', account.studentId);
+    return { ok: true };
+  };
+
+  // Signed-in student changes their own password (needs the current one)
+  const changeOwnPassword = async (currentPassword, newPassword) => {
+    if (backendEnabled) {
+      try {
+        await api('/auth/change-password', { method: 'POST', body: { currentPassword, newPassword } });
+        showToast('Password changed', 'success');
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+    const account = studentAccounts.find((a) => a.studentId === currentUserId);
+    if (!account) return { ok: false, error: 'Password login is only available for registered students.' };
+    if (!(await verifyPassword(currentPassword, account.credentials))) {
+      return { ok: false, error: 'Your current password is incorrect.' };
+    }
+    const credentials = await hashPassword(newPassword);
+    setStudentAccounts((prev) =>
+      prev.map((a) =>
+        a.id === account.id ? { ...a, credentials, mustChangePassword: false, passwordUpdatedAt: new Date().toISOString() } : a
+      )
+    );
+    showToast('Password changed', 'success');
+    return { ok: true };
+  };
+
+  // Admin: replace a student's password with a temporary one they must change at next login
+  const adminResetStudentPassword = async (accountId, tempPassword) => {
+    if (backendEnabled) {
+      try {
+        await api(`/admin/students/${accountId}/reset-password`, { method: 'POST', body: { tempPassword } });
+        showToast('Temporary password set. Share it with the student.', 'success');
+        syncRef.current?.poll();
+        return { ok: true };
+      } catch (err) {
+        showToast(err.message, 'warning');
+        return { ok: false, error: err.message };
+      }
+    }
+    const credentials = await hashPassword(tempPassword);
+    setStudentAccounts((prev) =>
+      prev.map((a) =>
+        a.id === accountId
+          ? { ...a, credentials, mustChangePassword: true, passwordUpdatedAt: new Date().toISOString(), passwordResetByAdminAt: new Date().toISOString() }
+          : a
+      )
+    );
+    showToast('Temporary password set. Share it with the student.', 'success');
   };
 
   // =========================================================================
@@ -700,6 +1154,8 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteSubject = (id) => {
+    const subject = curriculumSubjects.find((s) => s.id === id);
+    deleteNoteFiles(collectFileNoteIds(subject?.modules));
     setCurriculumSubjects((prev) => prev.filter((s) => s.id !== id));
     showToast('Subject removed', 'info');
   };
@@ -709,7 +1165,9 @@ export const AppProvider = ({ children }) => {
     const newModule = {
       ...moduleData,
       id: `mod-${Date.now()}`,
+      sections: [{ id: createSectionId(), title: 'Section 1', description: '' }],
       videos: [],
+      notes: [],
       questions: []
     };
     setCurriculumSubjects((prev) =>
@@ -739,6 +1197,10 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteModule = (subjectId, moduleId) => {
+    const module = curriculumSubjects
+      .find((s) => s.id === subjectId)
+      ?.modules?.find((m) => m.id === moduleId);
+    deleteNoteFiles(collectFileNoteIds(module ? [module] : []));
     setCurriculumSubjects((prev) =>
       prev.map((s) =>
         s.id === subjectId
@@ -750,6 +1212,103 @@ export const AppProvider = ({ children }) => {
       )
     );
     showToast('Module removed', 'info');
+  };
+
+  // Section CRUD (Module -> Sections -> Videos)
+  const mapModule = (subjectId, moduleId, updater) => {
+    setCurriculumSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? {
+              ...s,
+              modules: (s.modules || []).map((m) => (m.id === moduleId ? updater(m) : m))
+            }
+          : s
+      )
+    );
+  };
+
+  const addSection = (subjectId, moduleId, sectionData) => {
+    const newSection = {
+      title: (sectionData.title || '').trim() || 'New Section',
+      description: (sectionData.description || '').trim(),
+      id: createSectionId()
+    };
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      sections: [...(m.sections || []), newSection]
+    }));
+    showToast(`"${newSection.title}" added`, 'success');
+    return newSection;
+  };
+
+  const updateSection = (subjectId, moduleId, sectionId, updatedFields) => {
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      sections: (m.sections || []).map((sec) =>
+        sec.id === sectionId ? { ...sec, ...updatedFields } : sec
+      )
+    }));
+    showToast('Section updated', 'success');
+  };
+
+  // Removes the section and every video inside it. A module always keeps at least one section.
+  const deleteSection = (subjectId, moduleId, sectionId) => {
+    mapModule(subjectId, moduleId, (m) => {
+      const remaining = (m.sections || []).filter((sec) => sec.id !== sectionId);
+      return {
+        ...m,
+        sections: remaining.length
+          ? remaining
+          : [{ id: createSectionId(), title: 'Section 1', description: '' }],
+        videos: (m.videos || []).filter((v) => v.sectionId !== sectionId)
+      };
+    });
+    showToast('Section removed', 'info');
+  };
+
+  // Notes CRUD (teacher study material: uploaded files, links, or written notes)
+  // `file` (Blob) is stored in IndexedDB; only metadata goes into the curriculum.
+  const addNote = async (subjectId, moduleId, noteData, file) => {
+    const id = `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    if (noteData.type === 'file') {
+      if (!file) {
+        showToast('Please choose a file to upload', 'warning');
+        return false;
+      }
+      try {
+        await saveNoteFile(id, file);
+      } catch (e) {
+        console.warn('Note upload failed:', e);
+        showToast(
+          backendEnabled
+            ? `Upload failed: ${e.message || 'please try again'}`
+            : 'Could not save this file. Your browser storage may be full.',
+          'warning'
+        );
+        return false;
+      }
+    }
+    const newNote = {
+      ...noteData,
+      id,
+      createdAt: new Date().toISOString(),
+      ...(file
+        ? { fileName: file.name, fileType: file.type || '', fileSize: file.size }
+        : {})
+    };
+    mapModule(subjectId, moduleId, (m) => ({ ...m, notes: [...(m.notes || []), newNote] }));
+    showToast(`Notes "${newNote.title}" shared with students`, 'success');
+    return true;
+  };
+
+  const deleteNote = (subjectId, moduleId, noteId) => {
+    deleteNoteFiles([noteId]);
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      notes: (m.notes || []).filter((n) => n.id !== noteId)
+    }));
+    showToast('Notes removed', 'info');
   };
 
   // Video CRUD
@@ -767,7 +1326,19 @@ export const AppProvider = ({ children }) => {
               ...s,
               modules: (s.modules || []).map((m) =>
                 m.id === moduleId
-                  ? { ...m, videos: [...(m.videos || []), newVideo] }
+                  ? {
+                      ...m,
+                      videos: [
+                        ...(m.videos || []),
+                        {
+                          ...newVideo,
+                          // Fall back to the first section if none (or a stale one) was chosen
+                          sectionId: (m.sections || []).some((sec) => sec.id === newVideo.sectionId)
+                            ? newVideo.sectionId
+                            : m.sections?.[0]?.id
+                        }
+                      ]
+                    }
                   : m
               )
             }
@@ -875,11 +1446,208 @@ export const AppProvider = ({ children }) => {
   };
 
   // =========================================================================
+  // RETESTS
+  // =========================================================================
+
+  // The student's open retest for an exam (requested or granted), if any
+  const getRetestFor = (studentId, examId) =>
+    retests.find(
+      (r) =>
+        r.studentId === studentId &&
+        r.examId === examId &&
+        (r.status === 'requested' || r.status === 'granted')
+    ) || null;
+
+  /**
+   * Whether a student may start an exam right now.
+   * - No attempt yet: only while the exam is Live.
+   * - Already attempted: only with a granted retest (works even after the exam concluded).
+   */
+  const getExamAccess = (studentId, exam) => {
+    if (!exam) return { allowed: false, reason: 'Examination not found' };
+    const attempted = examAttempts.some((a) => a.studentId === studentId && a.examId === exam.id);
+    const grant = retests.find(
+      (r) => r.studentId === studentId && r.examId === exam.id && r.status === 'granted'
+    );
+    if (attempted) {
+      return grant
+        ? { allowed: true, isRetest: true }
+        : { allowed: false, reason: 'You have already attempted this exam. Ask the admin for a retest.' };
+    }
+    if (exam.status === 'Live Now') return { allowed: true, isRetest: false };
+    if (grant && exam.status === 'Completed') return { allowed: true, isRetest: true };
+    return { allowed: false, reason: exam.status === 'Upcoming' ? 'This exam has not started yet.' : 'This exam has concluded.' };
+  };
+
+  const requestRetest = (examId, reason = '') => {
+    const exam = examinations.find((e) => e.id === examId);
+    const student = currentUser;
+    if (!exam || !student) return;
+    if (getRetestFor(student.id, examId)) {
+      showToast('You already have a retest request for this exam.', 'info');
+      return;
+    }
+    setRetests((prev) => [
+      {
+        id: `retest-${Date.now()}`,
+        studentId: student.id,
+        studentName: student.name,
+        avatar: student.avatar || '',
+        examId,
+        examTitle: exam.title,
+        subjectId: exam.subjectId,
+        subjectName: exam.subjectName,
+        reason: reason.trim(),
+        status: 'requested',
+        requestedAt: new Date().toISOString()
+      },
+      ...prev
+    ]);
+    showToast('Retest request sent to the admin.', 'success');
+  };
+
+  // Admin: grant a retest. Approves the student's request if there is one, otherwise creates a grant.
+  const grantRetest = (studentId, examId, note = '') => {
+    const exam = examinations.find((e) => e.id === examId);
+    const student = students.find((s) => s.id === studentId);
+    const now = new Date().toISOString();
+    const existing = getRetestFor(studentId, examId);
+    if (existing?.status === 'granted') {
+      showToast('A retest is already enabled for this student.', 'info');
+      return;
+    }
+    setRetests((prev) =>
+      existing
+        ? prev.map((r) => (r.id === existing.id ? { ...r, status: 'granted', grantedAt: now, adminNote: note } : r))
+        : [
+            {
+              id: `retest-${Date.now()}`,
+              studentId,
+              studentName: student?.name || 'Student',
+              avatar: student?.avatar || '',
+              examId,
+              examTitle: exam?.title || 'Examination',
+              subjectId: exam?.subjectId,
+              subjectName: exam?.subjectName,
+              reason: '',
+              status: 'granted',
+              requestedAt: now,
+              grantedAt: now,
+              adminNote: note
+            },
+            ...prev
+          ]
+    );
+    showToast(`Retest enabled for ${student?.name || 'student'}.`, 'success');
+  };
+
+  const declineRetest = (retestId, note = '') => {
+    setRetests((prev) =>
+      prev.map((r) =>
+        r.id === retestId ? { ...r, status: 'declined', declinedAt: new Date().toISOString(), adminNote: note } : r
+      )
+    );
+    showToast('Retest request declined.', 'info');
+  };
+
+  // Admin: take back a granted retest the student hasn't used yet
+  const revokeRetest = (retestId) => {
+    setRetests((prev) =>
+      prev.map((r) => (r.id === retestId ? { ...r, status: 'revoked', revokedAt: new Date().toISOString() } : r))
+    );
+    showToast('Retest access removed.', 'info');
+  };
+
+  const pendingRetestCount = retests.filter((r) => r.status === 'requested').length;
+
+  // =========================================================================
+  // DOUBTS
+  // =========================================================================
+
+  /**
+   * Student raises a doubt. `context` (optional) ties it to a question:
+   * { source: 'exam' | 'quiz' | 'review', examId?, assessmentTitle, questionIndex, questionText, options, correctAnswer? }
+   */
+  const raiseDoubt = ({ subjectId = '', subjectName = 'General', message, context = null }) => {
+    const student = currentUser;
+    const text = (message || '').trim();
+    if (!student || (!text && !context)) {
+      showToast('Please describe your doubt', 'warning');
+      return null;
+    }
+    const now = new Date().toISOString();
+    const doubt = {
+      id: `doubt-${Date.now()}`,
+      studentId: student.id,
+      studentName: student.name,
+      avatar: student.avatar || '',
+      subjectId,
+      subjectName: subjectName || 'General',
+      context,
+      status: 'open', // 'open' (waiting for admin) | 'answered' | 'resolved'
+      createdAt: now,
+      updatedAt: now,
+      seenByStudent: true,
+      messages: [
+        { id: `msg-${Date.now()}`, from: 'student', name: student.name, text: text || 'I have a doubt about this question.', at: now }
+      ]
+    };
+    setDoubts((prev) => [doubt, ...prev]);
+    showToast('Doubt sent to the admin. You will see the reply in My Doubts.', 'success');
+    return doubt;
+  };
+
+  const replyToDoubt = (doubtId, text) => {
+    const body = (text || '').trim();
+    if (!body) return;
+    const now = new Date().toISOString();
+    const fromAdmin = currentRole === 'teacher' || currentRole === 'admin';
+    setDoubts((prev) =>
+      prev.map((d) =>
+        d.id === doubtId
+          ? {
+              ...d,
+              status: fromAdmin ? 'answered' : 'open',
+              updatedAt: now,
+              seenByStudent: !fromAdmin,
+              messages: [
+                ...d.messages,
+                {
+                  id: `msg-${Date.now()}`,
+                  from: fromAdmin ? 'admin' : 'student',
+                  name: currentUser?.name || (fromAdmin ? 'Admin' : 'Student'),
+                  text: body,
+                  at: now
+                }
+              ]
+            }
+          : d
+      )
+    );
+    showToast(fromAdmin ? 'Reply sent to the student.' : 'Reply sent to the admin.', 'success');
+  };
+
+  const setDoubtStatus = (doubtId, status) => {
+    setDoubts((prev) =>
+      prev.map((d) => (d.id === doubtId ? { ...d, status, updatedAt: new Date().toISOString() } : d))
+    );
+  };
+
+  const markDoubtSeen = (doubtId) => {
+    setDoubts((prev) => prev.map((d) => (d.id === doubtId && !d.seenByStudent ? { ...d, seenByStudent: true } : d)));
+  };
+
+  const openDoubtsCount = doubts.filter((d) => d.status === 'open').length;
+
+  // =========================================================================
   // SUBSCRIPTION & PAYMENT APPROVAL WORKFLOW
   // =========================================================================
 
   const submitSubscriptionRequest = (reqData) => {
+    const subject = curriculumSubjects.find((s) => s.id === reqData.subjectId);
     const newReq = {
+      // Snapshot of how long this payment unlocks the subject (0 = lifetime)
+      validityDays: Number(subject?.validityDays) || 0,
       ...reqData,
       id: `sub-req-${Date.now()}`,
       status: 'pending',
@@ -890,18 +1658,39 @@ export const AppProvider = ({ children }) => {
     showToast('Payment proof sent to Admin! Waiting for manual approval.', 'success', 5000);
   };
 
+  // Approval starts the access period. Renewing while still active extends from the
+  // current end date, so the student never loses remaining days.
   const approveSubscription = (requestId) => {
-    setSubscriptions((prev) =>
-      prev.map((s) =>
+    const now = new Date();
+    setSubscriptions((prev) => {
+      const req = prev.find((s) => s.id === requestId);
+      if (!req) return prev;
+      // Older requests have no snapshot: fall back to the subject's current validity
+      const subjectDays =
+        Number(curriculumSubjects.find((sub) => sub.id === req.subjectId)?.validityDays) || 0;
+      const days = req.validityDays ?? subjectDays;
+
+      const current = pickLatestApproved(
+        prev.filter((s) => s.studentId === req.studentId && s.subjectId === req.subjectId),
+        now
+      );
+      const currentEnd = current?.timing.expiresAt;
+      const startsAt = currentEnd && currentEnd > now ? currentEnd : now;
+      const expiresAt = isLifetime(days) ? null : addDays(startsAt, days).toISOString();
+
+      return prev.map((s) =>
         s.id === requestId
           ? {
               ...s,
               status: 'approved',
-              reviewedAt: new Date().toISOString().replace('T', ' ').slice(0, 16)
+              validityDays: Number(days) || 0,
+              startsAt: startsAt.toISOString(),
+              expiresAt,
+              reviewedAt: now.toISOString().replace('T', ' ').slice(0, 16)
             }
           : s
-      )
-    );
+      );
+    });
     showToast('Subscription approved! Student access unlocked.', 'success');
   };
 
@@ -929,14 +1718,21 @@ export const AppProvider = ({ children }) => {
     const userSubs = subscriptions.filter(
       (s) => s.studentId === studentId && s.subjectId === subjectId
     );
-    if (userSubs.some((s) => s.status === 'approved')) {
+    const latest = pickLatestApproved(userSubs);
+    if (latest && latest.timing.state !== 'expired') {
       return 'active';
     }
     if (userSubs.some((s) => s.status === 'pending')) {
       return 'pending';
     }
-    return 'locked';
+    return latest ? 'expired' : 'locked';
   };
+
+  // The student's current (furthest-reaching) approved subscription for a subject, with timing
+  const getSubjectSubscription = (studentId, subjectId) =>
+    pickLatestApproved(
+      subscriptions.filter((s) => s.studentId === studentId && s.subjectId === subjectId)
+    );
 
   const pendingSubscriptionsCount = subscriptions.filter(
     (s) => s.status === 'pending'
@@ -1244,6 +2040,13 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider
       value={{
+        backendEnabled,
+        dataReady,
+        loadError,
+        loadServerData,
+        serverInitialized,
+        setServerInitialized,
+        loginWithPassword,
         darkMode,
         setDarkMode,
         currentRole,
@@ -1306,6 +2109,11 @@ export const AppProvider = ({ children }) => {
         addModule,
         updateModule,
         deleteModule,
+        addSection,
+        updateSection,
+        deleteSection,
+        addNote,
+        deleteNote,
         addVideo,
         deleteVideo,
         addCurriculumQuestion,
@@ -1317,6 +2125,27 @@ export const AppProvider = ({ children }) => {
         approveSubscription,
         rejectSubscription,
         checkEnrollmentStatus,
+        getSubjectSubscription,
+        studentAccounts,
+        registerStudent,
+        loginStudentWithPassword,
+        completePasswordChange,
+        changeOwnPassword,
+        adminResetStudentPassword,
+        retests,
+        getRetestFor,
+        getExamAccess,
+        requestRetest,
+        grantRetest,
+        declineRetest,
+        revokeRetest,
+        pendingRetestCount,
+        doubts,
+        raiseDoubt,
+        replyToDoubt,
+        setDoubtStatus,
+        markDoubtSeen,
+        openDoubtsCount,
         pendingSubscriptionsCount,
         difficultyLevels,
         updateDifficultyLevels,

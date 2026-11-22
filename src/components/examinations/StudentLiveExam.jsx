@@ -14,17 +14,37 @@ import {
   HelpCircle,
   ShieldCheck,
   Check,
-  Award
+  Award,
+  MessageCircleQuestion
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { AskDoubtModal } from '../doubts/AskDoubtModal';
 
 export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
   const {
     currentUser,
     saveExamDraftAnswer,
     submitStudentExamAttempt,
-    showToast
+    showToast,
+    doubts
   } = useApp();
+
+  // Doubt about the current question -> goes to the admin's Doubts dashboard
+  const [doubtOpen, setDoubtOpen] = useState(false);
+  const doubtedQuestions = useMemo(
+    () =>
+      new Set(
+        (doubts || [])
+          .filter(
+            (d) =>
+              d.studentId === currentUser?.id &&
+              d.context?.source === 'exam' &&
+              d.context?.examId === exam?.id
+          )
+          .map((d) => d.context.questionIndex)
+      ),
+    [doubts, currentUser?.id, exam?.id]
+  );
 
   const questions = useMemo(() => exam?.questions || [], [exam]);
   const totalQuestions = questions.length || 30;
@@ -136,19 +156,24 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
   const markedCount = markedForReview.filter(Boolean).length;
 
   // Submit Handler
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    // Clear local resume items
+    const timeSpent = Math.max(1, Math.round((initialSeconds - timeLeft) / 60));
+    // With the backend this waits for the server's score; on failure the answers stay saved
+    const result = await submitStudentExamAttempt(exam.id, answers, timeSpent);
+    if (!result) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Clear local resume items only once the submission succeeded
     try {
       localStorage.removeItem(`cohesion_exam_ans_${exam?.id}_${currentUser?.id}`);
       localStorage.removeItem(`cohesion_exam_review_${exam?.id}_${currentUser?.id}`);
       localStorage.removeItem(`cohesion_exam_time_${exam?.id}_${currentUser?.id}`);
     } catch (e) {}
-
-    const timeSpent = Math.max(1, Math.round((initialSeconds - timeLeft) / 60));
-    const result = submitStudentExamAttempt(exam.id, answers, timeSpent);
 
     // Confetti celebration
     try {
@@ -277,13 +302,26 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
               </div>
 
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                <span className="text-emerald-600 font-bold">+1.0 Mark</span>
+                <span className="text-emerald-600 font-bold hidden sm:inline">+1.0 Mark</span>
                 {exam?.negativeMarking && (
                   <>
-                    <span>•</span>
-                    <span className="text-red-500 font-bold">-{exam?.negativeMarkValue || 0.25} Neg.</span>
+                    <span className="hidden sm:inline">•</span>
+                    <span className="text-red-500 font-bold hidden sm:inline">-{exam?.negativeMarkValue || 0.25} Neg.</span>
                   </>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setDoubtOpen(true)}
+                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold inline-flex items-center gap-1 border transition-colors ${
+                    doubtedQuestions.has(currentQuestionIndex)
+                      ? 'bg-violet-100 dark:bg-violet-950/50 text-violet-800 dark:text-violet-300 border-violet-300 dark:border-violet-800'
+                      : 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-900/60 hover:bg-violet-50 dark:hover:bg-violet-950/40'
+                  }`}
+                  title="Send this question to the admin as a doubt"
+                >
+                  <MessageCircleQuestion className="w-3.5 h-3.5" />
+                  <span>{doubtedQuestions.has(currentQuestionIndex) ? 'Doubt sent' : 'Doubt'}</span>
+                </button>
               </div>
             </div>
 
@@ -400,88 +438,102 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
         </main>
 
         {/* Right: Question Navigation Panel (Desktop Persistent) */}
-        <aside className="hidden md:flex w-72 lg:w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex-col justify-between shrink-0 p-5 space-y-4 select-none">
-          <div className="space-y-4">
-            <div>
+        <aside className="hidden md:flex w-72 lg:w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex-col shrink-0 select-none">
+          <div className="flex-1 min-h-0 flex flex-col p-4 lg:p-5 gap-4">
+            <div className="shrink-0">
               <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">
                 Question Navigator
               </h2>
-              <p className="text-[11px] text-slate-400">
-                Click any number to jump directly to that question.
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                Tap a number to jump to that question.
               </p>
             </div>
 
             {/* Statistics Legend */}
-            <div className="grid grid-cols-2 gap-2 text-[11px] font-bold p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-1.5">
+            <div className="shrink-0 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] font-bold p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <span className="w-3 h-3 rounded-md bg-emerald-500 shrink-0" />
-                <span className="text-slate-700 dark:text-slate-300">
+                <span className="text-slate-700 dark:text-slate-300 truncate">
                   {answeredCount} Answered
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <span className="w-3 h-3 rounded-md bg-slate-200 dark:bg-slate-700 shrink-0" />
-                <span className="text-slate-700 dark:text-slate-300">
+                <span className="text-slate-700 dark:text-slate-300 truncate">
                   {unansweredCount} Unanswered
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <span className="w-3 h-3 rounded-md bg-purple-500 shrink-0" />
-                <span className="text-slate-700 dark:text-slate-300">
+                <span className="text-slate-700 dark:text-slate-300 truncate">
                   {markedCount} Marked
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-md ring-2 ring-[#087F8C] bg-white shrink-0" />
-                <span className="text-slate-700 dark:text-slate-300">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-3 h-3 rounded-md ring-2 ring-[#087F8C] ring-offset-1 ring-offset-slate-50 dark:ring-offset-slate-800 bg-white dark:bg-slate-900 shrink-0" />
+                <span className="text-slate-700 dark:text-slate-300 truncate">
                   Current
                 </span>
               </div>
             </div>
 
-            {/* 30-Question Palette Grid */}
-            <div className="grid grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto pr-1">
-              {questions.map((_, idx) => {
-                const isCurrent = currentQuestionIndex === idx;
-                const isAnswered = answers[idx] !== null && answers[idx] !== undefined;
-                const isMarked = markedForReview[idx];
+            {/* Question Palette — 4 per row on desktop */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <div className="grid grid-cols-4 gap-2.5">
+                {questions.map((_, idx) => {
+                  const isCurrent = currentQuestionIndex === idx;
+                  const isAnswered = answers[idx] !== null && answers[idx] !== undefined;
+                  const isMarked = markedForReview[idx];
 
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setCurrentQuestionIndex(idx)}
-                    className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center transition-all relative ${
-                      isCurrent
-                        ? 'ring-2 ring-[#087F8C] dark:ring-[#20B8C7] font-extrabold scale-105 shadow-sm'
-                        : ''
-                    } ${
-                      isAnswered && isMarked
-                        ? 'bg-emerald-500 text-white border-2 border-purple-400'
-                        : isAnswered
-                        ? 'bg-emerald-500 text-white'
-                        : isMarked
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-                    }`}
-                  >
-                    <span>{idx + 1}</span>
-                    {isMarked && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-purple-400 ring-1 ring-white" />
-                    )}
-                  </button>
-                );
-              })}
+                  let tone =
+                    'border-2 border-transparent bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700';
+                  if (isAnswered && isMarked) {
+                    tone = 'border-2 border-purple-300 bg-emerald-500 text-white';
+                  } else if (isAnswered) {
+                    tone = 'border-2 border-transparent bg-emerald-500 text-white';
+                  } else if (isMarked) {
+                    tone = 'border-2 border-transparent bg-purple-500 text-white';
+                  }
+
+                  if (isCurrent) {
+                    tone = isAnswered
+                      ? 'border-2 border-[#087F8C] dark:border-[#20B8C7] bg-emerald-500 text-white shadow-[0_0_0_2px_rgba(8,127,140,0.2)]'
+                      : isMarked
+                      ? 'border-2 border-[#087F8C] dark:border-[#20B8C7] bg-purple-500 text-white shadow-[0_0_0_2px_rgba(8,127,140,0.2)]'
+                      : 'border-2 border-[#087F8C] dark:border-[#20B8C7] bg-white dark:bg-slate-900 text-[#087F8C] dark:text-[#20B8C7] shadow-[0_0_0_2px_rgba(8,127,140,0.15)]';
+                  }
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentQuestionIndex(idx)}
+                      aria-current={isCurrent ? 'true' : undefined}
+                      aria-label={`Question ${idx + 1}${isAnswered ? ', answered' : ''}${isMarked ? ', marked for review' : ''}`}
+                      className={`aspect-square box-border rounded-xl font-bold text-xs flex items-center justify-center transition-colors relative cursor-pointer ${tone} ${
+                        isCurrent ? 'font-extrabold' : ''
+                      }`}
+                    >
+                      <span>{idx + 1}</span>
+                      {isMarked && (
+                        <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-purple-300 ring-1 ring-white/80" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
           {/* Bottom Security Info */}
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-[10px] text-slate-400 space-y-1">
-            <div className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
-              <span>Proctored Session #2026</span>
+          <div className="shrink-0 p-4 lg:p-5 pt-0">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-[10px] text-slate-400 space-y-1 border border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-1.5 font-bold text-slate-600 dark:text-slate-300">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                <span>Proctored Session</span>
+              </div>
+              <p className="leading-relaxed">Responses sync in real time with the central server.</p>
             </div>
-            <p>Every response is synced real-time with the central server.</p>
           </div>
         </aside>
 
@@ -492,55 +544,96 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
               className="fixed inset-0 bg-black/60 backdrop-blur-xs"
               onClick={() => setMobilePaletteOpen(false)}
             />
-            <div className="relative ml-auto w-72 h-full bg-white dark:bg-slate-900 p-5 space-y-4 flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                    Question Navigator
-                  </h3>
+            <div className="relative ml-auto w-[min(100%,20rem)] h-full bg-white dark:bg-slate-900 p-5 flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
+              <div className="flex-1 min-h-0 flex flex-col gap-4">
+                <div className="flex items-center justify-between shrink-0">
+                  <div>
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                      Question Navigator
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Tap a number to jump.
+                    </p>
+                  </div>
                   <button
+                    type="button"
                     onClick={() => setMobilePaletteOpen(false)}
-                    className="p-1 rounded-lg text-slate-400"
+                    className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                {/* 30-Question Grid */}
-                <div className="grid grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto">
-                  {questions.map((_, idx) => {
-                    const isCurrent = currentQuestionIndex === idx;
-                    const isAnswered = answers[idx] !== null && answers[idx] !== undefined;
-                    const isMarked = markedForReview[idx];
+                <div className="shrink-0 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] font-bold p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-md bg-emerald-500 shrink-0" />
+                    <span className="text-slate-700 dark:text-slate-300">{answeredCount} Answered</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-md bg-slate-200 dark:bg-slate-700 shrink-0" />
+                    <span className="text-slate-700 dark:text-slate-300">{unansweredCount} Unanswered</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-md bg-purple-500 shrink-0" />
+                    <span className="text-slate-700 dark:text-slate-300">{markedCount} Marked</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-md ring-2 ring-[#087F8C] bg-white shrink-0" />
+                    <span className="text-slate-700 dark:text-slate-300">Current</span>
+                  </div>
+                </div>
 
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setCurrentQuestionIndex(idx);
-                          setMobilePaletteOpen(false);
-                        }}
-                        className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center transition-all ${
-                          isAnswered
-                            ? 'bg-emerald-500 text-white'
-                            : isMarked
-                            ? 'bg-purple-500 text-white'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                        } ${isCurrent ? 'ring-2 ring-[#087F8C]' : ''}`}
-                      >
-                        {idx + 1}
-                      </button>
-                    );
-                  })}
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <div className="grid grid-cols-4 gap-2.5">
+                    {questions.map((_, idx) => {
+                      const isCurrent = currentQuestionIndex === idx;
+                      const isAnswered = answers[idx] !== null && answers[idx] !== undefined;
+                      const isMarked = markedForReview[idx];
+
+                      let tone =
+                        'border-2 border-transparent bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300';
+                      if (isAnswered) {
+                        tone = 'border-2 border-transparent bg-emerald-500 text-white';
+                      } else if (isMarked) {
+                        tone = 'border-2 border-transparent bg-purple-500 text-white';
+                      }
+
+                      if (isCurrent) {
+                        tone = isAnswered
+                          ? 'border-2 border-[#087F8C] dark:border-[#20B8C7] bg-emerald-500 text-white'
+                          : isMarked
+                          ? 'border-2 border-[#087F8C] dark:border-[#20B8C7] bg-purple-500 text-white'
+                          : 'border-2 border-[#087F8C] dark:border-[#20B8C7] bg-white dark:bg-slate-900 text-[#087F8C] dark:text-[#20B8C7]';
+                      }
+
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setCurrentQuestionIndex(idx);
+                            setMobilePaletteOpen(false);
+                          }}
+                          className={`aspect-square box-border rounded-xl font-bold text-xs flex items-center justify-center transition-colors relative ${tone}`}
+                        >
+                          {idx + 1}
+                          {isMarked && (
+                            <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-purple-300 ring-1 ring-white/80" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() => {
                   setMobilePaletteOpen(false);
                   setShowSubmitModal(true);
                 }}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-xs shadow-sm"
+                className="mt-4 w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-xs shadow-sm shrink-0"
               >
                 Submit Examination
               </button>
@@ -625,6 +718,23 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
             </div>
           </div>
         </div>
+      )}
+      {doubtOpen && (
+        <AskDoubtModal
+          context={{
+            source: 'exam',
+            examId: exam?.id,
+            assessmentTitle: exam?.title,
+            questionIndex: currentQuestionIndex,
+            questionText: currentQ.questionText,
+            options: currentQ.options || [],
+            correctAnswer: currentQ.correctAnswer,
+            selectedOption: answers[currentQuestionIndex] ?? null
+          }}
+          subjectId={exam?.subjectId}
+          subjectName={exam?.subjectName}
+          onClose={() => setDoubtOpen(false)}
+        />
       )}
     </div>
   );

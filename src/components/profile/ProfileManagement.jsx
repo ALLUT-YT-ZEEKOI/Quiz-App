@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Save } from 'lucide-react';
+import { Save, KeyRound } from 'lucide-react';
 import { PageHeader } from '../common/PageHeader';
 
 export const ProfileManagement = () => {
-  const { currentUser, currentRole, updateStudent, showToast, setActiveView } = useApp();
+  const { currentUser, currentRole, updateStudent, showToast, setActiveView, studentAccounts } = useApp();
+  const account = (studentAccounts || []).find((a) => a.studentId === currentUser?.id);
 
   const [name, setName] = useState(currentUser?.name || '');
   const [email, setEmail] = useState(currentUser?.email || '');
@@ -138,6 +139,68 @@ export const ProfileManagement = () => {
           </div>
         </form>
       </div>
+      {/* Registered students can change their login password */}
+      {account && <ChangePasswordCard account={account} />}
     </div>
+  );
+};
+
+const ChangePasswordCard = ({ account }) => {
+  const { changeOwnPassword } = useApp();
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (next.length < 6) return setError('New password must be at least 6 characters');
+    if (next !== confirm) return setError('New passwords do not match');
+    setSaving(true);
+    const res = await changeOwnPassword(current, next);
+    setSaving(false);
+    if (!res.ok) return setError(res.error);
+    setCurrent('');
+    setNext('');
+    setConfirm('');
+    setError('');
+  };
+
+  const inputCls =
+    'w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+
+  return (
+    <form onSubmit={submit} className="bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200 dark:border-slate-800 shadow-subtle p-6 sm:p-8 space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 flex items-center justify-center shrink-0">
+          <KeyRound className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="font-bold text-base text-slate-900 dark:text-white">Change password</h3>
+          <p className="text-xs text-slate-500">
+            Sign in with <strong>{account.email}</strong> or your WhatsApp number. Registration ID: {account.registrationId}
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label htmlFor="cp-current" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Current password</label>
+          <input id="cp-current" type="password" autoComplete="current-password" required value={current} onChange={(e) => { setCurrent(e.target.value); setError(''); }} className={inputCls} />
+        </div>
+        <div>
+          <label htmlFor="cp-new" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">New password</label>
+          <input id="cp-new" type="password" autoComplete="new-password" required value={next} onChange={(e) => { setNext(e.target.value); setError(''); }} className={inputCls} />
+        </div>
+        <div>
+          <label htmlFor="cp-confirm" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Confirm new password</label>
+          <input id="cp-confirm" type="password" autoComplete="new-password" required value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(''); }} className={inputCls} />
+        </div>
+      </div>
+      {error && <p className="text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+      <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-bold">
+        {saving ? 'Saving…' : 'Update password'}
+      </button>
+    </form>
   );
 };

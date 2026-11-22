@@ -111,8 +111,8 @@ export const SubjectDirectory = () => {
         </div>
       </div>
 
-      {/* 10 Subject Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* Subject Cards — 1 per row on mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {filteredSubjects.map((sub) => {
           const matchingQuizzes = quizzes.filter(
             (q) => q.subjectId === sub.id && q.status === 'Published'
@@ -125,7 +125,7 @@ export const SubjectDirectory = () => {
           return (
             <div
               key={sub.id}
-              className="p-6 bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200 dark:border-slate-800 shadow-subtle hover:border-blue-400 dark:hover:border-blue-500 transition-all flex flex-col justify-between space-y-4 group"
+              className="p-3 sm:p-6 bg-white dark:bg-surface-darkCard rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-subtle hover:border-blue-400 dark:hover:border-blue-500 transition-all flex flex-col justify-between space-y-3 sm:space-y-4 group"
             >
               {/* Card Header */}
               <div>

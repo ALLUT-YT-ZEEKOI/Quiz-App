@@ -8,6 +8,7 @@ export const INITIAL_CURRICULUM = [
     code: 'MAL-101',
     category: 'Language & Grammar',
     price: 499,
+    validityDays: 60, // access period per payment (0 = lifetime)
     description: 'Foundations of Malayalam language, alphabet (അക്ഷരമാല), sandhi (സന്ധികൾ), grammar rules, and reading comprehension.',
     color: '#059669', // Emerald
     icon: 'BookOpen',
@@ -129,6 +130,7 @@ export const INITIAL_CURRICULUM = [
     code: 'ENG-201',
     category: 'Language & Communication',
     price: 599,
+    validityDays: 30, // access period per payment (0 = lifetime)
     description: 'Master English verb tenses, active vs passive voice, prepositions, direct/indirect speech, and sentence structure.',
     color: '#2563EB', // Royal Blue
     icon: 'Languages',
@@ -272,6 +274,7 @@ export const INITIAL_CURRICULUM = [
     code: 'CE-301',
     category: 'Engineering & Technology',
     price: 999,
+    validityDays: 90, // access period per payment (0 = lifetime)
     description: 'Structural Analysis, IS 456 / IS 800 codal specifications, beam deflection, and concrete mix design.',
     color: '#0284C7', // Sky Blue
     icon: 'Building2',
@@ -395,6 +398,7 @@ export const INITIAL_CURRICULUM = [
     code: 'MATH-101',
     category: 'Applied Mathematics',
     price: 499,
+    validityDays: 365, // access period per payment (0 = lifetime)
     description: 'Calculus, differential equations, matrix eigenvalues, and statistical distributions for engineers.',
     color: '#8B5CF6', // Purple
     icon: 'Calculator',
@@ -518,8 +522,11 @@ export const INITIAL_SUBSCRIPTIONS = [
     screenshot: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=600',
     transactionId: 'UPI-29482947192',
     status: 'approved',
+    validityDays: 30,
     requestedAt: '2026-11-16 18:20',
-    reviewedAt: '2026-11-16 18:45'
+    reviewedAt: '2026-11-16 18:45',
+    startsAt: '2026-11-16T18:45:00.000Z',
+    expiresAt: '2026-12-16T18:45:00.000Z'
   },
   {
     id: 'sub-req-002',
@@ -532,6 +539,7 @@ export const INITIAL_SUBSCRIPTIONS = [
     amount: 499,
     screenshot: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=600',
     transactionId: 'UPI-83920194821',
+    validityDays: 60,
     status: 'pending',
     requestedAt: '2026-11-16 21:10',
     reviewedAt: null
@@ -547,8 +555,71 @@ export const INITIAL_SUBSCRIPTIONS = [
     amount: 999,
     screenshot: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=600',
     transactionId: 'UPI-99482910394',
+    validityDays: 90,
     status: 'pending',
     requestedAt: '2026-11-16 21:30',
     reviewedAt: null
+  }
+];
+
+// Sample student doubts (Doubts dashboard). New doubts are created by students.
+export const INITIAL_DOUBTS = [
+  {
+    id: 'doubt-001',
+    studentId: 'STU001',
+    studentName: 'Adithyan S.',
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250',
+    subjectId: 'sub-malayalam',
+    subjectName: 'Malayalam (മലയാളം)',
+    context: {
+      source: 'quiz',
+      assessmentTitle: 'Module 1: Aksharamala & Swarangal',
+      questionIndex: 4,
+      questionText: 'താഴെ പറയുന്നവയിൽ "ലോപസന്ധി" (Lopasandhi) ക്ക് ഉദാഹരണം ഏതാണ്?',
+      options: ['കാറ്റടിക്കുന്നു (കാറ്റ് + അടിക്കുന്നു)', 'മൺപാത്രം (മൺ + പാത്രം)', 'തിരുമേനി (തിരു + മേനി)', 'പാലപ്പം (പാൽ + അപ്പം)'],
+      correctAnswer: 0
+    },
+    status: 'answered',
+    createdAt: '2026-11-17T09:10:00.000Z',
+    updatedAt: '2026-11-17T11:25:00.000Z',
+    seenByStudent: false,
+    messages: [
+      {
+        id: 'msg-001a',
+        from: 'student',
+        name: 'Adithyan S.',
+        text: 'Why is പാലപ്പം not lopasandhi? A letter seems to disappear there too.',
+        at: '2026-11-17T09:10:00.000Z'
+      },
+      {
+        id: 'msg-001b',
+        from: 'admin',
+        name: 'Admin',
+        text: 'Good question! In പാൽ + അപ്പം nothing is dropped: the chillu ൽ becomes ല and joins അ. In കാറ്റ് + അടിക്കുന്നു the ending ഉ sound is removed, which is lopasandhi.',
+        at: '2026-11-17T11:25:00.000Z'
+      }
+    ]
+  },
+  {
+    id: 'doubt-002',
+    studentId: 'STU002',
+    studentName: 'Meera Nambiar',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+    subjectId: 'sub-english',
+    subjectName: 'English Grammar & Composition',
+    context: null,
+    status: 'open',
+    createdAt: '2026-11-21T15:40:00.000Z',
+    updatedAt: '2026-11-21T15:40:00.000Z',
+    seenByStudent: true,
+    messages: [
+      {
+        id: 'msg-002a',
+        from: 'student',
+        name: 'Meera Nambiar',
+        text: 'When should I use present perfect instead of simple past? I keep mixing them up in the exercises.',
+        at: '2026-11-21T15:40:00.000Z'
+      }
+    ]
   }
 ];
