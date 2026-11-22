@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { compressImageFile } from '../../utils/imageCompress';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../common/PageHeader';
 import {
@@ -198,15 +199,12 @@ export const TeacherCurriculum = () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64Url = event.target?.result;
-      if (base64Url) {
-        setNewSubject((prev) => ({ ...prev, thumbnail: base64Url }));
+    compressImageFile(file, { maxDim: 1200, quality: 0.8 })
+      .then((dataUrl) => {
+        setNewSubject((prev) => ({ ...prev, thumbnail: dataUrl }));
         showToast('Subject image uploaded successfully!', 'success');
-      }
-    };
-    reader.readAsDataURL(file);
+      })
+      .catch(() => showToast('Could not read this image. Please try another one.', 'warning'));
   };
 
   const handleCreateSubject = (e) => {

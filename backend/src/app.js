@@ -11,7 +11,7 @@ import { filesRouter } from './routes/files.js';
 export const createApp = () => {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', 1); // behind Render/Railway proxies (needed for rate limiting by IP)
+  app.set('trust proxy', 1); // behind the Vercel/Render proxy (needed for rate limiting by IP)
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(
@@ -24,7 +24,7 @@ export const createApp = () => {
     })
   );
 
-  // JSON bodies (payment screenshots and cover images are sent as base64, hence the size)
+  // JSON bodies (payment screenshots and cover images are sent as base64; the app shrinks them first)
   const jsonParser = json({ limit: '25mb' });
   app.use((req, res, next) =>
     req.path.startsWith('/api/files') || req.path === '/api/admin/import' ? next() : jsonParser(req, res, next)

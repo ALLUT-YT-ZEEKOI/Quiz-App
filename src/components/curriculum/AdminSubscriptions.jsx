@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { StoredImage } from './StoredImage';
 import { useApp } from '../../context/AppContext';
 import {
   ShieldCheck,
@@ -260,7 +261,7 @@ export const AdminSubscriptions = () => {
                         className="relative w-11 h-11 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-800 shrink-0"
                         title="View payment screenshot"
                       >
-                        <img
+                        <StoredImage
                           src={req.screenshot}
                           alt="Payment Proof"
                           className="w-full h-full object-cover"
@@ -341,10 +342,10 @@ export const AdminSubscriptions = () => {
             </div>
 
             <div className="max-h-[75vh] overflow-y-auto rounded-2xl bg-black/90 flex items-center justify-center p-2">
-              <img
+              <StoredImage
                 src={previewScreenshotUrl}
                 alt="Payment Screenshot Fullscreen"
-                className="max-h-[70vh] w-auto object-contain rounded-xl"
+                className="max-h-[70vh] min-h-40 min-w-40 w-auto object-contain rounded-xl"
               />
             </div>
 

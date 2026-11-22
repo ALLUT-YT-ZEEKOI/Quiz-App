@@ -4,12 +4,14 @@ import { config } from './config.js';
 let client;
 let db;
 let notesBucket;
+let screenshotsBucket;
 
 export const connectDb = async (uri = config.mongoUri) => {
-  client = new MongoClient(uri, { serverSelectionTimeoutMS: 10000 });
+  client = new MongoClient(uri, { serverSelectionTimeoutMS: 10000, maxPoolSize: 10 });
   await client.connect();
   db = client.db(config.dbName);
   notesBucket = new GridFSBucket(db, { bucketName: 'note_files' });
+  screenshotsBucket = new GridFSBucket(db, { bucketName: 'payment_screenshots' });
   await ensureIndexes();
   return db;
 };
@@ -20,6 +22,7 @@ export const getDb = () => {
 };
 
 export const getNotesBucket = () => notesBucket;
+export const getScreenshotsBucket = () => screenshotsBucket;
 
 export const closeDb = async () => {
   await client?.close();

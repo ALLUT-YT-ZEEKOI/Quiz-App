@@ -5,14 +5,14 @@
 //   - compares the latest state with what the server last confirmed (by item key),
 //   - sends only the changed / deleted items (debounced),
 //   - applies the server's stored versions (e.g. server-scored attempts),
-//   - polls for changes made by other people (admins, other devices) every 15s.
+//   - polls for changes made by other people (admins, other devices) every 20s while the tab is open.
 
 import { api } from './client';
 
 const keyOf = (name, item) =>
   name === 'examMonitoring' ? (item?.examId && item?.studentId ? `${item.examId}:${item.studentId}` : undefined) : item?.id;
 
-const POLL_MS = 15000;
+const POLL_MS = 20000;
 const DEBOUNCE_MS = 400;
 const RETRY_MS = 5000;
 
@@ -196,6 +196,7 @@ export class SyncManager {
 
   async poll() {
     if (!this.ready || !this.serverTime) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return; // catches up when shown
     try {
       const res = await api(`/sync/changes?since=${encodeURIComponent(this.serverTime)}`);
       this.serverTime = res.serverTime;

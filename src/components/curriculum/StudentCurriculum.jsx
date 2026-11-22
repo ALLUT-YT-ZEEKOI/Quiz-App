@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { compressImageFile } from '../../utils/imageCompress';
 import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../common/PageHeader';
@@ -116,15 +117,12 @@ export const StudentCurriculum = () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64Url = event.target?.result;
-      if (base64Url) {
-        setPayScreenshot(base64Url);
+    compressImageFile(file, { maxDim: 1600, quality: 0.75 })
+      .then((dataUrl) => {
+        setPayScreenshot(dataUrl);
         showToast('Payment screenshot attached!', 'success');
-      }
-    };
-    reader.readAsDataURL(file);
+      })
+      .catch(() => showToast('Could not read this image. Please try another one.', 'warning'));
   };
 
   const handleSubmitPaymentProof = (e) => {

@@ -5,6 +5,7 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { hashPassword } from '../services/passwords.js';
 import { normalizePhone, buildStudentRecord } from '../services/students.js';
 import { COLLECTIONS, cleanIncoming } from '../sync/collections.js';
+import { externalizeScreenshot } from '../services/screenshots.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireAdmin);
@@ -38,7 +39,8 @@ adminRouter.post('/students/:accountId/reset-password', async (req, res, next) =
 
 /**
  * One-time import of the data the admin built in the browser (before the backend existed).
- * Body: { collections: { name: [items] }, accounts: [browser student accounts] }
+ * Body: { collections: { name: [items] }, accounts: [browser student accounts], final?: boolean }
+ * Large imports are sent in several parts; only the last one (final !== false) marks the database as set up.
  */
 adminRouter.post('/import', json({ limit: '60mb' }), async (req, res, next) => {
   try {
@@ -50,13 +52,14 @@ adminRouter.post('/import', json({ limit: '60mb' }), async (req, res, next) => {
     for (const [name, items] of Object.entries(incoming)) {
       const def = COLLECTIONS[name];
       if (!def || !Array.isArray(items)) continue;
-      const ops = items
-        .map((raw) => cleanIncoming(raw))
-        .filter((item) => typeof def.key(item) === 'string')
-        .map((item) => {
-          const key = def.key(item);
-          return { replaceOne: { filter: { _id: key }, replacement: { _id: key, ...item, _updatedAt: now }, upsert: true } };
-        });
+      const ops = [];
+      for (const raw of items) {
+        let item = cleanIncoming(raw);
+        const key = def.key(item);
+        if (typeof key !== 'string') continue;
+        if (name === 'subscriptions') item = await externalizeScreenshot(key, item);
+        ops.push({ replaceOne: { filter: { _id: key }, replacement: { _id: key, ...item, _updatedAt: now }, upsert: true } });
+      }
       if (ops.length) await db.collection(def.mongo).bulkWrite(ops, { ordered: false });
       summary[name] = ops.length;
     }
@@ -102,7 +105,9 @@ adminRouter.post('/import', json({ limit: '60mb' }), async (req, res, next) => {
     }
     summary.accounts = accounts;
 
-    await db.collection('meta').updateOne({ _id: 'initialized' }, { $set: { at: now, by: 'import', summary } }, { upsert: true });
+    if (req.body?.final !== false) {
+      await db.collection('meta').updateOne({ _id: 'initialized' }, { $set: { at: now, by: 'import' } }, { upsert: true });
+    }
     res.json({ ok: true, summary });
   } catch (err) {
     next(err);

@@ -1,5 +1,5 @@
 import { Router, raw } from 'express';
-import { getDb, getNotesBucket } from '../db.js';
+import { getDb, getNotesBucket, getScreenshotsBucket } from '../db.js';
 import { config } from '../config.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { buildStudentContext } from '../sync/collections.js';
@@ -15,6 +15,26 @@ const deleteExisting = async (noteId) => {
   const files = await bucket.find({ filename: noteId }).toArray();
   await Promise.all(files.map((f) => bucket.delete(f._id)));
 };
+
+/** Payment screenshot of a subscription request: the admin, or the student who sent it. */
+filesRouter.get('/screenshots/:subscriptionId', async (req, res, next) => {
+  try {
+    const { subscriptionId } = req.params;
+    if (!validNoteId(subscriptionId)) return res.status(400).json({ error: 'Invalid id' });
+    if (req.user.role !== 'admin') {
+      const sub = await getDb().collection('subscriptions').findOne({ _id: subscriptionId, studentId: req.user.studentId });
+      if (!sub) return res.status(404).json({ error: 'File not found' });
+    }
+    const [file] = await getScreenshotsBucket().find({ filename: subscriptionId }).sort({ uploadDate: -1 }).limit(1).toArray();
+    if (!file) return res.status(404).json({ error: 'File not found' });
+    res.setHeader('Content-Type', file.metadata?.contentType || 'image/jpeg');
+    res.setHeader('Content-Length', file.length);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    getScreenshotsBucket().openDownloadStream(file._id).on('error', next).pipe(res);
+  } catch (err) {
+    next(err);
+  }
+});
 
 /** Upload (admin). Raw file body; original file name in ?name= */
 filesRouter.put('/:noteId', requireAdmin, raw({ type: () => true, limit: config.maxNoteFileBytes }), async (req, res, next) => {

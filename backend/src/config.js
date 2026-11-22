@@ -25,7 +25,8 @@ export const config = {
     password: process.env.ADMIN_PASSWORD || '',
     name: process.env.ADMIN_NAME || 'Admin'
   },
-  maxNoteFileBytes: 25 * 1024 * 1024
+  // Vercel accepts at most 4.5 MB per request/response, so note files are capped at 4 MB there
+  maxNoteFileBytes: (Number(process.env.MAX_NOTE_FILE_MB) || (process.env.VERCEL ? 4 : 25)) * 1024 * 1024
 };
 
 if (config.jwtSecret.length < 32) {

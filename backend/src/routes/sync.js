@@ -13,6 +13,7 @@ import {
   checkStudentWrite
 } from '../sync/collections.js';
 import { toAccount } from '../services/students.js';
+import { externalizeScreenshot } from '../services/screenshots.js';
 
 export const syncRouter = Router();
 syncRouter.use(requireAuth);
@@ -151,6 +152,7 @@ syncRouter.post('/:name', async (req, res, next) => {
         item = verdict.item;
       }
 
+      if (name === 'subscriptions') item = await externalizeScreenshot(key, item);
       const doc = { _id: key, ...cleanIncoming(item), _updatedAt: now };
       await coll.replaceOne({ _id: key }, doc, { upsert: true });
       saved.push(key);

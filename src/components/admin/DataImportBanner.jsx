@@ -9,7 +9,46 @@ import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS, INITIAL_SUBSCRIPTIONS,
 import { INITIAL_EXAMINATIONS, generateLiveMonitoringData, generateCompletedExamAttempts } from '../../data/examinationsData';
 import { normalizeCurriculumSections } from '../../utils/curriculumSections';
 import { formatEmbedUrl } from '../../utils/videoUtils';
-import { getLocalNoteFile, saveNoteFile, collectFileNoteIds } from '../../utils/notesStorage';
+import { getLocalNoteFile, saveNoteFile, collectFileNoteIds, MAX_NOTE_FILE_BYTES } from '../../utils/notesStorage';
+import { compressDataUrl } from '../../utils/imageCompress';
+
+const PART_LIMIT = 3 * 1024 * 1024; // characters of JSON per request
+
+/** Splits the import into requests that each stay under PART_LIMIT. */
+const splitIntoParts = ({ collections, accounts }) => {
+  const parts = [];
+  let current = {};
+  let size = 0;
+  const push = () => {
+    if (size) parts.push(current);
+    current = {};
+    size = 0;
+  };
+  Object.entries(collections).forEach(([name, items]) => {
+    items.forEach((item) => {
+      const itemSize = JSON.stringify(item).length;
+      if (size && size + itemSize > PART_LIMIT) push();
+      (current[name] ||= []).push(item);
+      size += itemSize;
+    });
+  });
+  push();
+  if (!parts.length) parts.push({});
+  return parts.map((part, i) => ({ collections: part, accounts: i === parts.length - 1 ? accounts : [], final: i === parts.length - 1 }));
+};
+
+/** Shrinks cover images and payment screenshots saved in this browser before upload. */
+const shrinkImages = async (collections) => {
+  const big = (v) => typeof v === 'string' && v.startsWith('data:image/') && v.length > 300 * 1024;
+  collections.curriculum = await Promise.all(
+    collections.curriculum.map(async (s) => (big(s.thumbnail) ? { ...s, thumbnail: await compressDataUrl(s.thumbnail, { maxDim: 1200 }) } : s))
+  );
+  collections.subscriptions = await Promise.all(
+    collections.subscriptions.map(async (r) =>
+      big(r.screenshot) ? { ...r, screenshot: await compressDataUrl(r.screenshot, { maxDim: 1600, quality: 0.75 }) } : r
+    )
+  );
+};
 
 // API collection name -> [this browser's localStorage key, built-in sample data]
 const SOURCES = {
@@ -65,25 +104,39 @@ export const DataImportBanner = () => {
   const runImport = async () => {
     setBusy(true);
     try {
-      setStep('Uploading subjects, exams, students and results…');
+      setStep('Preparing your data…');
       const payload = collectBrowserData();
-      const { summary } = await api('/admin/import', { method: 'POST', body: payload });
+      await shrinkImages(payload.collections);
+      const parts = splitIntoParts(payload);
+      const summary = {};
+      for (const [i, part] of parts.entries()) {
+        setStep(`Uploading subjects, exams, students and results${parts.length > 1 ? ` (part ${i + 1}/${parts.length})` : ''}…`);
+        const res = await api('/admin/import', { method: 'POST', body: part });
+        Object.entries(res.summary || {}).forEach(([k, v]) => (summary[k] = (summary[k] || 0) + v));
+      }
 
       const noteIds = collectFileNoteIds(payload.collections.curriculum.flatMap((s) => s.modules || []));
       let files = 0;
+      let tooBig = 0;
       for (const [i, id] of noteIds.entries()) {
         setStep(`Uploading note files (${i + 1}/${noteIds.length})…`);
         const blob = await getLocalNoteFile(id).catch(() => null);
-        if (blob) {
-          await saveNoteFile(id, blob);
-          files++;
+        if (!blob) continue;
+        if (blob.size > MAX_NOTE_FILE_BYTES) {
+          tooBig++; // open the note and upload a smaller copy (e.g. a compressed PDF)
+          continue;
         }
+        await saveNoteFile(id, blob);
+        files++;
       }
 
       setStep('Loading your data from the server…');
       await loadServerData();
       const total = Object.entries(summary).reduce((n, [, v]) => n + v, 0);
       showToast(`Imported ${total} records${files ? ` and ${files} note files` : ''} to the online database.`, 'success', 6000);
+      if (tooBig) {
+        showToast(`${tooBig} note file(s) are larger than the online limit and were skipped. Upload smaller copies in those notes.`, 'warning', 9000);
+      }
     } catch (err) {
       showToast(`Import failed: ${err.message}`, 'warning', 7000);
     } finally {

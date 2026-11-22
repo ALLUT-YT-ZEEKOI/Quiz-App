@@ -87,31 +87,67 @@ Restart the frontend (`npm run dev`). The app now uses the backend:
 
 Remove `VITE_API_URL` to go back to the browser-only version at any time.
 
-## 4. Put it online
+## 4. Put it online (Vercel: two projects from one GitHub repo)
 
-### Backend: Render (free)
-1. Push the project to GitHub (`.env` files are ignored, so your secrets stay private).
-2. On https://render.com, go to **New → Web Service** and pick the repo.
-   - **Root Directory:** `backend`
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
-3. Under **Environment**, add the same variables as your `.env`. Set `CLIENT_ORIGINS` to your Vercel URL, e.g. `https://cohesiontech.vercel.app`.
-4. After deploying you get a URL like `https://cohesion-api.onrender.com`. Test `https://cohesion-api.onrender.com/api/health`.
+You create **two Vercel projects** from the same repository: one for the API (folder `backend`) and one for the website (the project root).
 
-On the free plan, the service sleeps after ~15 minutes without traffic, and the first request after that takes ~30 seconds.
+### Step A: Push to GitHub
+Commit and push the project. The `.env` and `.env.local` files are git-ignored, so your passwords stay private.
 
-### Frontend: Vercel (already set up)
-In the Vercel project, go to **Settings → Environment Variables** and add:
+### Step B: Let Vercel reach MongoDB Atlas
+Vercel servers don't have fixed IP addresses. In Atlas, go to **Security → Network Access → Add IP Address → Allow access from anywhere** (`0.0.0.0/0`). Your database password still protects the data.
 
-```
-VITE_API_URL = https://cohesion-api.onrender.com/api
-```
+### Step C: Deploy the API (backend)
+1. On https://vercel.com, click **Add New → Project** and import the repository.
+2. **Project Name:** e.g. `cohesion-api`.
+3. **Root Directory:** click **Edit** and choose `backend`.
+4. **Framework Preset:** `Other`. Leave the build settings empty (`backend/vercel.json` sets them).
+5. Under **Environment Variables**, add:
 
-Then redeploy.
+   | Name | Value |
+   |---|---|
+   | `MONGODB_URI` | your Atlas connection string (same as in `backend/.env`) |
+   | `MONGODB_DB` | `cohesiontech` |
+   | `JWT_SECRET` | same long random string as in `backend/.env` |
+   | `JWT_EXPIRES_IN` | `30d` |
+   | `ADMIN_USERNAME` | `admin` |
+   | `ADMIN_PASSWORD` | your admin password |
+   | `ADMIN_NAME` | `Admin` |
+   | `CLIENT_ORIGINS` | the website URL from step D, e.g. `https://cohesiontech.vercel.app` (fill in after step D) |
+
+6. Click **Deploy**. Open `https://cohesion-api.vercel.app/api/health`; it should show `{"ok":true,...}`.
+
+### Step D: Deploy the website (frontend)
+1. **Add New → Project** again and import the **same** repository.
+2. **Project Name:** e.g. `cohesiontech`. **Root Directory:** leave it as the project root. **Framework Preset:** `Vite` (detected automatically).
+3. Under **Environment Variables**, add:
+
+   ```
+   VITE_API_URL = https://cohesion-api.vercel.app/api
+   ```
+   (use your API project's real URL, ending in `/api`)
+4. Click **Deploy**.
+
+### Step E: Connect the two
+1. Copy the website's URL (e.g. `https://cohesiontech.vercel.app`).
+2. In the **API** project, go to **Settings → Environment Variables** and set `CLIENT_ORIGINS` to that URL. For several URLs (e.g. a custom domain too), separate them with commas, without a slash at the end.
+3. Go to **Deployments → ⋯ → Redeploy** on the API project.
+
+Environment variables only take effect after a redeploy. This applies to both projects. `VITE_API_URL` is built into the website, so after changing it, redeploy the website.
+
+### Limits on Vercel's free plan (already handled in the app)
+- **4.5 MB per request:**
+  - Note files are limited to **4 MB** each. For bigger PDFs, compress them first (e.g. with ilovepdf.com) or split them.
+  - Cover images and payment screenshots are shrunk automatically before upload.
+  - Screenshots are stored separately, so the admin's list stays small.
+- **Usage:** the app checks for updates every 20 seconds, and only while the tab is open, which keeps you within the free plan's request allowance.
+- **First request after a quiet period** can take 1–3 seconds while the server starts and connects to the database.
+
+To allow bigger note files, host the API on Render instead (`npm start`, root directory `backend`, same variables). There, set `MAX_NOTE_FILE_MB=25` on the API and `VITE_MAX_NOTE_FILE_MB=25` on the website.
 
 ## 5. Everyday admin tasks
 
-- **Change the admin password:** change `ADMIN_PASSWORD` (locally in `.env`, or in Render's environment) and restart the API.
+- **Change the admin password:** change `ADMIN_PASSWORD` (locally in `.env` and restart; on Vercel in the API project's Environment Variables, then **Redeploy**).
 - **A student forgot their password:** go to **Registered Students**, open the student, **Reset password**, then send it on WhatsApp. They choose a new password at their next login.
 - **Back up data:** in Atlas, go to **Database → Browse Collections**. Atlas also has export tools (`mongodump`).
 

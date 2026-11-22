@@ -14,7 +14,10 @@ const DB_NAME = 'cohesion_notes';
 const STORE = 'files';
 const DB_VERSION = 1;
 
-export const MAX_NOTE_FILE_BYTES = 25 * 1024 * 1024; // 25 MB per file
+// Per-file limit. With the backend on Vercel, requests are capped at 4.5 MB, so files are kept
+// to 4 MB there (set VITE_MAX_NOTE_FILE_MB to change it, e.g. 25 for a backend on Render).
+export const MAX_NOTE_FILE_BYTES =
+  (Number(import.meta.env.VITE_MAX_NOTE_FILE_MB) || (backendEnabled ? 4 : 25)) * 1024 * 1024;
 
 let dbPromise = null;
 
