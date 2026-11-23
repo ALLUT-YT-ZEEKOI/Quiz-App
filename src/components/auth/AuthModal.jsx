@@ -17,7 +17,8 @@ import {
   Copy,
   UserPlus,
   LoaderCircle,
-  ChevronLeft
+  ChevronLeft,
+  AlertCircle
 } from 'lucide-react';
 import { StudentSignupForm, SetNewPasswordForm } from './StudentSignupForm';
 import { backendEnabled } from '../../api/client';
@@ -32,6 +33,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
   const [studentMode, setStudentMode] = useState('signin');
   const [pendingReset, setPendingReset] = useState(null); // { accountId, name }
   const [signingIn, setSigningIn] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Detect role from URL on startup (/admin vs /student)
   const [authRole, setAuthRole] = useState(() => {
@@ -99,6 +101,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
   const handleRoleTabChange = (role) => {
     setAuthRole(role);
     setStudentMode('signin');
+    setErrorMessage('');
     if (!DEMO) {
       setUsername('');
       setPassword('');
@@ -129,13 +132,16 @@ export const AuthModal = ({ isOpen, onClose }) => {
 
     if (!DEMO) {
       setSigningIn(true);
+      setErrorMessage('');
       const result =
         authRole === 'student'
           ? await loginStudentWithPassword(username, cleanPass)
           : await loginWithPassword('admin', username, cleanPass);
       setSigningIn(false);
       if (!result.ok) {
-        showToast(authRole === 'student' ? `${result.error} New here? Tap "Create account".` : result.error, 'warning');
+        const errorText = result.error || 'Incorrect password! Please try again.';
+        setErrorMessage(errorText);
+        showToast(errorText, 'warning');
         return;
       }
       if (result.mustChangePassword) {
@@ -634,7 +640,10 @@ export const AuthModal = ({ isOpen, onClose }) => {
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      if (errorMessage) setErrorMessage('');
+                    }}
                     required
                     autoComplete="username"
                     placeholder={authRole === 'admin' ? 'admin' : 'you@gmail.com or 98471 22334'}
@@ -661,10 +670,17 @@ export const AuthModal = ({ isOpen, onClose }) => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorMessage) setErrorMessage('');
+                    }}
                     required
-                    placeholder={authRole === 'admin' ? 'admin' : 'student'}
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                    placeholder={authRole === 'admin' ? 'Enter admin password' : 'Enter your password'}
+                    className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900/60 border ${
+                      errorMessage.toLowerCase().includes('password')
+                        ? 'border-red-400 dark:border-red-500 ring-2 ring-red-400/20'
+                        : 'border-slate-200 dark:border-slate-800'
+                    } text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium`}
                   />
                   <button
                     type="button"
@@ -680,6 +696,27 @@ export const AuthModal = ({ isOpen, onClose }) => {
                   </button>
                 </div>
               </div>
+
+              {errorMessage && (
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/80 text-red-600 dark:text-red-400 text-xs sm:text-sm font-semibold flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p>{errorMessage}</p>
+                    {authRole === 'student' && !errorMessage.toLowerCase().includes('password') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorMessage('');
+                          setStudentMode('signup');
+                        }}
+                        className="text-[11px] font-bold text-red-700 dark:text-red-300 underline mt-1 block hover:opacity-80"
+                      >
+                        Don't have an account? Register here →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 pt-0.5">
                 <label className="flex items-center gap-1.5 cursor-pointer">

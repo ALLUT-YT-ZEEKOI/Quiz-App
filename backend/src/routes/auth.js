@@ -117,9 +117,15 @@ authRouter.post('/login', authLimiter, async (req, res, next) => {
       user = await users().findOne({ role: 'student', $or: or });
     }
 
-    const check = user ? await checkPassword(password, user) : { ok: false };
+    if (!user) {
+      return res.status(401).json({
+        error: wantAdmin ? 'Admin account not found. Please check your username/email.' : 'No registered student account found with this email, phone, or ID.'
+      });
+    }
+
+    const check = await checkPassword(password, user);
     if (!check.ok) {
-      return res.status(401).json({ error: wantAdmin ? 'Incorrect admin login ID or password.' : 'Incorrect email/phone or password.' });
+      return res.status(401).json({ error: 'Incorrect password! Please check your password and try again.' });
     }
     if (check.needsUpgrade) {
       // Browser-registered student: move to a server-side bcrypt hash

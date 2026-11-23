@@ -862,18 +862,18 @@ export const AppProvider = ({ children }) => {
     const cleanId = (identifier || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
     if (role === 'admin' || role === 'teacher') {
-      if (
-        (cleanId === 'admin' || cleanId === 'admin@cohesiontech.com') &&
-        (cleanPass === 'admin@123' || cleanPass === 'admin' || cleanPass === 'admin123')
-      ) {
-        setCurrentRole('teacher');
-        setCurrentUserId('T001');
-        setIsAuthenticated(true);
-        setActiveView('dashboard');
-        showToast('Logged in as Admin', 'success');
-        return { ok: true };
+      if (cleanId !== 'admin' && cleanId !== 'admin@cohesiontech.com') {
+        return { ok: false, error: 'Admin account not found. Please enter valid Admin Login ID.' };
       }
-      return { ok: false, error: 'Invalid admin credentials. Use admin / admin@123' };
+      if (cleanPass !== 'admin@123' && cleanPass !== 'admin' && cleanPass !== 'admin123') {
+        return { ok: false, error: 'Incorrect password! Please enter the correct admin password.' };
+      }
+      setCurrentRole('teacher');
+      setCurrentUserId('T001');
+      setIsAuthenticated(true);
+      setActiveView('dashboard');
+      showToast('Logged in as Admin', 'success');
+      return { ok: true };
     }
     return loginStudentWithPassword(identifier, password);
   };
@@ -1109,8 +1109,12 @@ export const AppProvider = ({ children }) => {
   const loginStudentWithPassword = async (identifier, password) => {
     if (backendEnabled) return loginWithPassword('student', identifier, password);
     const account = findAccount(identifier);
-    if (!account || !(await verifyPassword(password, account.credentials))) {
-      return { ok: false, error: 'Incorrect email/phone or password.' };
+    if (!account) {
+      return { ok: false, error: 'No student account found with this email, WhatsApp number, or registration ID.' };
+    }
+    const isPasswordValid = await verifyPassword(password, account.credentials);
+    if (!isPasswordValid) {
+      return { ok: false, error: 'Incorrect password! Please check your password and try again.' };
     }
     if (account.mustChangePassword) {
       return { ok: true, mustChangePassword: true, accountId: account.id, name: account.name };
