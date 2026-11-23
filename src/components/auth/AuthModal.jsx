@@ -401,9 +401,9 @@ export const AuthModal = ({ isOpen, onClose }) => {
           </div>
           )}
 
-          <div className="relative z-10 text-[11px] text-slate-400 mt-5 border-t border-white/10 pt-3 flex justify-between">
-            <span>Client: Adithyan</span>
-            <span>Frontend React Prototype</span>
+          <div className="relative z-10 text-[11px] text-slate-300 mt-5 border-t border-white/10 pt-3 flex items-center justify-between">
+            <span>CohesionTech Platform</span>
+            <span className="font-semibold text-white">Built by AM DOMINA</span>
           </div>
         </div>
 
@@ -841,7 +841,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-center text-[10px] text-slate-400 dark:text-slate-500">
-            CohesionTech Assessment Suite • Admin & Student Dashboards
+            CohesionTech Assessment Suite &bull; Built by <strong className="text-slate-700 dark:text-slate-300 font-bold">AM DOMINA</strong>
           </div>
         </div>
       </div>

@@ -141,10 +141,25 @@ const AppContent = () => {
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Navbar onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
 
-        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto w-full max-w-full pb-24 md:pb-8">
-          <div className="max-w-[1600px] w-full mx-auto">
-            
-            {renderCurrentView()}
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto w-full max-w-full pb-24 md:pb-8 flex flex-col">
+          <div className="max-w-[1600px] w-full mx-auto flex-1 flex flex-col">
+            <div className="flex-1">
+              {renderCurrentView()}
+            </div>
+
+            {/* Platform Footer */}
+            <footer className="mt-10 pt-5 pb-2 border-t border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <span>CohesionTech &copy; {new Date().getFullYear()}</span>
+                <span>&bull;</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  Built by <strong className="text-teal-600 dark:text-teal-400 font-extrabold tracking-wide">AM DOMINA</strong>
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Civil Engineering Suite
+              </div>
+            </footer>
           </div>
         </main>
       </div>

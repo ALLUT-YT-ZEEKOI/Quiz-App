@@ -141,6 +141,25 @@ export const ProfileManagement = () => {
       </div>
       {/* Registered students can change their login password */}
       {account && <ChangePasswordCard account={account} />}
+
+      {/* Developer & Platform Architecture Badge */}
+      <div className="p-5 rounded-3xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-slate-800 shadow-subtle flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white font-black text-sm flex items-center justify-center shadow-md shadow-teal-500/25 shrink-0">
+            AM
+          </div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Company & Engineering</div>
+            <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
+              Built by <span className="text-teal-600 dark:text-teal-400">AM DOMINA</span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Custom web engineering, systems architecture and LMS solutions</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold border border-teal-200/60 dark:border-teal-800 shrink-0">
+          Official Technology Partner
+        </div>
+      </div>
     </div>
   );
 };
