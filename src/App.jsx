@@ -135,7 +135,7 @@ const AppContent = () => {
 
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto w-full max-w-full pb-24 md:pb-8">
           <div className="max-w-[1600px] w-full mx-auto">
-            {backendEnabled && currentRole === 'teacher' && !serverInitialized && <DataImportBanner />}
+            
             {renderCurrentView()}
           </div>
         </main>

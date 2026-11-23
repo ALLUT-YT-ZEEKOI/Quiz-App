@@ -23,7 +23,7 @@ import { StudentSignupForm, SetNewPasswordForm } from './StudentSignupForm';
 import { backendEnabled } from '../../api/client';
 
 // With the backend, only real accounts can sign in: no demo IDs or one-tap logins
-const DEMO = !backendEnabled;
+const DEMO = false;
 
 export const AuthModal = ({ isOpen, onClose }) => {
   const { login, showToast, copyPortalUrl, loginStudentWithPassword, completePasswordChange, loginWithPassword } = useApp();
