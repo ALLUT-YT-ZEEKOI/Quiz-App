@@ -49,17 +49,25 @@ const AppContent = () => {
 
   // If user is logged out, show the login modal / portal
   if (!isAuthenticated) {
-    return <AuthModal isOpen={true} />;
+    return (
+      <>
+        <AuthModal isOpen={true} />
+        <ToastContainer />
+      </>
+    );
   }
 
   // Backend mode: wait for this user's data from the server
   if (backendEnabled && !dataReady) {
     return (
-      <ServerLoadingScreen
-        error={loadError}
-        onRetry={() => loadServerData().catch(() => {})}
-        onSignOut={logout}
-      />
+      <>
+        <ServerLoadingScreen
+          error={loadError}
+          onRetry={() => loadServerData().catch(() => {})}
+          onSignOut={logout}
+        />
+        <ToastContainer />
+      </>
     );
   }
 

@@ -39,14 +39,14 @@ export const AuthModal = ({ isOpen, onClose }) => {
   const [authRole, setAuthRole] = useState(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase();
-      if (path.startsWith('/student') || window.location.search.includes('role=student')) {
-        return 'student';
-      }
       if (path.startsWith('/admin') || window.location.search.includes('role=admin')) {
         return 'admin';
       }
+      if (path.startsWith('/student') || window.location.search.includes('role=student')) {
+        return 'student';
+      }
     }
-    return 'admin';
+    return 'student';
   });
 
   const [username, setUsername] = useState(() => {

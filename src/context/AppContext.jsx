@@ -59,6 +59,8 @@ export const AppProvider = ({ children }) => {
       localStorage.removeItem('qsap_students');
       localStorage.removeItem('qsap_attempts');
       localStorage.removeItem('qsap_notifications');
+      localStorage.removeItem('qsap_auth');
+      localStorage.setItem('qsap_auth', 'false');
 
       localStorage.setItem('qsap_data_version', CURRENT_DATA_VERSION);
       localStorage.setItem('qsap_questions', JSON.stringify([]));
@@ -107,19 +109,18 @@ export const AppProvider = ({ children }) => {
 
   // Auth / Role state
   const [currentRole, setCurrentRole] = useState(() => {
-    if (initialRoute.role && !backendEnabled) return initialRoute.role;
-    return localStorage.getItem('qsap_role') || 'teacher';
+    if (initialRoute.role) return initialRoute.role;
+    return localStorage.getItem('qsap_role') || 'student';
   });
 
   const [currentUserId, setCurrentUserId] = useState(() => {
-    if (!backendEnabled && initialRoute.role === 'teacher') return 'T001';
-    if (!backendEnabled && initialRoute.role === 'student') return 'STU001';
-    return localStorage.getItem('qsap_user_id') || 'T001';
+    if (initialRoute.role === 'teacher') return 'T001';
+    return localStorage.getItem('qsap_user_id') || 'GUEST';
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     if (backendEnabled) return Boolean(getToken());
-    return localStorage.getItem('qsap_auth') !== 'false';
+    return localStorage.getItem('qsap_auth') === 'true';
   });
 
   // Active navigation view
@@ -811,6 +812,7 @@ export const AppProvider = ({ children }) => {
 
   const endServerSession = useCallback(() => {
     clearToken();
+    try { localStorage.setItem('qsap_auth', 'false'); } catch (e) {}
     syncRef.current?.reset();
     setIsAuthenticated(false);
     setDataReady(false);
@@ -834,6 +836,7 @@ export const AppProvider = ({ children }) => {
 
   const startServerSession = async (token) => {
     setToken(token);
+    try { localStorage.setItem('qsap_auth', 'true'); } catch (e) {}
     await loadServerData();
     setActiveView('dashboard');
   };
@@ -938,8 +941,8 @@ export const AppProvider = ({ children }) => {
   // Keep browser URL synchronized with role and activeView
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    // Signed out (backend mode): keep /student or /admin as typed, so the right login tab opens
-    if (backendEnabled && (!isAuthenticated || !dataReady)) return;
+    // Signed out: keep /student or /admin as typed, so the right login tab opens without forcing navigation
+    if (!isAuthenticated || (backendEnabled && !dataReady)) return;
     const basePath = currentRole === 'teacher' ? '/admin' : '/student';
     let targetPath = basePath;
     if (activeView && activeView !== 'dashboard') {
@@ -1001,6 +1004,9 @@ export const AppProvider = ({ children }) => {
     setCurrentRole(role);
     setCurrentUserId(userId || (role === 'teacher' ? 'T001' : 'STU001'));
     setIsAuthenticated(true);
+    try {
+      localStorage.setItem('qsap_auth', 'true');
+    } catch (e) {}
     setActiveView('dashboard');
     showToast('Logged in successfully', 'success');
   };
@@ -1009,6 +1015,9 @@ export const AppProvider = ({ children }) => {
   const logout = () => {
     if (backendEnabled) endServerSession();
     setIsAuthenticated(false);
+    try {
+      localStorage.setItem('qsap_auth', 'false');
+    } catch (e) {}
     showToast('Logged out of CohesionTech', 'info');
   };
 
