@@ -865,7 +865,7 @@ export const AppProvider = ({ children }) => {
     const cleanId = (identifier || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
     if (role === 'admin' || role === 'teacher') {
-      if (cleanId !== 'admin' && cleanId !== 'admin@cohesiontech.com') {
+      if (cleanId !== 'admin' && cleanId !== 'admin@gmail.com' && cleanId !== 'admin@cohesiontech.com') {
         return { ok: false, error: 'Admin account not found. Please enter valid Admin Login ID.' };
       }
       if (cleanPass !== 'admin@123' && cleanPass !== 'admin' && cleanPass !== 'admin123') {
@@ -901,10 +901,10 @@ export const AppProvider = ({ children }) => {
   const currentUser = currentRole === 'teacher'
     ? (teachers.find((t) => t.id === currentUserId) || teachers[0] || {
         id: 'T001',
-        name: 'Admin',
+        name: 'Administrator',
         username: 'admin',
         role: 'admin',
-        email: 'admin@cohesiontech.com',
+        email: 'admin@gmail.com',
         department: 'Administration'
       })
     : (students.find((s) => s.id === currentUserId) || studentAccounts.find((a) => a.studentId === currentUserId) || {

@@ -3,10 +3,10 @@
 export const TEACHERS = [
   {
     id: 'T001',
-    name: 'Admin',
+    name: 'Administrator',
     title: 'Administrator',
     department: 'Administration',
-    email: 'admin@cohesiontech.com',
+    email: 'admin@gmail.com',
     phone: '',
     qualification: '',
     experience: '',

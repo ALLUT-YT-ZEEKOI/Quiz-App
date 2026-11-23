@@ -577,10 +577,10 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
               {/* Admin Sign In Form */}
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 
-                {/* Admin Username */}
+                {/* Admin Username / Email */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Admin Login ID / Username
+                    Admin Login ID or Email
                   </label>
                   <div className="relative">
                     <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -593,7 +593,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
                       }}
                       required
                       autoComplete="username"
-                      placeholder="admin"
+                      placeholder="e.g. admin@gmail.com or admin"
                       className="w-full pl-10 pr-4 py-3 rounded-xl text-sm bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all font-medium placeholder:text-slate-400"
                     />
                   </div>
