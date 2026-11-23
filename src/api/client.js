@@ -45,13 +45,18 @@ export const setUnauthorizedHandler = (fn) => {
  * Calls the API. `body` objects are sent as JSON; Blobs/ArrayBuffers are sent raw.
  * Returns parsed JSON (or a Blob when `responseType: 'blob'`). Throws ApiError on failure.
  */
-export const api = async (path, { method = 'GET', body, headers = {}, responseType = 'json', auth = true } = {}) => {
+export const api = async (path, { method = 'GET', body, headers = {}, responseType = 'json', auth = true, timeout = 10000 } = {}) => {
   const isRaw = body instanceof Blob || body instanceof ArrayBuffer;
   const token = auth ? getToken() : null;
   let res;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
   try {
     res = await fetch(`${API_URL}${path}`, {
       method,
+      signal: controller.signal,
       headers: {
         ...(body !== undefined && !isRaw ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -59,8 +64,13 @@ export const api = async (path, { method = 'GET', body, headers = {}, responseTy
       },
       body: body === undefined ? undefined : isRaw ? body : JSON.stringify(body)
     });
-  } catch {
-    throw new ApiError('Cannot reach the server. Check your internet connection.', 0, null);
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new ApiError('Server response timed out. Please check if the backend is running.', 0, null);
+    }
+    throw new ApiError(`Cannot reach the backend server at ${API_URL || 'localhost:5000'}. Please ensure the backend is started.`, 0, null);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (res.status === 401 && token && onUnauthorized && !path.startsWith('/auth/')) onUnauthorized();

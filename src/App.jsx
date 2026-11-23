@@ -40,7 +40,8 @@ const AppContent = () => {
     dataReady,
     loadError,
     loadServerData,
-    serverInitialized
+    serverInitialized,
+    logout
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -53,7 +54,13 @@ const AppContent = () => {
 
   // Backend mode: wait for this user's data from the server
   if (backendEnabled && !dataReady) {
-    return <ServerLoadingScreen error={loadError} onRetry={() => loadServerData().catch(() => {})} />;
+    return (
+      <ServerLoadingScreen
+        error={loadError}
+        onRetry={() => loadServerData().catch(() => {})}
+        onSignOut={logout}
+      />
+    );
   }
 
   // Streamlined view router: Focused exclusively on Subjects -> Modules -> Videos & Q&A + Live Examinations + Results + Approvals

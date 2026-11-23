@@ -201,22 +201,42 @@ export const DataImportBanner = () => {
 };
 
 /** Full-screen state while the signed-in user's data loads from the server. */
-export const ServerLoadingScreen = ({ error, onRetry }) => (
+export const ServerLoadingScreen = ({ error, onRetry, onSignOut }) => (
   <div className="h-screen flex items-center justify-center bg-[#F4F7F8] dark:bg-surface-darkBg p-6">
-    <div className="text-center space-y-3 max-w-sm">
+    <div className="text-center space-y-4 max-w-sm">
       <img src="/logo.jpg" alt="CohesionTech" className="w-14 h-14 rounded-2xl mx-auto shadow-md" />
       {error ? (
-        <>
+        <div className="space-y-3">
           <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Can't load your data</p>
-          <p className="text-xs text-slate-500">{error}</p>
-          <button type="button" onClick={onRetry} className="px-4 py-2 rounded-xl bg-[#087F8C] text-white text-xs font-bold">
-            Try again
-          </button>
-        </>
+          <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded-xl border border-rose-200 dark:border-rose-900 leading-relaxed font-medium">
+            {error}
+          </p>
+          <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+            <button
+              type="button"
+              onClick={onRetry}
+              className="px-4 py-2 rounded-xl bg-[#087F8C] hover:bg-[#06636D] text-white text-xs font-bold transition-all shadow-sm"
+            >
+              Try again
+            </button>
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all"
+              >
+                Sign out
+              </button>
+            )}
+          </div>
+        </div>
       ) : (
-        <p className="text-sm font-semibold text-slate-500 inline-flex items-center gap-2">
-          <LoaderCircle className="w-4 h-4 animate-spin" /> Loading your data…
-        </p>
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 inline-flex items-center gap-2">
+            <LoaderCircle className="w-4 h-4 animate-spin text-[#087F8C]" /> Loading your data…
+          </p>
+          <p className="text-[11px] text-slate-400">Connecting to server at localhost:5000</p>
+        </div>
       )}
     </div>
   </div>
