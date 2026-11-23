@@ -16,7 +16,8 @@ import {
   Link2,
   Copy,
   UserPlus,
-  LoaderCircle
+  LoaderCircle,
+  ChevronLeft
 } from 'lucide-react';
 import { StudentSignupForm, SetNewPasswordForm } from './StudentSignupForm';
 import { backendEnabled } from '../../api/client';
@@ -237,9 +238,23 @@ export const AuthModal = ({ isOpen, onClose }) => {
     }, 2500);
   };
 
+  const isSignup = authRole === 'student' && studentMode === 'signup';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-navy-950/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
-      <div className="w-full max-w-md md:max-w-4xl bg-white dark:bg-surface-darkCard rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden md:grid md:grid-cols-2 my-auto max-h-[96vh] overflow-y-auto">
+    <div
+      className={`fixed inset-0 z-50 overflow-y-auto animate-in fade-in ${
+        isSignup
+          ? 'bg-white dark:bg-surface-darkBg md:bg-navy-950/80 md:backdrop-blur-md md:flex md:items-center md:justify-center md:p-4'
+          : 'flex items-center justify-center p-2.5 sm:p-4 bg-navy-950/80 backdrop-blur-md'
+      }`}
+    >
+      <div
+        className={`w-full bg-white dark:bg-surface-darkCard transition-all ${
+          isSignup
+            ? 'min-h-screen md:min-h-0 md:max-w-4xl md:rounded-3xl md:shadow-2xl md:border md:border-slate-200/80 dark:md:border-slate-800/80 md:grid md:grid-cols-2 md:my-auto md:overflow-hidden'
+            : 'max-w-md md:max-w-4xl rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800/80 md:grid md:grid-cols-2 my-auto max-h-[96vh] overflow-y-auto'
+        }`}
+      >
         
         {/* ============================================================ */}
         {/* DESKTOP-ONLY HERO PANE                                       */}
@@ -389,40 +404,72 @@ export const AuthModal = ({ isOpen, onClose }) => {
         {/* ============================================================ */}
         {/* MAIN FORM PANE (Mobile-App + Desktop Optimized)              */}
         {/* ============================================================ */}
-        <div className="p-3.5 sm:p-6 md:p-8 flex flex-col justify-between overflow-y-auto">
+        <div className={`flex flex-col justify-between overflow-y-auto ${isSignup ? 'p-4 sm:p-6 md:p-8 w-full max-w-2xl mx-auto' : 'p-3.5 sm:p-6 md:p-8'}`}>
           <div>
-            {/* Mobile App Header (Visible on Mobile screens) */}
-            <div className="md:hidden mb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 shadow-md shadow-blue-500/10">
-                    <img src="/logo.jpg" alt="CohesionTech" className="w-full h-full object-contain" />
+            {/* Sticky Mobile Page App Bar during Signup (Full Mobile Page mode) */}
+            {isSignup && (
+              <div className="md:hidden sticky top-0 z-30 -mx-4 -mt-4 mb-4 bg-white/95 dark:bg-surface-darkCard/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 py-3 flex items-center justify-between shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setStudentMode('signin')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-teal-700 transition-colors"
+                >
+                  <span className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 shadow-2xs">
+                    <ChevronLeft className="w-4 h-4" />
+                  </span>
+                  <span className="font-extrabold text-sm">Sign In</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-2xs">
+                    <img src="/logo.jpg" alt="CohesionTech Logo" className="w-full h-full object-contain" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">
-                        CohesionTech
-                      </span>
-                      <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-md">
-                        CIVIL PRO
-                      </span>
+                  <div className="text-right">
+                    <div className="font-extrabold text-xs tracking-tight text-slate-900 dark:text-white leading-none">
+                      CohesionTech
                     </div>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block -mt-0.5 font-medium">
-                      Admin & Student Platform
+                    <span className="text-[9px] font-bold text-teal-600 dark:text-teal-400">
+                      Civil Portal
                     </span>
                   </div>
                 </div>
-
-                {onClose && (
-                  <button
-                    onClick={onClose}
-                    className="p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                )}
               </div>
-            </div>
+            )}
+
+            {/* Mobile App Header (Visible on Mobile screens, except during signup) */}
+            {!isSignup && (
+              <div className="md:hidden mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-0.5 shadow-md shadow-blue-500/10">
+                      <img src="/logo.jpg" alt="CohesionTech" className="w-full h-full object-contain" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">
+                          CohesionTech
+                        </span>
+                        <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-md">
+                          CIVIL PRO
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 block -mt-0.5 font-medium">
+                        Admin & Student Platform
+                      </span>
+                    </div>
+                  </div>
+
+                  {onClose && (
+                    <button
+                      onClick={onClose}
+                      className="p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Desktop Header */}
             <div className="hidden md:flex items-center justify-between mb-5">

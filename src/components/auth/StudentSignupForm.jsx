@@ -180,7 +180,7 @@ export const StudentSignupForm = ({ onSwitchToLogin }) => {
           <button
             type="button"
             onClick={onSwitchToLogin}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 dark:text-teal-400 hover:text-teal-800 mb-1.5 group transition-colors"
+            className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 dark:text-teal-400 hover:text-teal-800 mb-1.5 group transition-colors"
           >
             <span className="w-5 h-5 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center justify-center group-hover:-translate-x-0.5 transition-transform">
               <ChevronLeft className="w-3.5 h-3.5" />
