@@ -30,17 +30,14 @@ export const DEFAULT_DIFFICULTY_LEVELS = [
   { id: 'hard', label: 'Hard', color: 'red', dot: '🔴' }
 ];
 
-const CURRENT_DATA_VERSION = 'qsap_v3_civil_100_questions_all_subjects';
+const CURRENT_DATA_VERSION = 'cohesiontech_v5_clean_production_empty';
 
 export const AppProvider = ({ children }) => {
-  // Check if saved data matches latest schema version with all 100 technical questions
+  // Check if saved data matches clean production schema version
   const needsDataReset = (() => {
     try {
       const savedVer = localStorage.getItem('qsap_data_version');
-      const savedQ = localStorage.getItem('qsap_questions');
-      if (savedVer !== CURRENT_DATA_VERSION || !savedQ) return true;
-      const parsedQ = JSON.parse(savedQ);
-      return !Array.isArray(parsedQ) || parsedQ.length < 100;
+      return savedVer !== CURRENT_DATA_VERSION;
     } catch (e) {
       return true;
     }
@@ -48,11 +45,26 @@ export const AppProvider = ({ children }) => {
 
   if (needsDataReset) {
     try {
+      // Purge all legacy dummy data keys from localStorage
+      localStorage.removeItem('cohesion_curriculum');
+      localStorage.removeItem('cohesion_curriculum_attempts');
+      localStorage.removeItem('cohesion_subscriptions');
+      localStorage.removeItem('cohesion_doubts');
+      localStorage.removeItem('cohesion_examinations');
+      localStorage.removeItem('cohesion_exam_attempts');
+      localStorage.removeItem('cohesion_exam_monitoring');
+      localStorage.removeItem('cohesion_retests');
+      localStorage.removeItem('qsap_questions');
+      localStorage.removeItem('qsap_quizzes');
+      localStorage.removeItem('qsap_students');
+      localStorage.removeItem('qsap_attempts');
+      localStorage.removeItem('qsap_notifications');
+
       localStorage.setItem('qsap_data_version', CURRENT_DATA_VERSION);
-      localStorage.setItem('qsap_questions', JSON.stringify(QUESTIONS_BANK));
-      localStorage.setItem('qsap_quizzes', JSON.stringify(INITIAL_QUIZZES));
-      persistLocal('qsap_students', STUDENTS);
-      localStorage.setItem('qsap_attempts', JSON.stringify(INITIAL_ATTEMPTS));
+      localStorage.setItem('qsap_questions', JSON.stringify([]));
+      localStorage.setItem('qsap_quizzes', JSON.stringify([]));
+      persistLocal('qsap_students', []);
+      localStorage.setItem('qsap_attempts', JSON.stringify([]));
     } catch (e) {
       console.warn('LocalStorage initialization notice:', e);
     }
@@ -140,10 +152,12 @@ export const AppProvider = ({ children }) => {
 
   // Core Data States (persisted in localStorage)
   const [students, setStudents] = useState(() => {
-    let list = STUDENTS;
+    let list = [];
     if (!needsDataReset) {
       const saved = localStorage.getItem('qsap_students');
-      if (saved) list = JSON.parse(saved);
+      if (saved) {
+        try { list = JSON.parse(saved); } catch (e) {}
+      }
     }
     // Make sure every registered student is present (a demo-data reset must not drop them)
     const known = new Set(list.map((st) => st.id));
@@ -157,30 +171,32 @@ export const AppProvider = ({ children }) => {
   const [subjects] = useState(SUBJECTS);
 
   const [questions, setQuestions] = useState(() => {
-    if (needsDataReset) return QUESTIONS_BANK;
+    if (needsDataReset) return [];
     const saved = localStorage.getItem('qsap_questions');
-    return saved ? JSON.parse(saved) : QUESTIONS_BANK;
+    try { return saved ? JSON.parse(saved) : []; } catch (e) { return []; }
   });
 
   const [quizzes, setQuizzes] = useState(() => {
-    if (needsDataReset) return INITIAL_QUIZZES;
+    if (needsDataReset) return [];
     const saved = localStorage.getItem('qsap_quizzes');
-    return saved ? JSON.parse(saved) : INITIAL_QUIZZES;
+    try { return saved ? JSON.parse(saved) : []; } catch (e) { return []; }
   });
 
   const [attempts, setAttempts] = useState(() => {
-    if (needsDataReset) return INITIAL_ATTEMPTS;
+    if (needsDataReset) return [];
     const saved = localStorage.getItem('qsap_attempts');
-    return saved ? JSON.parse(saved) : INITIAL_ATTEMPTS;
+    try { return saved ? JSON.parse(saved) : []; } catch (e) { return []; }
   });
 
   const [notifications, setNotifications] = useState(() => {
+    if (needsDataReset) return [];
     const saved = localStorage.getItem('qsap_notifications');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+    try { return saved ? JSON.parse(saved) : []; } catch (e) { return []; }
   });
 
   // Streamlined Curriculum state: Subjects -> Modules -> Videos & Questions (Easy/Medium/Hard)
   const [curriculumSubjects, setCurriculumSubjects] = useState(() => {
+    if (needsDataReset) return [];
     try {
       const saved = localStorage.getItem('cohesion_curriculum');
       if (saved) {
@@ -205,10 +221,11 @@ export const AppProvider = ({ children }) => {
     } catch (e) {
       console.warn('Curriculum parse notice:', e);
     }
-    return normalizeCurriculumSections(INITIAL_CURRICULUM);
+    return [];
   });
 
   const [curriculumAttempts, setCurriculumAttempts] = useState(() => {
+    if (needsDataReset) return [];
     try {
       const saved = localStorage.getItem('cohesion_curriculum_attempts');
       if (saved) {
@@ -218,10 +235,11 @@ export const AppProvider = ({ children }) => {
     } catch (e) {
       console.warn('Curriculum attempts parse notice:', e);
     }
-    return INITIAL_CURRICULUM_ATTEMPTS;
+    return [];
   });
 
   const [subscriptions, setSubscriptions] = useState(() => {
+    if (needsDataReset) return [];
     try {
       const saved = localStorage.getItem('cohesion_subscriptions');
       if (saved) {
@@ -231,7 +249,7 @@ export const AppProvider = ({ children }) => {
     } catch (e) {
       console.warn('Subscriptions parse notice:', e);
     }
-    return INITIAL_SUBSCRIPTIONS;
+    return [];
   });
 
   useEffect(() => {
@@ -286,6 +304,7 @@ export const AppProvider = ({ children }) => {
   // LIVE & SCHEDULED EXAMINATIONS STATE & METHODS
   // =========================================================================
   const [examinations, setExaminations] = useState(() => {
+    if (needsDataReset) return [];
     try {
       const saved = localStorage.getItem('cohesion_examinations');
       if (saved) {
@@ -295,10 +314,11 @@ export const AppProvider = ({ children }) => {
     } catch (e) {
       console.warn('Examinations parse notice:', e);
     }
-    return INITIAL_EXAMINATIONS;
+    return [];
   });
 
   const [examAttempts, setExamAttempts] = useState(() => {
+    if (needsDataReset) return [];
     try {
       const saved = localStorage.getItem('cohesion_exam_attempts');
       if (saved) {
@@ -308,10 +328,11 @@ export const AppProvider = ({ children }) => {
     } catch (e) {
       console.warn('Exam attempts parse notice:', e);
     }
-    return generateCompletedExamAttempts();
+    return [];
   });
 
   const [examMonitoringSessions, setExamMonitoringSessions] = useState(() => {
+    if (needsDataReset) return [];
     try {
       const saved = localStorage.getItem('cohesion_exam_monitoring');
       if (saved) {
@@ -321,12 +342,13 @@ export const AppProvider = ({ children }) => {
     } catch (e) {
       console.warn('Exam monitoring parse notice:', e);
     }
-    return generateLiveMonitoringData('EXAM-2026-001');
+    return [];
   });
 
   // Retests: a student asks (status 'requested') or the admin grants directly ('granted').
   // A granted retest allows one more attempt of that exam; submitting it marks it 'used'.
   const [retests, setRetests] = useState(() => {
+    if (needsDataReset) return [];
     try {
       const saved = localStorage.getItem('cohesion_retests');
       if (saved) {
@@ -339,6 +361,7 @@ export const AppProvider = ({ children }) => {
 
   // Doubts: student questions to the admin, optionally tied to an exam/quiz question
   const [doubts, setDoubts] = useState(() => {
+    if (needsDataReset) return [];
     try {
       const saved = localStorage.getItem('cohesion_doubts');
       if (saved) {
@@ -346,7 +369,7 @@ export const AppProvider = ({ children }) => {
         if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
-    return INITIAL_DOUBTS;
+    return [];
   });
 
   useEffect(() => {
@@ -503,7 +526,7 @@ export const AppProvider = ({ children }) => {
       })();
     }
 
-    const student = currentUser || STUDENTS[0];
+    const student = currentUser || { id: currentUserId, name: 'Student', studentId: currentUserId };
     const totalQuestions = exam.questions?.length || 30;
     const totalMarks = exam.totalMarks || 30;
 
@@ -815,23 +838,51 @@ export const AppProvider = ({ children }) => {
     setActiveView('dashboard');
   };
 
-  /** Password sign-in against the backend (admin or student). */
+  /** Password sign-in against the backend (admin or student), with clean standalone fallback. */
   const loginWithPassword = async (role, identifier, password) => {
-    try {
-      const res = await api('/auth/login', {
-        method: 'POST',
-        auth: false,
-        body: { identifier, password, role: role === 'student' ? 'student' : 'admin' }
-      });
-      if (res.mustChangePassword) {
-        return { ok: true, mustChangePassword: true, accountId: res.resetToken, name: res.name };
+    if (backendEnabled) {
+      try {
+        const res = await api('/auth/login', {
+          method: 'POST',
+          auth: false,
+          body: { identifier, password, role: role === 'student' ? 'student' : 'admin' }
+        });
+        if (res.mustChangePassword) {
+          return { ok: true, mustChangePassword: true, accountId: res.resetToken, name: res.name };
+        }
+        await startServerSession(res.token);
+        showToast(`Welcome, ${res.user.name}!`, 'success');
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err.message };
       }
-      await startServerSession(res.token);
-      showToast(`Welcome, ${res.user.name}!`, 'success');
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, error: err.message };
     }
+
+    // Standalone fallback:
+    const cleanId = (identifier || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+    if (role === 'admin' || role === 'teacher') {
+      if (
+        (cleanId === 'admin' || cleanId === 'admin@cohesiontech.com') &&
+        (cleanPass === 'admin@123' || cleanPass === 'admin' || cleanPass === 'admin123')
+      ) {
+        setCurrentRole('teacher');
+        setCurrentUserId('T001');
+        setIsAuthenticated(true);
+        setActiveView('dashboard');
+        showToast('Logged in as Admin', 'success');
+        return { ok: true };
+      }
+      return { ok: false, error: 'Invalid admin credentials. Use admin / admin@123' };
+    }
+    return loginStudentWithPassword(identifier, password);
+  };
+
+  const resetAllLocalData = () => {
+    try {
+      localStorage.clear();
+      window.location.reload();
+    } catch (e) {}
   };
 
   useEffect(() => {
@@ -845,8 +896,20 @@ export const AppProvider = ({ children }) => {
 
   // Current User Object
   const currentUser = currentRole === 'teacher'
-    ? teachers.find((t) => t.id === currentUserId) || teachers[0]
-    : students.find((s) => s.id === currentUserId) || students[0];
+    ? (teachers.find((t) => t.id === currentUserId) || teachers[0] || {
+        id: 'T001',
+        name: 'Admin',
+        username: 'admin',
+        role: 'admin',
+        email: 'admin@cohesiontech.com',
+        department: 'Administration'
+      })
+    : (students.find((s) => s.id === currentUserId) || studentAccounts.find((a) => a.studentId === currentUserId) || {
+        id: 'GUEST',
+        name: 'Student',
+        role: 'student',
+        email: ''
+      });
 
   // Get direct portal URL
   const getPortalUrl = (role) => {
@@ -2047,6 +2110,7 @@ export const AppProvider = ({ children }) => {
         serverInitialized,
         setServerInitialized,
         loginWithPassword,
+        resetAllLocalData,
         darkMode,
         setDarkMode,
         currentRole,
