@@ -238,8 +238,8 @@ export const AuthModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-navy-950/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
-      <div className="w-full max-w-md md:max-w-4xl bg-white dark:bg-surface-darkCard rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden md:grid md:grid-cols-2 my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-navy-950/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
+      <div className="w-full max-w-md md:max-w-4xl bg-white dark:bg-surface-darkCard rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden md:grid md:grid-cols-2 my-auto max-h-[96vh] overflow-y-auto">
         
         {/* ============================================================ */}
         {/* DESKTOP-ONLY HERO PANE                                       */}
@@ -389,7 +389,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
         {/* ============================================================ */}
         {/* MAIN FORM PANE (Mobile-App + Desktop Optimized)              */}
         {/* ============================================================ */}
-        <div className="p-5 sm:p-7 md:p-8 flex flex-col justify-between">
+        <div className="p-3.5 sm:p-6 md:p-8 flex flex-col justify-between overflow-y-auto">
           <div>
             {/* Mobile App Header (Visible on Mobile screens) */}
             <div className="md:hidden mb-4">
@@ -444,33 +444,35 @@ export const AuthModal = ({ isOpen, onClose }) => {
               )}
             </div>
 
-            {/* Role Switcher Tabs */}
-            <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl mb-4 border border-slate-200/50 dark:border-slate-800/80">
-              <button
-                type="button"
-                onClick={() => handleRoleTabChange('admin')}
-                className={`flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
-                  authRole === 'admin'
-                    ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Shield className="w-4 h-4 text-amber-500" />
-                <span>Admin / Teacher</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleTabChange('student')}
-                className={`flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
-                  authRole === 'student'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <GraduationCap className="w-4 h-4 text-blue-500" />
-                <span>Student</span>
-              </button>
-            </div>
+            {/* Role Switcher Tabs (Hidden during student registration flow) */}
+            {studentMode !== 'signup' && (
+              <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl mb-4 border border-slate-200/50 dark:border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => handleRoleTabChange('admin')}
+                  className={`flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
+                    authRole === 'admin'
+                      ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Shield className="w-4 h-4 text-amber-500" />
+                  <span>Admin / Teacher</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRoleTabChange('student')}
+                  className={`flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
+                    authRole === 'student'
+                      ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4 text-blue-500" />
+                  <span>Student</span>
+                </button>
+              </div>
+            )}
 
             {authRole === 'student' && studentMode === 'signup' ? (
               <StudentSignupForm onSwitchToLogin={() => setStudentMode('signin')} />
