@@ -24,6 +24,7 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { StudentSignupForm, SetNewPasswordForm } from './StudentSignupForm';
+import { APP_VERSION } from '../../utils/version';
 
 export const AuthModal = ({ isOpen = true, onClose }) => {
   const {
@@ -259,7 +260,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
             <span>Platform Online</span>
           </div>
           <div className="font-semibold text-slate-300">
-            Built by <span className="text-teal-400 font-bold">AM DOMINA</span>
+            Built by <span className="text-teal-400 font-bold">AM DOMINE</span> <span className="font-mono text-slate-500">&bull; v{APP_VERSION}</span>
           </div>
         </div>
       </div>
@@ -673,7 +674,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
         <div className="pt-6 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 dark:text-slate-500 gap-2">
           <span>CohesionTech Platform &bull; {new Date().getFullYear()}</span>
           <span className="font-semibold text-slate-600 dark:text-slate-400">
-            Built by <strong className="text-teal-600 dark:text-teal-400 font-extrabold tracking-wide">AM DOMINA</strong>
+            Built by <strong className="text-teal-600 dark:text-teal-400 font-extrabold tracking-wide">AM DOMINE</strong> <span className="font-mono font-normal">&bull; v{APP_VERSION}</span>
           </span>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Save, KeyRound } from 'lucide-react';
 import { PageHeader } from '../common/PageHeader';
+import { APP_VERSION } from '../../utils/version';
 
 export const ProfileManagement = () => {
   const { currentUser, currentRole, updateStudent, showToast, setActiveView, studentAccounts } = useApp();
@@ -151,8 +152,9 @@ export const ProfileManagement = () => {
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Company & Engineering</div>
             <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-              Built by <span className="text-teal-600 dark:text-teal-400">AM DOMINA</span>
+              Built by <span className="text-teal-600 dark:text-teal-400">AM DOMINE</span>
             </div>
+            <div className="text-[10px] font-mono text-slate-400">Version {APP_VERSION}</div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">Custom web engineering, systems architecture and LMS solutions</p>
           </div>
         </div>

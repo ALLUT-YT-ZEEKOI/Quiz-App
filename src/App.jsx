@@ -32,6 +32,7 @@ import { AdminAnswersDashboard } from './components/review/AdminAnswersDashboard
 import { DoubtsDashboard } from './components/doubts/DoubtsDashboard';
 import { StudentRegistrations } from './components/students/StudentRegistrations';
 import { DataImportBanner, ServerLoadingScreen } from './components/admin/DataImportBanner';
+import { APP_VERSION } from './utils/version';
 
 const AppContent = () => {
   const {
@@ -161,8 +162,10 @@ const AppContent = () => {
                 <span>CohesionTech &copy; {new Date().getFullYear()}</span>
                 <span>&bull;</span>
                 <span className="font-semibold text-slate-700 dark:text-slate-300">
-                  Built by <strong className="text-teal-600 dark:text-teal-400 font-extrabold tracking-wide">AM DOMINA</strong>
+                  Built by <strong className="text-teal-600 dark:text-teal-400 font-extrabold tracking-wide">AM DOMINE</strong>
                 </span>
+                <span>&bull;</span>
+                <span className="font-mono">v{APP_VERSION}</span>
               </div>
               <div className="text-[11px] text-slate-400">
                 Civil Engineering Suite

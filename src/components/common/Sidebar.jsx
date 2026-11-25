@@ -18,6 +18,7 @@ import {
   UserPlus,
   ClipboardList
 } from 'lucide-react';
+import { APP_VERSION } from '../../utils/version';
 
 export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) => {
   const {
@@ -361,8 +362,9 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
         {!collapsed && (
           <div className="pt-2.5 px-2 text-center border-t border-[#122B32]/80 mt-1">
             <span className="text-[10px] text-[#6B919A] block font-medium">
-              Built by <strong className="text-[#9BB7BE] font-bold">AM DOMINA</strong>
+              Built by <strong className="text-[#9BB7BE] font-bold">AM DOMINE</strong>
             </span>
+            <span className="text-[9px] text-[#4F737C] block font-mono mt-0.5">v{APP_VERSION}</span>
           </div>
         )}
       </div>

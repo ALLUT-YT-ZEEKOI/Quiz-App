@@ -1393,6 +1393,53 @@ export const AppProvider = ({ children }) => {
     showToast('Temporary password set. Share it with the student.', 'success');
   };
 
+  // Admin: permanently delete a registered student and everything they own (no soft delete)
+  const adminDeleteStudentAccount = async (accountId) => {
+    const account = studentAccounts.find((a) => a.id === accountId);
+    if (!account) return { ok: false, error: 'Student not found.' };
+    const sid = account.studentId;
+    const owned = (item) => item?.studentId === sid;
+
+    if (backendEnabled) {
+      try {
+        await api(`/admin/students/${accountId}`, { method: 'DELETE' });
+      } catch (err) {
+        showToast(err.message, 'warning');
+        return { ok: false, error: err.message };
+      }
+      // The server already removed everything: drop it locally without sending deletes back
+      const m = syncRef.current;
+      const drop = (name, list, keyOf = (i) => i.id) => {
+        const keys = (list || []).filter(owned).map(keyOf).filter(Boolean);
+        if (keys.length) m?.applyDocs(name, [], keys);
+      };
+      m?.applyDocs('students', [], [sid]);
+      drop('curriculumAttempts', curriculumAttempts);
+      drop('subscriptions', subscriptions);
+      drop('examAttempts', examAttempts);
+      drop('examMonitoring', examMonitoringSessions, (i) => (i.examId && i.studentId ? `${i.examId}:${i.studentId}` : undefined));
+      drop('retests', retests);
+      drop('doubts', doubts);
+      drop('attempts', attempts);
+      drop('mockAttempts', mockAttempts);
+      setStudentAccounts((prev) => prev.filter((a) => a.id !== accountId));
+    } else {
+      const keep = (prev) => prev.filter((i) => !owned(i));
+      setStudents((prev) => prev.filter((s) => s.id !== sid));
+      setCurriculumAttempts(keep);
+      setSubscriptions(keep);
+      setExamAttempts(keep);
+      setExamMonitoringSessions(keep);
+      setRetests(keep);
+      setDoubts(keep);
+      setAttempts(keep);
+      setMockAttempts(keep);
+      setStudentAccounts((prev) => prev.filter((a) => a.id !== accountId));
+    }
+    showToast(`${account.name} was deleted permanently`, 'success');
+    return { ok: true };
+  };
+
   // =========================================================================
   // STREAMLINED CURRICULUM CRUD: SUBJECTS -> MODULES -> VIDEOS & QUESTIONS
   // =========================================================================
@@ -2395,6 +2442,7 @@ export const AppProvider = ({ children }) => {
         completePasswordChange,
         changeOwnPassword,
         adminResetStudentPassword,
+        adminDeleteStudentAccount,
         retests,
         getRetestFor,
         getExamAccess,

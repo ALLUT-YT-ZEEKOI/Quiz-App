@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   UserPlus,
@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   Users,
   CalendarPlus,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -95,6 +96,11 @@ export const StudentRegistrations = () => {
   const [preparation, setPreparation] = useState('All');
   const [district, setDistrict] = useState('All');
   const [selectedId, setSelectedId] = useState(null);
+  const [openDelete, setOpenDelete] = useState(false);
+  const openStudent = (id, withDelete = false) => {
+    setSelectedId(id);
+    setOpenDelete(withDelete);
+  };
 
   const now = Date.now();
   const accounts = useMemo(
@@ -245,13 +251,14 @@ export const StudentRegistrations = () => {
                   {['Student', 'Contact', 'Qualification', 'Civil level', 'Preparation', 'District', 'Registered', 'Last login'].map((h) => (
                     <th key={h} scope="col" className="font-bold px-3 py-2.5 whitespace-nowrap">{h}</th>
                   ))}
+                  <th scope="col" className="px-3 py-2.5"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                 {filtered.map((a) => (
-                  <tr key={a.id} onClick={() => setSelectedId(a.id)} className="hover:bg-slate-50 dark:hover:bg-slate-900/40 cursor-pointer">
+                  <tr key={a.id} onClick={() => openStudent(a.id)} className="hover:bg-slate-50 dark:hover:bg-slate-900/40 cursor-pointer">
                     <td className="px-3 py-2.5">
-                      <button type="button" onClick={() => setSelectedId(a.id)} className="flex items-center gap-2.5 text-left">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); openStudent(a.id); }} className="flex items-center gap-2.5 text-left">
                         <img src={initialsAvatar(a.name)} alt="" className="w-8 h-8 rounded-lg shrink-0" />
                         <span className="min-w-0">
                           <span className="block font-bold text-slate-900 dark:text-white truncate max-w-[180px]">{a.name}</span>
@@ -274,6 +281,20 @@ export const StudentRegistrations = () => {
                       <span className="block font-semibold text-slate-700 dark:text-slate-300">{ago(a.lastLoginAt)}</span>
                       <span className="block text-[10px] text-slate-400">{a.loginCount || 0} logins</span>
                     </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openStudent(a.id, true);
+                        }}
+                        className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                        aria-label={`Delete ${a.name}`}
+                        title="Delete student"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -286,7 +307,7 @@ export const StudentRegistrations = () => {
               <button
                 key={a.id}
                 type="button"
-                onClick={() => setSelectedId(a.id)}
+                onClick={() => openStudent(a.id)}
                 className="text-left p-3 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2"
               >
                 <div className="flex items-center gap-2.5">
@@ -312,13 +333,13 @@ export const StudentRegistrations = () => {
         </>
       )}
 
-      {selected && <StudentDetailModal account={selected} onClose={() => setSelectedId(null)} />}
+      {selected && <StudentDetailModal key={selected.id} account={selected} startWithDelete={openDelete} onClose={() => setSelectedId(null)} />}
     </div>
   );
 };
 
-const StudentDetailModal = ({ account: a, onClose }) => {
-  const { adminResetStudentPassword, showToast } = useApp();
+const StudentDetailModal = ({ account: a, onClose, startWithDelete = false }) => {
+  const { adminResetStudentPassword, adminDeleteStudentAccount, showToast } = useApp();
   const [resetStep, setResetStep] = useState('idle'); // 'idle' | 'confirm' | 'done'
   const [tempPassword, setTempPassword] = useState('');
   const [copied, setCopied] = useState(false);
@@ -502,9 +523,94 @@ const StudentDetailModal = ({ account: a, onClose }) => {
               </div>
             )}
           </section>
+
+          <DeleteStudentSection account={a} startOpen={startWithDelete} onDeleted={onClose} deleteAccount={adminDeleteStudentAccount} />
         </div>
       </div>
     </div>,
     document.body
+  );
+};
+
+const DeleteStudentSection = ({ account: a, startOpen, onDeleted, deleteAccount }) => {
+  const [open, setOpen] = useState(startOpen);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const confirmed = typed.trim().toUpperCase() === 'DELETE';
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    if (startOpen) sectionRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [startOpen]);
+
+  return (
+    <section ref={sectionRef} className="p-3.5 rounded-2xl border border-red-200 dark:border-red-900/50 space-y-3">
+      <div className="flex items-start gap-2.5">
+        <Trash2 className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Delete student</h3>
+          <p className="text-[11px] text-slate-500">
+            Permanently removes {a.name} from the database: login, registration details, subscriptions, payment screenshots, quiz and exam
+            attempts, mock test results and doubts. This can't be undone.
+          </p>
+        </div>
+      </div>
+
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="px-4 py-2 rounded-xl border border-red-300 dark:border-red-900 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs font-bold inline-flex items-center gap-1.5"
+        >
+          <Trash2 className="w-3.5 h-3.5" /> Delete student
+        </button>
+      ) : (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!confirmed || busy) return;
+            setBusy(true);
+            const res = await deleteAccount(a.id);
+            setBusy(false);
+            if (res?.ok) onDeleted();
+          }}
+          className="space-y-2"
+        >
+          <label htmlFor="confirm-delete" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Type <strong className="font-mono text-red-600">DELETE</strong> to confirm
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              id="confirm-delete"
+              type="text"
+              autoComplete="off"
+              autoFocus
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              className="flex-1 px-3.5 py-2.5 rounded-xl text-sm font-mono bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setTyped('');
+                }}
+                className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!confirmed || busy}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold inline-flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> {busy ? 'Deleting...' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+    </section>
   );
 };

@@ -1,6 +1,6 @@
 import { Router, json } from 'express';
 import { ObjectId } from 'mongodb';
-import { getDb } from '../db.js';
+import { getDb, getScreenshotsBucket } from '../db.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { hashPassword } from '../services/passwords.js';
 import { normalizePhone, buildStudentRecord } from '../services/students.js';
@@ -32,6 +32,48 @@ adminRouter.post('/students/:accountId/reset-password', async (req, res, next) =
     );
     if (!result.matchedCount) return res.status(404).json({ error: 'Student not found' });
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Permanently delete a registered student (hard delete, no tombstones):
+ * their login, their student record, everything they own (attempts, subscriptions,
+ * doubts, retests, exam monitoring, mock test attempts) and their payment screenshots.
+ * Their email and WhatsApp number become free to register again.
+ */
+adminRouter.delete('/students/:accountId', async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.params.accountId)) return res.status(404).json({ error: 'Student not found' });
+    const db = getDb();
+    const _id = new ObjectId(req.params.accountId);
+    const user = await db.collection('users').findOne({ _id, role: 'student' });
+    if (!user) return res.status(404).json({ error: 'Student not found' });
+
+    const removed = {};
+    const studentId = user.studentId;
+    if (studentId) {
+      // Payment screenshots are stored in GridFS under the subscription id
+      const subs = await db.collection('subscriptions').find({ studentId }, { projection: { _id: 1 } }).toArray();
+      const bucket = getScreenshotsBucket();
+      if (bucket && subs.length) {
+        const files = await bucket.find({ filename: { $in: subs.map((s) => s._id) } }).toArray();
+        await Promise.all(files.map((f) => bucket.delete(f._id)));
+        removed.screenshots = files.length;
+      }
+
+      for (const [name, def] of Object.entries(COLLECTIONS)) {
+        if (!def.own) continue;
+        const { deletedCount } = await db.collection(def.mongo).deleteMany({ studentId });
+        if (deletedCount) removed[name] = deletedCount;
+      }
+      const { deletedCount } = await db.collection('students').deleteOne({ _id: studentId });
+      if (deletedCount) removed.students = deletedCount;
+    }
+
+    await db.collection('users').deleteOne({ _id });
+    res.json({ ok: true, removed });
   } catch (err) {
     next(err);
   }
