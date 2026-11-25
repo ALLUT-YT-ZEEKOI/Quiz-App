@@ -15,7 +15,8 @@ import {
   LogOut,
   ClipboardCheck,
   MessageCircleQuestion,
-  UserPlus
+  UserPlus,
+  ClipboardList
 } from 'lucide-react';
 
 export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) => {
@@ -29,6 +30,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     pendingSubscriptionsCount,
     examinations,
     notifications,
+    mockTests,
     showToast,
     logout,
     pendingRetestCount,
@@ -42,6 +44,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
   const myNewDoubtReplies = (doubts || []).filter((d) => d.studentId === myId && !d.seenByStudent).length;
   const myGrantedRetests = (retests || []).filter((r) => r.studentId === myId && r.status === 'granted').length;
 
+  const visibleMockTests = (mockTests || []).filter((t) => t.enabled === true).length;
   const liveExamsCount = (examinations || []).filter((e) => e.status === 'Live Now').length;
   const unreadNotifsCount = (notifications || []).filter((n) => !n.read).length;
 
@@ -91,6 +94,13 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badgeColor: 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse'
     },
     {
+      id: 'mock-tests',
+      label: 'Mock Tests',
+      icon: ClipboardList,
+      targetView: 'mock-tests',
+      badge: (mockTests || []).length || undefined
+    },
+    {
       id: 'quizzes',
       label: 'Quiz & Assessments',
       icon: FileQuestion,
@@ -138,6 +148,13 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       targetView: 'examinations',
       badge: liveExamsCount > 0 ? `${liveExamsCount} Live` : undefined,
       badgeColor: 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse'
+    },
+    {
+      id: 'mock-tests',
+      label: 'Mock Tests',
+      icon: ClipboardList,
+      targetView: 'mock-tests',
+      badge: visibleMockTests || undefined
     },
     {
       id: 'quizzes',
@@ -195,6 +212,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     if (item.id === 'answers' && (activeView === 'answers' || activeView === 'review')) return true;
     if (item.id === 'review' && (activeView === 'review' || activeView === 'answers')) return true;
     if (item.id === 'doubts' && activeView === 'doubts') return true;
+    if (item.id === 'mock-tests' && activeView === 'mock-tests') return true;
     if (item.id === 'registrations' && activeView === 'registrations') return true;
     return false;
   };

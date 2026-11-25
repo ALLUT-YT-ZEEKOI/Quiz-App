@@ -23,8 +23,16 @@ export const COLLECTIONS = {
   questions: { mongo: 'questions', key: byId, adminOnly: true },
   quizzes: { mongo: 'quizzes', key: byId },
   attempts: { mongo: 'quiz_attempts', key: byId, own: true },
-  difficultyLevels: { mongo: 'difficulty_levels', key: byId }
+  difficultyLevels: { mongo: 'difficulty_levels', key: byId },
+  // Mock tests: students only see enabled ones (and never the answers before submitting)
+  mockTests: { mongo: 'mock_tests', key: byId, hiddenFromStudent: (doc) => doc.enabled !== true },
+  // Mock test attempts go through POST /api/mock-tests/:id/submit (server-scored)
+  mockAttempts: { mongo: 'mock_attempts', key: byId, own: true }
 };
+
+/** True when a stored document must not be shown to this user (treated as deleted for them). */
+export const isHiddenFor = (name, user, doc) =>
+  user.role !== 'admin' && !!COLLECTIONS[name]?.hiddenFromStudent?.(doc);
 
 export const COLLECTION_NAMES = Object.keys(COLLECTIONS);
 
@@ -70,6 +78,14 @@ export const sanitizeForStudent = (name, item, ctx) => {
   if (name === 'examinations') {
     if (ctx.attemptedExamIds.has(item.id)) return item;
     // Before attempting: no correct answers / explanations
+    return {
+      ...item,
+      questions: (item.questions || []).map(({ correctAnswer, explanation, ...q }) => q)
+    };
+  }
+
+  if (name === 'mockTests') {
+    // Answers are only revealed in the student's own scored attempt
     return {
       ...item,
       questions: (item.questions || []).map(({ correctAnswer, explanation, ...q }) => q)

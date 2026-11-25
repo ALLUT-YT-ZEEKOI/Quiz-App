@@ -7,6 +7,7 @@ import { syncRouter } from './routes/sync.js';
 import { examsRouter } from './routes/exams.js';
 import { adminRouter } from './routes/admin.js';
 import { filesRouter } from './routes/files.js';
+import { mockTestsRouter } from './routes/mockTests.js';
 
 export const createApp = () => {
   const app = express();
@@ -36,6 +37,7 @@ export const createApp = () => {
   app.use('/api/exams', examsRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/files', filesRouter);
+  app.use('/api/mock-tests', mockTestsRouter);
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 

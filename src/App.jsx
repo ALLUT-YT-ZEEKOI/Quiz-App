@@ -16,6 +16,9 @@ import { AdminSubscriptions } from './components/curriculum/AdminSubscriptions';
 // Live & Scheduled Examination Module
 import { ExaminationsMain } from './components/examinations/ExaminationsMain';
 
+// Day-wise timed Mock Tests
+import { MockTestsMain } from './components/mocktests/MockTestsMain';
+
 // Announcements & Notifications Module
 import { AdminNotificationDashboard } from './components/notifications/AdminNotificationDashboard';
 import { StudentNoticeBoard } from './components/notifications/StudentNoticeBoard';
@@ -76,6 +79,11 @@ const AppContent = () => {
     // If Live Examinations view or Student is taking an exam
     if (activeView === 'examinations' || activeView === 'live-exams') {
       return <ExaminationsMain />;
+    }
+
+    // Mock Tests (admin builds them, students take them)
+    if (activeView === 'mock-tests') {
+      return <MockTestsMain />;
     }
 
     // If Results view

@@ -78,3 +78,45 @@ export const scoreModuleQuiz = (subject, attempt) => {
     status: scorePct >= 60 ? 'Passed' : 'Needs Practice'
   };
 };
+
+/**
+ * Scores a mock test attempt. `answers` maps questionId -> selected option index.
+ * Each question is worth 1 mark. Kept in step with src/utils/mockTests.js in the frontend.
+ */
+export const scoreMockTest = (test, answers) => {
+  const questions = test.questions || [];
+  const picked = answers && typeof answers === 'object' ? answers : {};
+  let correctCount = 0;
+  let incorrectCount = 0;
+  let unattemptedCount = 0;
+
+  const detailed = questions.map((q) => {
+    const raw = picked[q.id];
+    const selectedOption = Number.isInteger(raw) && raw >= 0 && raw < (q.options || []).length ? raw : null;
+    const isCorrect = selectedOption !== null && selectedOption === q.correctAnswer;
+    if (selectedOption === null) unattemptedCount++;
+    else if (isCorrect) correctCount++;
+    else incorrectCount++;
+    return {
+      questionId: q.id,
+      questionText: q.questionText,
+      options: q.options || [],
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation || '',
+      selectedOption,
+      isCorrect
+    };
+  });
+
+  const totalMarks = questions.length;
+  return {
+    totalQuestions: questions.length,
+    totalMarks,
+    correctCount,
+    incorrectCount,
+    unattemptedCount,
+    score: correctCount,
+    percentage: totalMarks ? Math.round((correctCount / totalMarks) * 100) : 0,
+    answers: detailed
+  };
+};

@@ -12,6 +12,12 @@ import { hashPassword, verifyPassword } from '../utils/passwordHash';
 import { buildStudentFromRegistration, normalizePhone } from '../utils/studentRegistration';
 import { api, backendEnabled, getToken, setToken, clearToken, setUnauthorizedHandler } from '../api/client';
 import { SyncManager } from '../api/syncManager';
+import {
+  scoreMockTest,
+  getLocalSession as getLocalMockSession,
+  saveLocalSession as saveLocalMockSession,
+  clearLocalProgress as clearLocalMockProgress
+} from '../utils/mockTests';
 
 // With the backend enabled, data lives in MongoDB: this browser's copy is NOT overwritten,
 // so it can still be imported once by the admin.
@@ -628,6 +634,181 @@ export const AppProvider = ({ children }) => {
     return newAttempt;
   };
 
+  // =========================================================================
+  // MOCK TESTS (admin-built timed practice tests, grouped by day)
+  // A test: { id, title, day, description, durationMinutes, allowRetest, enabled, questions[] }.
+  // Students only see enabled tests. With the backend, starting and scoring happen on the server.
+  // =========================================================================
+  const [mockTests, setMockTests] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('cohesion_mock_tests') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [mockAttempts, setMockAttempts] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('cohesion_mock_attempts') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  // The test a student is taking right now: { test, session }
+  const [activeMockTest, setActiveMockTest] = useState(null);
+
+  useEffect(() => { persistLocal('cohesion_mock_tests', mockTests); }, [mockTests]);
+  useEffect(() => { persistLocal('cohesion_mock_attempts', mockAttempts); }, [mockAttempts]);
+
+  const createMockTest = (data) => {
+    const now = new Date().toISOString();
+    const test = {
+      id: `MOCK-${Date.now().toString(36).toUpperCase()}`,
+      title: data.title.trim(),
+      day: Math.max(1, Number(data.day) || 1),
+      description: (data.description || '').trim(),
+      durationMinutes: Math.max(1, Number(data.durationMinutes) || 60),
+      allowRetest: !!data.allowRetest,
+      enabled: false, // hidden until the admin adds questions and enables it
+      questions: [],
+      createdAt: now,
+      updatedAt: now
+    };
+    setMockTests((prev) => [test, ...prev]);
+    showToast(`Mock test "${test.title}" created. Add questions, then enable it for students.`, 'success');
+    return test;
+  };
+
+  const updateMockTest = (id, fields) => {
+    setMockTests((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...fields, updatedAt: new Date().toISOString() } : t))
+    );
+  };
+
+  const deleteMockTest = (id) => {
+    setMockTests((prev) => prev.filter((t) => t.id !== id));
+    showToast('Mock test deleted', 'info');
+  };
+
+  /** Starts or resumes a test for the signed-in student. Returns true when the test screen opens. */
+  const startMockTest = async (testId) => {
+    const test = mockTests.find((t) => t.id === testId);
+    if (!test) {
+      showToast('Mock test not found', 'error');
+      return false;
+    }
+    const studentId = currentUserId;
+
+    if (backendEnabled) {
+      try {
+        const res = await api(`/mock-tests/${testId}/start`, { method: 'POST' });
+        const session = {
+          startedAt: res.startedAt,
+          deadline: res.deadline,
+          durationMinutes: res.durationMinutes,
+          // Server clock minus this device's clock, so the countdown matches the server
+          clockOffsetMs: Date.parse(res.serverTime) - Date.now()
+        };
+        saveLocalMockSession(testId, studentId, session);
+        setActiveMockTest({ test, session });
+        return true;
+      } catch (err) {
+        // Refused (e.g. finished on another device): drop any stale "in progress" marker here
+        if (err.status === 403 || err.status === 404) clearLocalMockProgress(testId, studentId);
+        showToast(err.message, 'warning');
+        return false;
+      }
+    }
+
+    let session = getLocalMockSession(testId, studentId);
+    if (!session) {
+      if (test.enabled !== true) {
+        showToast('This mock test is not available.', 'warning');
+        return false;
+      }
+      if (!(test.questions || []).length) {
+        showToast('This mock test has no questions yet.', 'warning');
+        return false;
+      }
+      const taken = mockAttempts.some((a) => a.testId === testId && a.studentId === studentId);
+      if (taken && !test.allowRetest) {
+        showToast('You have already taken this mock test. Retests are not allowed for it.', 'warning');
+        return false;
+      }
+      const startedAt = new Date();
+      session = {
+        startedAt: startedAt.toISOString(),
+        deadline: new Date(startedAt.getTime() + test.durationMinutes * 60000).toISOString(),
+        durationMinutes: test.durationMinutes,
+        clockOffsetMs: 0
+      };
+      saveLocalMockSession(testId, studentId, session);
+    }
+    setActiveMockTest({ test, session });
+    return true;
+  };
+
+  /** Submits the student's answers ({ questionId: optionIndex }). Returns the scored attempt or null. */
+  const submitMockTest = async (testId, answers, { autoSubmitted = false } = {}) => {
+    const studentId = currentUserId;
+
+    if (backendEnabled) {
+      try {
+        const { attempt } = await api(`/mock-tests/${testId}/submit`, {
+          method: 'POST',
+          body: { answers, autoSubmitted }
+        });
+        syncRef.current.insertSynced('mockAttempts', attempt);
+        clearLocalMockProgress(testId, studentId);
+        return attempt;
+      } catch (err) {
+        if (err.status === 409 || err.status === 404) {
+          // Already submitted (or the test is gone): nothing left to resume
+          clearLocalMockProgress(testId, studentId);
+          setActiveMockTest(null);
+          syncRef.current.refetch('mockAttempts');
+          showToast(err.message, 'warning', 6000);
+        } else {
+          showToast(`${err.message} Your answers are saved on this device. Please try submitting again.`, 'warning', 7000);
+        }
+        return null;
+      }
+    }
+
+    const test = mockTests.find((t) => t.id === testId) || activeMockTest?.test;
+    const session = getLocalMockSession(testId, studentId);
+    if (!test || !session) {
+      clearLocalMockProgress(testId, studentId);
+      setActiveMockTest(null);
+      showToast('This mock test was already submitted, or was never started.', 'warning');
+      return null;
+    }
+    const now = new Date();
+    const elapsed = Math.round((now.getTime() - Date.parse(session.startedAt)) / 1000);
+    const student = currentUser || {};
+    const attempt = {
+      id: `MOCKATT-${testId}-${studentId}-${now.getTime().toString(36)}`,
+      testId,
+      testTitle: test.title,
+      day: test.day,
+      studentId,
+      studentName: student.name || 'Student',
+      studentRollNo: student.studentId || '',
+      batch: student.batch || '',
+      ...scoreMockTest(test, answers),
+      attemptNumber: mockAttempts.filter((a) => a.testId === testId && a.studentId === studentId).length + 1,
+      durationMinutes: session.durationMinutes,
+      timeSpentSeconds: Math.max(1, Math.min(session.durationMinutes * 60, elapsed)),
+      autoSubmitted,
+      startedAt: session.startedAt,
+      submittedAt: now.toISOString()
+    };
+    setMockAttempts((prev) => [attempt, ...prev]);
+    clearLocalMockProgress(testId, studentId);
+    return attempt;
+  };
+
   const exportExamResultsCSV = (examId) => {
     const exam = examinations.find((e) => e.id === examId);
     const attemptsForExam = examAttempts.filter((a) => a.examId === examId);
@@ -774,6 +955,8 @@ export const AppProvider = ({ children }) => {
     m.register('quizzes', setQuizzes);
     m.register('attempts', setAttempts);
     m.register('difficultyLevels', setDifficultyLevels);
+    m.register('mockTests', setMockTests);
+    m.register('mockAttempts', setMockAttempts);
     m.register('accounts', setStudentAccounts, { readOnly: true });
   }, []);
 
@@ -792,6 +975,8 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { syncRef.current?.track('quizzes', quizzes); }, [quizzes]);
   useEffect(() => { syncRef.current?.track('attempts', attempts); }, [attempts]);
   useEffect(() => { syncRef.current?.track('difficultyLevels', difficultyLevels); }, [difficultyLevels]);
+  useEffect(() => { syncRef.current?.track('mockTests', mockTests); }, [mockTests]);
+  useEffect(() => { syncRef.current?.track('mockAttempts', mockAttempts); }, [mockAttempts]);
 
   /** Loads everything the signed-in user may see from the server. */
   const loadServerData = useCallback(async () => {
@@ -1014,6 +1199,7 @@ export const AppProvider = ({ children }) => {
   // Logout handler
   const logout = () => {
     if (backendEnabled) endServerSession();
+    setActiveMockTest(null);
     setIsAuthenticated(false);
     try {
       localStorage.setItem('qsap_auth', 'false');
@@ -2250,7 +2436,16 @@ export const AppProvider = ({ children }) => {
         startStudentExam,
         saveExamDraftAnswer,
         submitStudentExamAttempt,
-        exportExamResultsCSV
+        exportExamResultsCSV,
+        mockTests,
+        mockAttempts,
+        activeMockTest,
+        setActiveMockTest,
+        createMockTest,
+        updateMockTest,
+        deleteMockTest,
+        startMockTest,
+        submitMockTest
       }}
     >
       {children}

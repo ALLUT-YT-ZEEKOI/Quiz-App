@@ -16,11 +16,13 @@ export const MobileBottomNav = ({ onMobileMenuToggle }) => {
     setActiveView,
     pendingSubscriptionsCount,
     activeExamForAttempt,
+    activeMockTest,
     examinations
   } = useApp();
 
   // If inside active quiz or exam attempt screen, don't show the bottom nav so there's zero distraction
   if (activeView === 'quiz-attempt' || activeView === 'exam-taking' || activeExamForAttempt) return null;
+  if (activeView === 'mock-tests' && activeMockTest) return null;
 
   const liveCount = (examinations || []).filter((e) => e.status === 'Live Now').length;
 
