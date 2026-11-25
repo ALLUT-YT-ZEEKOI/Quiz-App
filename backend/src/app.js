@@ -15,19 +15,35 @@ export const createApp = () => {
   app.set('trust proxy', 1); // behind the Vercel/Render proxy (needed for rate limiting by IP)
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  // True when the page calling the API is served from the same host as the API itself
+  // (the website and API share one Vercel deployment, so any domain it runs on is allowed).
+  const isSameHost = (origin, req) => {
+    let originHost;
+    try {
+      originHost = new URL(origin).host.toLowerCase();
+    } catch {
+      return false;
+    }
+    const hosts = [req.headers['x-forwarded-host'], req.headers.host]
+      .filter(Boolean)
+      .flatMap((h) => String(h).split(','))
+      .map((h) => h.trim().toLowerCase());
+    return hosts.includes(originHost);
+  };
+
   app.use(
-    cors({
-      origin: (origin, cb) => {
-        // Allow same-origin / server-to-server requests (no Origin header) and configured frontends
-        if (
-          !origin ||
-          config.clientOrigins.includes(origin) ||
-          config.clientOrigins.includes('*') ||
-          origin.includes('vercel.app') ||
-          origin.includes('localhost')
-        ) return cb(null, true);
-        cb(new Error(`Origin ${origin} is not allowed. Add it to CLIENT_ORIGINS.`));
-      }
+    cors((req, cb) => {
+      const origin = req.headers.origin;
+      // Allow same-origin / server-to-server requests (no Origin header) and configured frontends
+      if (
+        !origin ||
+        isSameHost(origin, req) ||
+        config.clientOrigins.includes(origin) ||
+        config.clientOrigins.includes('*') ||
+        origin.includes('vercel.app') ||
+        origin.includes('localhost')
+      ) return cb(null, { origin: true });
+      cb(new Error(`Origin ${origin} is not allowed. Add it to CLIENT_ORIGINS.`));
     })
   );
 
