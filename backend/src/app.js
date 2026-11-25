@@ -19,7 +19,13 @@ export const createApp = () => {
     cors({
       origin: (origin, cb) => {
         // Allow same-origin / server-to-server requests (no Origin header) and configured frontends
-        if (!origin || config.clientOrigins.includes(origin)) return cb(null, true);
+        if (
+          !origin ||
+          config.clientOrigins.includes(origin) ||
+          config.clientOrigins.includes('*') ||
+          origin.includes('vercel.app') ||
+          origin.includes('localhost')
+        ) return cb(null, true);
         cb(new Error(`Origin ${origin} is not allowed. Add it to CLIENT_ORIGINS.`));
       }
     })
@@ -28,16 +34,21 @@ export const createApp = () => {
   // JSON bodies (payment screenshots and cover images are sent as base64; the app shrinks them first)
   const jsonParser = json({ limit: '25mb' });
   app.use((req, res, next) =>
-    req.path.startsWith('/api/files') || req.path === '/api/admin/import' ? next() : jsonParser(req, res, next)
+    req.path.startsWith('/api/files') || req.path.startsWith('/files') || req.path === '/api/admin/import' ? next() : jsonParser(req, res, next)
   );
 
-  app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
-  app.use('/api/auth', authRouter);
-  app.use('/api/sync', syncRouter);
-  app.use('/api/exams', examsRouter);
-  app.use('/api/admin', adminRouter);
-  app.use('/api/files', filesRouter);
-  app.use('/api/mock-tests', mockTestsRouter);
+  const mountRoutes = (prefix = '') => {
+    app.get(`${prefix}/health`, (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+    app.use(`${prefix}/auth`, authRouter);
+    app.use(`${prefix}/sync`, syncRouter);
+    app.use(`${prefix}/exams`, examsRouter);
+    app.use(`${prefix}/admin`, adminRouter);
+    app.use(`${prefix}/files`, filesRouter);
+    app.use(`${prefix}/mock-tests`, mockTestsRouter);
+  };
+
+  mountRoutes('/api');
+  mountRoutes('');
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 

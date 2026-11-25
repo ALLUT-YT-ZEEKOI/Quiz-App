@@ -4,7 +4,13 @@
 //   VITE_API_URL=http://localhost:5000/api
 // ). Without it, the app keeps working on this browser's local storage only.
 
-export const API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+export const API_URL = (
+  import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
+    ? (import.meta.env.VITE_API_URL === 'none' || import.meta.env.VITE_API_URL === 'false' ? '' : import.meta.env.VITE_API_URL)
+    : import.meta.env.PROD
+    ? '/api'
+    : 'http://localhost:5000/api'
+).trim().replace(/\/+$/, '');
 export const backendEnabled = Boolean(API_URL);
 
 const TOKEN_KEY = 'cohesion_token';

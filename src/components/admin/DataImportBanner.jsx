@@ -235,7 +235,7 @@ export const ServerLoadingScreen = ({ error, onRetry, onSignOut }) => (
           <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 inline-flex items-center gap-2">
             <LoaderCircle className="w-4 h-4 animate-spin text-[#087F8C]" /> Loading your data…
           </p>
-          <p className="text-[11px] text-slate-400">Connecting to server at localhost:5000</p>
+          <p className="text-[11px] text-slate-400">Connecting to database...</p>
         </div>
       )}
     </div>
