@@ -1,14 +1,36 @@
 // Assessment records: one shape for every graded attempt in the app
 //
-// The app has two kinds of graded attempts:
+// The app has three kinds of graded attempts:
 //   - Live Examination attempts (examAttempts)      -> kind: 'exam'
 //   - Module practice quiz attempts (curriculumAttempts) -> kind: 'quiz'
+//   - Mock test attempts (mockAttempts)              -> kind: 'mock'
+// Every record also carries timing: startedAt / submittedAt (ISO, when known) and timeSpentSeconds.
 // They store data differently; these helpers turn both into a common "record" so
 // the review dashboards, subject marks and question analysis can treat them alike.
 
 import { parseDate } from './subscriptionUtils';
 
 const toTime = (value) => parseDate(value)?.getTime() || 0;
+
+/** "45s", "12m 05s", "1h 04m" for a number of seconds; '' when unknown. */
+export const formatDuration = (seconds) => {
+  const n = Math.round(Number(seconds));
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const sec = n % 60;
+  if (h) return `${h}h ${String(m).padStart(2, '0')}m`;
+  if (m) return `${m}m ${String(sec).padStart(2, '0')}s`;
+  return `${sec}s`;
+};
+
+/** Date and time of day, e.g. "26 Nov 2026, 2:45 pm"; '' when unknown. */
+export const formatDateTime = (value) => {
+  const d = parseDate(value);
+  return d
+    ? d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : '';
+};
 
 /**
  * Fills each answer of an exam attempt with its question details. Older/seeded
@@ -67,6 +89,10 @@ export const normalizeExamAttempt = (attempt, exam) => {
     wrong: attempt.incorrectCount ?? answers.filter((a) => !a.isCorrect && a.selectedOption !== null).length,
     skipped: attempt.unattemptedCount ?? answers.filter((a) => a.selectedOption === null).length,
     isRetest: !!attempt.isRetest,
+    startedAt: attempt.startedAt || null,
+    submittedAt: attempt.submittedAt || null,
+    timeSpentSeconds:
+      Number(attempt.timeSpentSeconds) || (Number(attempt.timeSpentMinutes) ? Number(attempt.timeSpentMinutes) * 60 : null),
     answers,
     hasDetails
   };
@@ -115,17 +141,71 @@ export const normalizeQuizAttempt = (attempt) => {
     wrong: Math.max(0, total - correct - skipped),
     skipped,
     isRetest: false,
+    startedAt: attempt.startedAt || null,
+    submittedAt: attempt.submittedAt || null,
+    // Older quiz attempts did not record their real duration
+    timeSpentSeconds: Number(attempt.timeSpentSeconds) || null,
     answers,
     hasDetails: answers.length > 0
   };
 };
 
+export const normalizeMockAttempt = (attempt, test) => {
+  const answers = (attempt.answers || []).map((a, i) => ({
+    questionIndex: i,
+    questionText: a.questionText || '',
+    options: a.options || [],
+    correctAnswer: a.correctAnswer,
+    selectedOption: a.selectedOption ?? null,
+    isCorrect: a.selectedOption !== null && a.selectedOption !== undefined && a.selectedOption === a.correctAnswer,
+    explanation: a.explanation || '',
+    difficulty: a.difficulty || ''
+  }));
+  const day = attempt.day ?? test?.day;
+  return {
+    id: attempt.id,
+    kind: 'mock',
+    assessmentKey: `mock:${attempt.testId}`,
+    testId: attempt.testId,
+    studentId: attempt.studentId,
+    studentName: attempt.studentName,
+    avatar: attempt.avatar || '',
+    title: `${attempt.testTitle || test?.title || 'Mock Test'}${day ? ` (Day ${day})` : ''}`,
+    subjectId: '',
+    subjectName: 'Mock Tests',
+    date: attempt.submittedAt,
+    time: toTime(attempt.submittedAt),
+    score: attempt.score,
+    maxScore: attempt.totalMarks,
+    pct: Number(attempt.percentage) || 0,
+    passed: Number(attempt.percentage) >= 60,
+    total: attempt.totalQuestions || answers.length,
+    correct: attempt.correctCount ?? answers.filter((a) => a.isCorrect).length,
+    wrong: attempt.incorrectCount ?? answers.filter((a) => !a.isCorrect && a.selectedOption !== null).length,
+    skipped: attempt.unattemptedCount ?? answers.filter((a) => a.selectedOption === null).length,
+    isRetest: Number(attempt.attemptNumber) > 1,
+    startedAt: attempt.startedAt || null,
+    submittedAt: attempt.submittedAt || null,
+    timeSpentSeconds: Number(attempt.timeSpentSeconds) || null,
+    answers,
+    hasDetails: answers.some((a) => a.questionText && a.options.length > 0)
+  };
+};
+
 /** All graded attempts as records, newest first. */
-export const buildAssessmentRecords = ({ examAttempts = [], examinations = [], curriculumAttempts = [] }) => {
+export const buildAssessmentRecords = ({
+  examAttempts = [],
+  examinations = [],
+  curriculumAttempts = [],
+  mockAttempts = [],
+  mockTests = []
+}) => {
   const examsById = new Map(examinations.map((e) => [e.id, e]));
+  const testsById = new Map(mockTests.map((t) => [t.id, t]));
   return [
     ...examAttempts.map((a) => normalizeExamAttempt(a, examsById.get(a.examId))),
-    ...curriculumAttempts.map(normalizeQuizAttempt)
+    ...curriculumAttempts.map(normalizeQuizAttempt),
+    ...mockAttempts.map((a) => normalizeMockAttempt(a, testsById.get(a.testId)))
   ].sort((a, b) => b.time - a.time);
 };
 
@@ -148,7 +228,8 @@ const avg = (nums) => (nums.length ? Math.round(nums.reduce((s, n) => s + n, 0) 
  */
 export const computeSubjectMarks = (records) => {
   const bySubject = new Map();
-  latestPerAssessment(records).forEach((r) => {
+  // Mock tests are not tied to a subject
+  latestPerAssessment(records.filter((r) => r.kind !== 'mock')).forEach((r) => {
     const key = r.subjectName;
     if (!bySubject.has(key)) bySubject.set(key, []);
     bySubject.get(key).push(r);

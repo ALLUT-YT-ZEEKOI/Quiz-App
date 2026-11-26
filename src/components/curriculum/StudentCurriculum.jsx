@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { compressImageFile } from '../../utils/imageCompress';
 import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
@@ -44,7 +44,10 @@ import {
 import { groupVideosBySection } from '../../utils/curriculumSections';
 import { NotesList, NotePreviewModal } from './ModuleNotes';
 import { ProtectedVideoPlayer } from './ProtectedVideoPlayer';
-import { formatValidity, formatDate, formatDaysLeft, isLifetime } from '../../utils/subscriptionUtils';
+import { formatDate, formatDaysLeft, formatAccess, isLifetimeAccess, hasFixedEndDate, endOfDate } from '../../utils/subscriptionUtils';
+import { applyContentAccess } from '../../utils/studentModules';
+
+const ALL_CONTENT = { videos: true, notes: true, questions: true };
 
 export const StudentCurriculum = () => {
   const {
@@ -60,8 +63,15 @@ export const StudentCurriculum = () => {
     difficultyLevels,
     getDifficultyMeta,
     getDifficultyLabel,
-    matchesDifficulty
+    matchesDifficulty,
+    contentAccess
   } = useApp();
+
+  // Subjects as this student may see them: lesson videos / notes / Q&A the admin hid are removed
+  const visibleSubjects = useMemo(
+    () => (curriculumSubjects || []).map((s) => applyContentAccess(s, contentAccess)),
+    [curriculumSubjects, contentAccess]
+  );
 
   // Navigation hierarchy: null = Subjects list; object = selected subject
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -78,6 +88,8 @@ export const StudentCurriculum = () => {
   const [selectedAnswers, setSelectedAnswers] = useState({}); // { [questionId]: optionIndex }
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quizResult, setQuizResult] = useState(null);
+  // When the current quiz attempt began (ms), to record the real time taken
+  const [quizStartedAt, setQuizStartedAt] = useState(null);
 
   // Subscription & Payment Modal state
   const [payModalSubject, setPayModalSubject] = useState(null);
@@ -91,9 +103,7 @@ export const StudentCurriculum = () => {
 
   // "₹499 · 60 days" style label for a subject's plan
   const planLabel = (sub) =>
-    isLifetime(sub?.validityDays)
-      ? `₹${sub?.price || 499} · Lifetime`
-      : `₹${sub?.price || 499} · ${formatValidity(sub?.validityDays)}`;
+    `₹${sub?.price || 499} · ${formatAccess(sub)}`;
 
   const hasPendingRequest = (subjectId) =>
     (subscriptions || []).some(
@@ -157,12 +167,25 @@ export const StudentCurriculum = () => {
   };
 
   const currentSubject = selectedSubject
-    ? curriculumSubjects.find((s) => s.id === selectedSubject.id) || selectedSubject
+    ? visibleSubjects.find((s) => s.id === selectedSubject.id) || selectedSubject
     : null;
 
   const currentModule = currentSubject && selectedModule
     ? currentSubject.modules.find((m) => m.id === selectedModule.id) || selectedModule
     : null;
+
+  // Which tabs this course shows (the admin can hide videos, notes or Q&A)
+  const moduleAccess = currentModule?.contentAccess || ALL_CONTENT;
+  const modeAllowed = (mode) => (mode === 'quiz' ? moduleAccess.questions : moduleAccess[mode]);
+  const allowedModes = ['videos', 'notes', 'quiz'].filter(modeAllowed);
+  const firstAllowedMode = allowedModes[0] || null;
+
+  // If the open tab was just hidden by the admin, move to one that is still available
+  useEffect(() => {
+    if (currentModule && !modeAllowed(moduleMode) && firstAllowedMode) {
+      setModuleMode(firstAllowedMode);
+    }
+  }, [currentModule, moduleMode, firstAllowedMode]);
 
   // Filter questions for quiz based on selected difficulty mode
   const quizQuestions = (currentModule?.questions || []).filter((q) => {
@@ -177,8 +200,19 @@ export const StudentCurriculum = () => {
     setSelectedAnswers({});
     setQuizCompleted(false);
     setQuizResult(null);
+    setQuizStartedAt(Date.now());
     setModuleMode('quiz');
   };
+
+  // Opening the quiz tab directly (not via Start/Retake) also starts the clock
+  useEffect(() => {
+    if (moduleMode === 'quiz' && !quizCompleted && !quizStartedAt) setQuizStartedAt(Date.now());
+  }, [moduleMode, quizCompleted, quizStartedAt]);
+
+  // Leaving a course drops any unfinished quiz timing
+  useEffect(() => {
+    setQuizStartedAt(null);
+  }, [selectedModule?.id]);
 
   // Select answer option
   const handleSelectOption = (questionId, optionIndex) => {
@@ -202,6 +236,10 @@ export const StudentCurriculum = () => {
 
     const scorePct = Math.round((correctCount / quizQuestions.length) * 100);
     const passed = scorePct >= 60;
+    const finishedAt = new Date();
+    const startedAt = new Date(quizStartedAt || finishedAt.getTime());
+    const timeSpentSeconds = Math.max(1, Math.round((finishedAt - startedAt) / 1000));
+    setQuizStartedAt(null);
 
     const resultData = {
       id: `att-${Date.now()}`,
@@ -218,8 +256,11 @@ export const StudentCurriculum = () => {
       correctCount,
       scorePct,
       status: passed ? 'Passed' : 'Needs Practice',
-      timeTaken: '03:15',
-      date: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      timeTaken: `${String(Math.floor(timeSpentSeconds / 60)).padStart(2, '0')}:${String(timeSpentSeconds % 60).padStart(2, '0')}`,
+      timeSpentSeconds,
+      startedAt: startedAt.toISOString(),
+      submittedAt: finishedAt.toISOString(),
+      date: finishedAt.toISOString().replace('T', ' ').slice(0, 16),
       // Every question with the student's choice, so it can be reviewed later (Marks & Answers)
       answers: quizQuestions.map((q) => {
         const selected = selectedAnswers[q.id];
@@ -302,7 +343,22 @@ export const StudentCurriculum = () => {
         />
 
         {/* Segmented Control / Tab Switcher (Videos / Notes / Quiz) */}
-        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-900/90 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-2xs">
+        {!firstAllowedMode && (
+          <div className="p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+            <Lock className="w-12 h-12 text-slate-300 mx-auto" />
+            <h3 className="font-bold text-slate-700 dark:text-slate-300 text-base">Content Not Available</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Your instructor hasn't opened this module's lessons, notes or questions yet. Check back later!
+            </p>
+          </div>
+        )}
+        {firstAllowedMode && (
+        <div
+          className={`grid gap-1 p-1 bg-slate-100 dark:bg-slate-900/90 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-2xs ${
+            allowedModes.length === 3 ? 'grid-cols-3' : allowedModes.length === 2 ? 'grid-cols-2' : 'grid-cols-1'
+          }`}
+        >
+          {moduleAccess.videos && (
           <button
             type="button"
             onClick={() => setModuleMode('videos')}
@@ -318,7 +374,9 @@ export const StudentCurriculum = () => {
               <span className="hidden sm:inline">Watch Videos ({videos.length})</span>
             </span>
           </button>
+          )}
 
+          {moduleAccess.notes && (
           <button
             type="button"
             onClick={() => setModuleMode('notes')}
@@ -334,7 +392,9 @@ export const StudentCurriculum = () => {
               <span className="hidden sm:inline">Study Notes ({currentModule.notes?.length || 0})</span>
             </span>
           </button>
+          )}
 
+          {moduleAccess.questions && (
           <button
             type="button"
             onClick={() => setModuleMode('quiz')}
@@ -350,12 +410,14 @@ export const StudentCurriculum = () => {
               <span className="hidden sm:inline">Attend Quiz ({currentModule.questions?.length || 0})</span>
             </span>
           </button>
+          )}
         </div>
+        )}
 
         {/* ================================================================= */}
         {/* SUB-VIEW A: WATCH VIDEOS                                          */}
         {/* ================================================================= */}
-        {moduleMode === 'videos' && (
+        {moduleMode === 'videos' && moduleAccess.videos && (
           <div className="space-y-4">
             {videos.length === 0 ? (
               <div className="p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
@@ -366,12 +428,14 @@ export const StudentCurriculum = () => {
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">
                   The instructor hasn't added lesson videos to this module yet. You can still test your knowledge with the quiz!
                 </p>
+                {moduleAccess.questions && (
                 <button
                   onClick={() => setModuleMode('quiz')}
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-2 shadow-md"
                 >
                   <HelpCircle className="w-4 h-4" /> Attend Module Quiz
                 </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -453,6 +517,7 @@ export const StudentCurriculum = () => {
                         </div>
                       )}
 
+                      {moduleAccess.questions && (
                       <div className="pt-2 flex items-center justify-between flex-wrap gap-2">
                         <div className="text-xs text-slate-400">
                           Ready to test your comprehension?
@@ -465,6 +530,7 @@ export const StudentCurriculum = () => {
                           <span>Take Module Quiz ➡️</span>
                         </button>
                       </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -556,7 +622,7 @@ export const StudentCurriculum = () => {
         {/* ================================================================= */}
         {/* SUB-VIEW: STUDY NOTES SHARED BY THE TEACHER                       */}
         {/* ================================================================= */}
-        {moduleMode === 'notes' && (
+        {moduleMode === 'notes' && moduleAccess.notes && (
           <div className="space-y-4">
             <NotesList
               notes={currentModule.notes || []}
@@ -581,7 +647,7 @@ export const StudentCurriculum = () => {
         {/* ================================================================= */}
         {/* SUB-VIEW B: ATTEND QUIZ (WITH EASY / MEDIUM / HARD DIFFICULTY)     */}
         {/* ================================================================= */}
-        {moduleMode === 'quiz' && (
+        {moduleMode === 'quiz' && moduleAccess.questions && (
           <div className="space-y-5">
             {/* Difficulty Selector Bar */}
             <div className="bg-white dark:bg-surface-darkCard p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
@@ -667,6 +733,7 @@ export const StudentCurriculum = () => {
                       <RotateCcw className="w-4 h-4" />
                       <span>Retake Quiz</span>
                     </button>
+                    {moduleAccess.videos && (
                     <button
                       onClick={() => setModuleMode('videos')}
                       className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20"
@@ -674,6 +741,7 @@ export const StudentCurriculum = () => {
                       <Video className="w-4 h-4" />
                       <span>Review Video Lessons</span>
                     </button>
+                    )}
                   </div>
                 </div>
 
@@ -928,13 +996,15 @@ export const StudentCurriculum = () => {
               <div className="text-2xl font-black text-slate-900 dark:text-white">
                 ₹{payModalSubject.price || 499}
                 <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
-                  {' '}/ {formatValidity(payModalSubject.validityDays)}
+                  {' '}/ {formatAccess(payModalSubject)}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {isLifetime(payModalSubject.validityDays)
+                {hasFixedEndDate(payModalSubject)
+                  ? `Full access until ${formatDate(endOfDate(payModalSubject.accessUntil))}, starting when the Admin approves your payment`
+                  : isLifetimeAccess(payModalSubject)
                   ? 'Lifetime access to all video lessons, notes & practice quizzes'
-                  : `Full access for ${formatValidity(payModalSubject.validityDays)}, starting when the Admin approves your payment`}
+                  : `Full access for ${formatAccess(payModalSubject)}, starting when the Admin approves your payment`}
               </p>
 
               {/* QR Image Box */}
@@ -1159,9 +1229,11 @@ export const StudentCurriculum = () => {
                   ? `Your access to ${currentSubject.name} ended on ${formatDate(
                       getSubjectSubscription(studentId, currentSubject.id)?.timing.expiresAt
                     )}. Renew to continue learning — your progress is saved.`
-                  : isLifetime(currentSubject.validityDays)
+                  : hasFixedEndDate(currentSubject)
+                  ? `To access video lessons and assessments for ${currentSubject.name}, subscribe for ₹${currentSubject.price || 499}. Access lasts until ${formatDate(endOfDate(currentSubject.accessUntil))}.`
+                  : isLifetimeAccess(currentSubject)
                   ? `To access video lessons and assessments for ${currentSubject.name}, please complete the one-time subscription payment of ₹${currentSubject.price || 499} for lifetime access.`
-                  : `To access video lessons and assessments for ${currentSubject.name}, subscribe for ₹${currentSubject.price || 499}. Access lasts ${formatValidity(currentSubject.validityDays)} from the day your payment is approved.`}
+                  : `To access video lessons and assessments for ${currentSubject.name}, subscribe for ₹${currentSubject.price || 499}. Access lasts ${formatAccess(currentSubject)} from the day your payment is approved.`}
               </p>
             </div>
 
@@ -1296,6 +1368,7 @@ export const StudentCurriculum = () => {
                 const totalVideos = mod.videos?.length || 0;
                 const totalQuestions = mod.questions?.length || 0;
                 const totalNotes = mod.notes?.length || 0;
+                const access = mod.contentAccess || ALL_CONTENT;
 
                 // Check if student has already attended this module's quiz
                 const pastAttempt = (curriculumAttempts || []).find(
@@ -1347,10 +1420,12 @@ export const StudentCurriculum = () => {
 
                       {/* Learning Resources Chips */}
                       <div className="flex items-center gap-2 mt-3.5 flex-wrap">
+                        {access.videos && (
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/40 text-xs font-bold">
                           <Video className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                           <span>{totalVideos} {totalVideos === 1 ? 'Video' : 'Videos'}</span>
                         </div>
+                        )}
 
                         {totalNotes > 0 && (
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/40 text-xs font-bold">
@@ -1359,10 +1434,12 @@ export const StudentCurriculum = () => {
                           </div>
                         )}
 
+                        {access.questions && (
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-50/80 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border border-teal-200/50 dark:border-teal-800/40 text-xs font-bold">
                           <HelpCircle className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
                           <span>{totalQuestions} {totalQuestions === 1 ? 'Question' : 'Questions'}</span>
                         </div>
+                        )}
                       </div>
 
                       {/* Difficulty Breakdown Tags */}
@@ -1393,7 +1470,34 @@ export const StudentCurriculum = () => {
                     </div>
 
                     {/* Action Buttons Footer */}
-                    <div className="grid grid-cols-2 gap-2.5 mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80">
+                    <div
+                      className={`grid gap-2.5 mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 ${
+                        access.videos && access.questions ? 'grid-cols-2' : 'grid-cols-1'
+                      }`}
+                    >
+                      {!access.videos && !access.questions && (
+                        <button
+                          onClick={() => {
+                            setSelectedModule(mod);
+                            setModuleMode('notes');
+                          }}
+                          disabled={!access.notes}
+                          className="py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/80 dark:border-slate-700 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                        >
+                          {access.notes ? (
+                            <>
+                              <NotebookText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                              <span>Study Notes</span>
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span>Not available yet</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                      {access.videos && (
                       <button
                         onClick={() => {
                           setSelectedModule(mod);
@@ -1405,6 +1509,8 @@ export const StudentCurriculum = () => {
                         <Video className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                         <span>Watch Videos</span>
                       </button>
+                      )}
+                      {access.questions && (
                       <button
                         onClick={() => {
                           setSelectedModule(mod);
@@ -1415,6 +1521,7 @@ export const StudentCurriculum = () => {
                         <HelpCircle className="w-3.5 h-3.5 text-cyan-200 shrink-0" />
                         <span>Practice Quiz</span>
                       </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -1469,7 +1576,7 @@ export const StudentCurriculum = () => {
           <div className="flex items-center gap-2 sm:gap-3 shrink-0 pt-1 lg:pt-0">
             <div className="flex-1 sm:flex-initial flex items-center justify-center sm:flex-col gap-2 sm:gap-1 px-4 py-2 sm:p-4 rounded-xl sm:rounded-2xl bg-white/10 dark:bg-white/5 border border-white/10 backdrop-blur-md text-center min-w-[95px]">
               <span className="text-lg sm:text-2xl font-black text-emerald-400 leading-none">
-                {curriculumSubjects.filter((s) => checkEnrollmentStatus(currentUser?.id || 'STU001', s.id) === 'active').length}
+                {visibleSubjects.filter((s) => checkEnrollmentStatus(currentUser?.id || 'STU001', s.id) === 'active').length}
               </span>
               <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-bold text-slate-200">
                 Enrolled
@@ -1478,7 +1585,7 @@ export const StudentCurriculum = () => {
 
             <div className="flex-1 sm:flex-initial flex items-center justify-center sm:flex-col gap-2 sm:gap-1 px-4 py-2 sm:p-4 rounded-xl sm:rounded-2xl bg-white/10 dark:bg-white/5 border border-white/10 backdrop-blur-md text-center min-w-[95px]">
               <span className="text-lg sm:text-2xl font-black text-cyan-300 leading-none">
-                {curriculumSubjects.length}
+                {visibleSubjects.length}
               </span>
               <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-bold text-slate-200">
                 Available
@@ -1490,7 +1597,7 @@ export const StudentCurriculum = () => {
 
       {/* Subjects Grid — 1 card per row on mobile, multi-col on larger screens */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-        {curriculumSubjects.map((sub) => {
+        {visibleSubjects.map((sub) => {
           const totalModules = sub.modules?.length || 0;
           const totalVideos = (sub.modules || []).reduce(
             (acc, m) => acc + (m.videos?.length || 0),

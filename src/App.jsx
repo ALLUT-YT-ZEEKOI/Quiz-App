@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/common/Navbar';
 import { Sidebar } from './components/common/Sidebar';
@@ -32,7 +32,11 @@ import { AdminAnswersDashboard } from './components/review/AdminAnswersDashboard
 import { DoubtsDashboard } from './components/doubts/DoubtsDashboard';
 import { StudentRegistrations } from './components/students/StudentRegistrations';
 import { DataImportBanner, ServerLoadingScreen } from './components/admin/DataImportBanner';
+import { StudentPermissions } from './components/admin/StudentPermissions';
+import { RankingsDashboard } from './components/rankings/RankingsDashboard';
 import { APP_VERSION } from './utils/version';
+import { STUDENT_MODULES, moduleForView } from './utils/studentModules';
+import { ShieldOff } from 'lucide-react';
 
 const AppContent = () => {
   const {
@@ -45,11 +49,28 @@ const AppContent = () => {
     loadError,
     loadServerData,
     serverInitialized,
-    logout
+    logout,
+    studentModules,
+    activeExamForAttempt,
+    activeMockTest
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Students: modules the admin has disabled are not reachable (menu, URL, links from other pages)
+  const isStudent = currentRole === 'student';
+  const viewModule = moduleForView(activeView || 'dashboard');
+  // An exam or mock test already in progress is allowed to finish
+  const attemptInProgress = Boolean(activeExamForAttempt || activeMockTest);
+  const viewBlocked = isStudent && !attemptInProgress && viewModule !== null && !studentModules[viewModule];
+  const firstAllowedModule = STUDENT_MODULES.find((m) => studentModules[m.id]);
+
+  useEffect(() => {
+    if (viewBlocked && firstAllowedModule) {
+      setActiveView(firstAllowedModule.views[0]);
+    }
+  }, [viewBlocked, firstAllowedModule, setActiveView]);
 
   // If user is logged out, show the login modal / portal
   if (!isAuthenticated) {
@@ -77,6 +98,32 @@ const AppContent = () => {
 
   // Streamlined view router: Focused exclusively on Subjects -> Modules -> Videos & Q&A + Live Examinations + Results + Approvals
   const renderCurrentView = () => {
+    if (viewBlocked) {
+      // Redirecting to an allowed module; nothing is allowed when the admin disabled them all
+      if (firstAllowedModule) return null;
+      return (
+        <div className="max-w-lg mx-auto mt-10 sm:mt-16 p-6 sm:p-8 rounded-3xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-slate-800 text-center">
+          <div className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-400">
+            <ShieldOff className="w-6 h-6" />
+          </div>
+          <h2 className="mt-4 text-lg font-black text-slate-900 dark:text-white">No modules available yet</h2>
+          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+            Your admin hasn't enabled any modules for students. Please check back later.
+          </p>
+        </div>
+      );
+    }
+
+    // Rankings: students see ranks and percentages, the admin sees full results
+    if (activeView === 'rankings') {
+      return <RankingsDashboard />;
+    }
+
+    // Student module permissions (admin only)
+    if (activeView === 'permissions' && !isStudent) {
+      return <StudentPermissions />;
+    }
+
     // If Live Examinations view or Student is taking an exam
     if (activeView === 'examinations' || activeView === 'live-exams') {
       return <ExaminationsMain />;

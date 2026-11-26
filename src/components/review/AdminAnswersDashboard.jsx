@@ -23,7 +23,7 @@ import {
 } from '../../utils/assessmentRecords';
 import { formatDate } from '../../utils/subscriptionUtils';
 import { QuestionReviewList } from './QuestionReviewList';
-import { AttemptRow, KindBadge, pctTone } from './StudentAnswersDashboard';
+import { AttemptRow, AttemptStats, KindBadge, pctTone } from './StudentAnswersDashboard';
 
 const TABS = [
   { id: 'attempts', label: 'All Answers', short: 'Answers', Icon: ClipboardCheck },
@@ -37,11 +37,11 @@ const selectCls =
 
 export const AdminAnswersDashboard = () => {
   const app = useApp();
-  const { examAttempts, examinations, curriculumAttempts, retests, pendingRetestCount } = app;
+  const { examAttempts, examinations, curriculumAttempts, mockAttempts, mockTests, retests, pendingRetestCount } = app;
 
   const records = useMemo(
-    () => buildAssessmentRecords({ examAttempts, examinations, curriculumAttempts }),
-    [examAttempts, examinations, curriculumAttempts]
+    () => buildAssessmentRecords({ examAttempts, examinations, curriculumAttempts, mockAttempts, mockTests }),
+    [examAttempts, examinations, curriculumAttempts, mockAttempts, mockTests]
   );
   const [tab, setTab] = useState('attempts');
   const [selectedId, setSelectedId] = useState(null);
@@ -59,7 +59,7 @@ export const AdminAnswersDashboard = () => {
         </span>
         <h1 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">Student Answers</h1>
         <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-          Every student's right and wrong answers across live exams and module quizzes. Enable retests from here.
+          Every student's right and wrong answers and time taken across live exams, mock tests and module quizzes. Enable retests from here.
         </p>
       </div>
 
@@ -134,8 +134,9 @@ const AttemptsTab = ({ records, onOpen }) => {
             ))}
           </select>
           <select aria-label="Type" value={kind} onChange={(e) => setKind(e.target.value)} className={selectCls}>
-            <option value="all">Exams & quizzes</option>
+            <option value="all">All types</option>
             <option value="exam">Live exams</option>
+            <option value="mock">Mock tests</option>
             <option value="quiz">Module quizzes</option>
           </select>
         </div>
@@ -210,18 +211,7 @@ const AdminAttemptDetail = ({ record, records, onBack, onSelect }) => {
             <div className="text-[11px] text-slate-500 font-semibold">{record.score} / {record.maxScore}</div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: 'Correct', value: record.correct, cls: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' },
-            { label: 'Wrong', value: record.wrong, cls: 'text-red-600 bg-red-50 dark:bg-red-950/30' },
-            { label: 'Skipped', value: record.skipped, cls: 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60' }
-          ].map((c) => (
-            <div key={c.label} className={`py-2 rounded-xl ${c.cls}`}>
-              <div className="text-lg font-black leading-none">{c.value}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider mt-1 opacity-80">{c.label}</div>
-            </div>
-          ))}
-        </div>
+        <AttemptStats record={record} />
         {sameAssessment.length > 1 && (
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Attempts:</span>
@@ -329,7 +319,7 @@ const QuestionsTab = ({ records }) => {
         <select id="qa-assessment" value={current.key} onChange={(e) => { setKey(e.target.value); setExpanded(null); }} className={`${selectCls} w-full`}>
           {assessments.map((a) => (
             <option key={a.key} value={a.key}>
-              {a.kind === 'exam' ? 'Exam' : 'Quiz'}: {a.title} • {a.subjectName} ({a.students.size} student{a.students.size === 1 ? '' : 's'})
+              {a.kind === 'exam' ? 'Exam' : a.kind === 'mock' ? 'Mock' : 'Quiz'}: {a.title} • {a.subjectName} ({a.students.size} student{a.students.size === 1 ? '' : 's'})
             </option>
           ))}
         </select>

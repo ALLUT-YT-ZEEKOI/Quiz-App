@@ -5,6 +5,7 @@
 
 import { getDb } from '../db.js';
 import { scoreModuleQuiz } from '../services/scoring.js';
+import { applyContentAccess, CONTENT_ACCESS_SETTING_ID } from '../services/contentAccess.js';
 
 const byId = (item) => item?.id;
 
@@ -27,7 +28,9 @@ export const COLLECTIONS = {
   // Mock tests: students only see enabled ones (and never the answers before submitting)
   mockTests: { mongo: 'mock_tests', key: byId, hiddenFromStudent: (doc) => doc.enabled !== true },
   // Mock test attempts go through POST /api/mock-tests/:id/submit (server-scored)
-  mockAttempts: { mongo: 'mock_attempts', key: byId, own: true }
+  mockAttempts: { mongo: 'mock_attempts', key: byId, own: true },
+  // App-wide settings set by the admin (e.g. which modules students can use). Students read only.
+  settings: { mongo: 'app_settings', key: byId }
 };
 
 /** True when a stored document must not be shown to this user (treated as deleted for them). */
@@ -61,14 +64,21 @@ export const cleanIncoming = (item) => {
 export const buildStudentContext = async (studentId) => {
   const db = getDb();
   const now = new Date();
-  const [subs, attempts] = await Promise.all([
+  const [subs, attempts, contentSetting] = await Promise.all([
     db.collection('subscriptions').find({ studentId, status: 'approved', _deleted: { $ne: true } }).toArray(),
-    db.collection('exam_attempts').find({ studentId, _deleted: { $ne: true } }, { projection: { examId: 1 } }).toArray()
+    db.collection('exam_attempts').find({ studentId, _deleted: { $ne: true } }, { projection: { examId: 1 } }).toArray(),
+    db.collection('app_settings').findOne({ _id: CONTENT_ACCESS_SETTING_ID, _deleted: { $ne: true } })
   ]);
   const activeSubjectIds = new Set(
     subs.filter((s) => !s.expiresAt || new Date(s.expiresAt) > now).map((s) => s.subjectId)
   );
-  return { studentId, activeSubjectIds, attemptedExamIds: new Set(attempts.map((a) => a.examId)) };
+  return {
+    studentId,
+    activeSubjectIds,
+    attemptedExamIds: new Set(attempts.map((a) => a.examId)),
+    // Lesson videos / study notes / Q&A the admin has hidden, per subject and course
+    contentAccess: contentSetting?.subjects || null
+  };
 };
 
 const PUBLIC_STUDENT_FIELDS = ['id', 'studentId', 'name', 'avatar', 'department', 'semester', 'batch', 'performanceStatus'];
@@ -93,6 +103,7 @@ export const sanitizeForStudent = (name, item, ctx) => {
   }
 
   if (name === 'curriculum') {
+    item = applyContentAccess(item, ctx.contentAccess);
     const isFree = !item.price || Number(item.price) === 0;
     if (isFree || ctx.activeSubjectIds.has(item.id)) return item;
     // Not subscribed: keep titles/counts for the course page, hide videos, notes and questions
@@ -165,6 +176,7 @@ export const checkStudentWrite = async (name, user, existing, incoming) => {
           subjectName: subject.name,
           amount: Number(subject.price) || 0,
           validityDays: Number(subject.validityDays) || 0,
+          accessUntil: subject.accessUntil || null,
           status: 'pending',
           reviewedAt: null
         }

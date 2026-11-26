@@ -44,6 +44,35 @@ export const formatDate = (value) => {
   return d ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 };
 
+// ---------------------------------------------------------------------------
+// Fixed end date ("calendar" access): subject.accessUntil = 'YYYY-MM-DD'.
+// When set it replaces validityDays: every approved payment unlocks the subject
+// until the end of that day, whatever day it was approved.
+// subscription.accessUntil is the snapshot taken when the student paid.
+// ---------------------------------------------------------------------------
+
+/** End of the given 'YYYY-MM-DD' day in local time, or null. */
+export const endOfDate = (ymd) => {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(String(ymd))) return null;
+  const [y, m, d] = String(ymd).split('-').map(Number);
+  return new Date(y, m - 1, d, 23, 59, 59, 999);
+};
+
+/** 'YYYY-MM-DD' for a Date in local time. */
+export const toYmd = (date) => {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+export const hasFixedEndDate = (item) => Boolean(endOfDate(item?.accessUntil));
+
+/** Access label for a subject or subscription: "Until 31 Mar 2027", "60 days" or "Lifetime". */
+export const formatAccess = (item) =>
+  hasFixedEndDate(item) ? `Until ${formatDate(endOfDate(item.accessUntil))}` : formatValidity(item?.validityDays);
+
+/** True when a subject unlocks for good (no end date and no day limit). */
+export const isLifetimeAccess = (item) => !hasFixedEndDate(item) && isLifetime(item?.validityDays);
+
 /**
  * Describes where an approved subscription stands right now.
  * state: 'lifetime' | 'active' | 'expiring' (<= 7 days left) | 'expired'

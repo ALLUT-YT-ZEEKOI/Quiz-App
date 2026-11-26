@@ -29,6 +29,7 @@ import {
 export const Navbar = ({ onMobileMenuToggle }) => {
   const {
     currentRole,
+    studentModules,
     currentUser,
     switchRole,
     darkMode,
@@ -143,7 +144,8 @@ export const Navbar = ({ onMobileMenuToggle }) => {
             </span>
           </div>
 
-          {/* Notifications Bell */}
+          {/* Notifications Bell (hidden for students when the admin disabled the Notice Board) */}
+          {(currentRole !== 'student' || studentModules?.notifications !== false) && (
           <div className="relative shrink-0" ref={notifRef}>
             <button
               onClick={() => {
@@ -363,6 +365,7 @@ export const Navbar = ({ onMobileMenuToggle }) => {
               </>
             )}
           </div>
+          )}
 
           {/* Dark / Light Mode Toggle */}
           <button

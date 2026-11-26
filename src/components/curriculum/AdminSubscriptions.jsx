@@ -20,7 +20,8 @@ import {
   getSubscriptionTiming,
   formatDate,
   formatDaysLeft,
-  formatValidity,
+  formatAccess,
+  hasFixedEndDate,
   parseDate,
   EXPIRING_SOON_DAYS
 } from '../../utils/subscriptionUtils';
@@ -226,8 +227,8 @@ export const AdminSubscriptions = () => {
                       </h4>
                       <span className="px-1 sm:px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
                         ₹{req.amount}
-                        {req.validityDays !== undefined && (
-                          <span className="font-bold opacity-75"> / {formatValidity(req.validityDays)}</span>
+                        {(req.validityDays !== undefined || hasFixedEndDate(req)) && (
+                          <span className="font-bold opacity-75"> / {formatAccess(req)}</span>
                         )}
                       </span>
                       <span
@@ -417,7 +418,7 @@ const SubscriptionValidity = ({ req, timing }) => {
       </div>
       <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">
         Started {formatDate(start)}
-        {req.validityDays ? ` • ${formatValidity(req.validityDays)}` : ''}
+        {hasFixedEndDate(req) || req.validityDays ? ` • ${formatAccess(req)}` : ''}
       </div>
     </div>
   );

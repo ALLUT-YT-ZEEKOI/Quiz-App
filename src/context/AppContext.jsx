@@ -7,11 +7,17 @@ import { INITIAL_EXAMINATIONS, generateLiveMonitoringData, generateCompletedExam
 import { formatEmbedUrl } from '../utils/videoUtils';
 import { createSectionId, normalizeCurriculumSections } from '../utils/curriculumSections';
 import { saveNoteFile, deleteNoteFiles, collectFileNoteIds } from '../utils/notesStorage';
-import { addDays, isLifetime, pickLatestApproved } from '../utils/subscriptionUtils';
+import { addDays, isLifetime, pickLatestApproved, endOfDate } from '../utils/subscriptionUtils';
 import { hashPassword, verifyPassword } from '../utils/passwordHash';
 import { buildStudentFromRegistration, normalizePhone } from '../utils/studentRegistration';
 import { api, backendEnabled, getToken, setToken, clearToken, setUnauthorizedHandler } from '../api/client';
 import { SyncManager } from '../api/syncManager';
+import {
+  STUDENT_MODULES_SETTING_ID,
+  resolveStudentModules,
+  CONTENT_ACCESS_SETTING_ID,
+  resolveContentAccess
+} from '../utils/studentModules';
 import {
   scoreMockTest,
   getLocalSession as getLocalMockSession,
@@ -661,6 +667,67 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { persistLocal('cohesion_mock_tests', mockTests); }, [mockTests]);
   useEffect(() => { persistLocal('cohesion_mock_attempts', mockAttempts); }, [mockAttempts]);
 
+  // =========================================================================
+  // APP SETTINGS (admin-controlled). Currently: which modules students can use.
+  // Stored as a list of setting items so it syncs like every other collection.
+  // =========================================================================
+  const [appSettings, setAppSettings] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('cohesion_app_settings') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  useEffect(() => { persistLocal('cohesion_app_settings', appSettings); }, [appSettings]);
+
+  const studentModules = resolveStudentModules(appSettings);
+
+  /** Admin: switch student modules on/off. `changes` is { moduleId: boolean }. */
+  const updateStudentModules = (changes) => {
+    setAppSettings((prev) => {
+      const current = resolveStudentModules(prev);
+      const item = {
+        id: STUDENT_MODULES_SETTING_ID,
+        modules: { ...current, ...changes },
+        updatedAt: new Date().toISOString()
+      };
+      return [item, ...(prev || []).filter((s) => s?.id !== STUDENT_MODULES_SETTING_ID)];
+    });
+  };
+
+  // Lesson videos / study notes / Q&A visibility, per subject and per course (module)
+  const contentAccess = resolveContentAccess(appSettings);
+
+  /**
+   * Admin: show or hide one content type for students.
+   * Without moduleId it sets the whole subject (and clears that type's per-course choices);
+   * with moduleId it sets just that course.
+   */
+  const updateContentAccess = (subjectId, moduleId, type, enabled) => {
+    setAppSettings((prev) => {
+      const config = resolveContentAccess(prev);
+      const subject = { ...(config[subjectId] || {}) };
+      const modules = { ...(subject.modules || {}) };
+      if (moduleId) {
+        modules[moduleId] = { ...(modules[moduleId] || {}), [type]: enabled };
+      } else {
+        subject[type] = enabled;
+        Object.keys(modules).forEach((id) => {
+          const { [type]: _dropped, ...rest } = modules[id];
+          modules[id] = rest;
+        });
+      }
+      subject.modules = modules;
+      const item = {
+        id: CONTENT_ACCESS_SETTING_ID,
+        subjects: { ...config, [subjectId]: subject },
+        updatedAt: new Date().toISOString()
+      };
+      return [item, ...(prev || []).filter((s) => s?.id !== CONTENT_ACCESS_SETTING_ID)];
+    });
+  };
+
   const createMockTest = (data) => {
     const now = new Date().toISOString();
     const test = {
@@ -957,6 +1024,7 @@ export const AppProvider = ({ children }) => {
     m.register('difficultyLevels', setDifficultyLevels);
     m.register('mockTests', setMockTests);
     m.register('mockAttempts', setMockAttempts);
+    m.register('settings', setAppSettings);
     m.register('accounts', setStudentAccounts, { readOnly: true });
   }, []);
 
@@ -977,6 +1045,7 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { syncRef.current?.track('difficultyLevels', difficultyLevels); }, [difficultyLevels]);
   useEffect(() => { syncRef.current?.track('mockTests', mockTests); }, [mockTests]);
   useEffect(() => { syncRef.current?.track('mockAttempts', mockAttempts); }, [mockAttempts]);
+  useEffect(() => { syncRef.current?.track('settings', appSettings); }, [appSettings]);
 
   /** Loads everything the signed-in user may see from the server. */
   const loadServerData = useCallback(async () => {
@@ -1957,6 +2026,8 @@ export const AppProvider = ({ children }) => {
     const newReq = {
       // Snapshot of how long this payment unlocks the subject (0 = lifetime)
       validityDays: Number(subject?.validityDays) || 0,
+      // Fixed end date chosen on the calendar (replaces validityDays when set)
+      accessUntil: subject?.accessUntil || null,
       ...reqData,
       id: `sub-req-${Date.now()}`,
       status: 'pending',
@@ -1975,17 +2046,29 @@ export const AppProvider = ({ children }) => {
       const req = prev.find((s) => s.id === requestId);
       if (!req) return prev;
       // Older requests have no snapshot: fall back to the subject's current validity
-      const subjectDays =
-        Number(curriculumSubjects.find((sub) => sub.id === req.subjectId)?.validityDays) || 0;
+      const subject = curriculumSubjects.find((sub) => sub.id === req.subjectId);
+      const subjectDays = Number(subject?.validityDays) || 0;
       const days = req.validityDays ?? subjectDays;
+      // Calendar access: a fixed last day (older requests have no snapshot: use the subject's)
+      const accessUntil = req.accessUntil !== undefined ? req.accessUntil : subject?.accessUntil || null;
+      const fixedEnd = endOfDate(accessUntil);
 
       const current = pickLatestApproved(
         prev.filter((s) => s.studentId === req.studentId && s.subjectId === req.subjectId),
         now
       );
       const currentEnd = current?.timing.expiresAt;
-      const startsAt = currentEnd && currentEnd > now ? currentEnd : now;
-      const expiresAt = isLifetime(days) ? null : addDays(startsAt, days).toISOString();
+      const stillActive = currentEnd && currentEnd > now;
+      let startsAt;
+      let expiresAt;
+      if (fixedEnd) {
+        // Access runs from today until the chosen date (never shortening access already granted)
+        startsAt = now;
+        expiresAt = (stillActive && currentEnd > fixedEnd ? currentEnd : fixedEnd).toISOString();
+      } else {
+        startsAt = stillActive ? currentEnd : now;
+        expiresAt = isLifetime(days) ? null : addDays(startsAt, days).toISOString();
+      }
 
       return prev.map((s) =>
         s.id === requestId
@@ -1993,6 +2076,7 @@ export const AppProvider = ({ children }) => {
               ...s,
               status: 'approved',
               validityDays: Number(days) || 0,
+              accessUntil: fixedEnd ? accessUntil : null,
               startsAt: startsAt.toISOString(),
               expiresAt,
               reviewedAt: now.toISOString().replace('T', ' ').slice(0, 16)
@@ -2411,6 +2495,10 @@ export const AppProvider = ({ children }) => {
         exportResultsCSV,
         getPortalUrl,
         copyPortalUrl,
+        studentModules,
+        updateStudentModules,
+        contentAccess,
+        updateContentAccess,
         curriculumSubjects,
         curriculumAttempts,
         addSubject,

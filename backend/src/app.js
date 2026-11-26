@@ -8,6 +8,7 @@ import { examsRouter } from './routes/exams.js';
 import { adminRouter } from './routes/admin.js';
 import { filesRouter } from './routes/files.js';
 import { mockTestsRouter } from './routes/mockTests.js';
+import { rankingsRouter } from './routes/rankings.js';
 
 export const createApp = () => {
   const app = express();
@@ -61,6 +62,7 @@ export const createApp = () => {
     app.use(`${prefix}/admin`, adminRouter);
     app.use(`${prefix}/files`, filesRouter);
     app.use(`${prefix}/mock-tests`, mockTestsRouter);
+    app.use(`${prefix}/rankings`, rankingsRouter);
   };
 
   mountRoutes('/api');

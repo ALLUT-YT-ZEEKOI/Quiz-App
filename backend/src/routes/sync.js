@@ -84,6 +84,8 @@ syncRouter.get('/changes', async (req, res, next) => {
         };
         // A student's access changed: their view of these collections must be rebuilt
         if (user.role !== 'admin' && name === 'subscriptions') refetch.add('curriculum');
+        // The admin changed which lessons / notes / Q&A students can see
+        if (user.role !== 'admin' && name === 'settings') refetch.add('curriculum');
         if (user.role !== 'admin' && name === 'examAttempts') refetch.add('examinations');
       })
     );

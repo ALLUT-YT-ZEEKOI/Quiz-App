@@ -16,7 +16,9 @@ import {
   ClipboardCheck,
   MessageCircleQuestion,
   UserPlus,
-  ClipboardList
+  ClipboardList,
+  ShieldCheck,
+  Trophy
 } from 'lucide-react';
 import { APP_VERSION } from '../../utils/version';
 
@@ -38,7 +40,8 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     openDoubtsCount,
     doubts,
     retests,
-    studentAccounts
+    studentAccounts,
+    studentModules
   } = useApp();
 
   const myId = currentUser?.id || 'STU001';
@@ -61,6 +64,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     return true;
   });
   const studentUnreadCount = studentNotifs.filter((n) => !n.read).length;
+  const hiddenModulesCount = Object.values(studentModules || {}).filter((v) => v === false).length;
 
   const teacherNavItems = [
     {
@@ -117,6 +121,12 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badgeColor: 'bg-amber-500 text-white'
     },
     {
+      id: 'rankings',
+      label: 'Student Rankings',
+      icon: Trophy,
+      targetView: 'rankings'
+    },
+    {
       id: 'doubts',
       label: 'Doubts',
       icon: MessageCircleQuestion,
@@ -131,6 +141,14 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       targetView: 'notifications',
       badge: unreadNotifsCount > 0 ? unreadNotifsCount : undefined,
       badgeColor: 'bg-teal-500 text-white'
+    },
+    {
+      id: 'permissions',
+      label: 'Student Permissions',
+      icon: ShieldCheck,
+      targetView: 'permissions',
+      badge: hiddenModulesCount > 0 ? `${hiddenModulesCount} off` : undefined,
+      badgeColor: 'bg-slate-500 text-white'
     }
   ];
 
@@ -175,6 +193,12 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badgeColor: 'bg-emerald-500 text-white'
     },
     {
+      id: 'rankings',
+      label: 'Rankings',
+      icon: Trophy,
+      targetView: 'rankings'
+    },
+    {
       id: 'doubts',
       label: 'My Doubts',
       icon: MessageCircleQuestion,
@@ -192,7 +216,10 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     }
   ];
 
-  const navItems = currentRole === 'teacher' ? teacherNavItems : studentNavItems;
+  // Students only see the modules the admin has enabled (sidebar item ids match module ids)
+  const navItems = currentRole === 'teacher'
+    ? teacherNavItems
+    : studentNavItems.filter((item) => studentModules?.[item.id] !== false);
 
   const handleItemClick = (item) => {
     if (item.onClick) {
@@ -215,6 +242,8 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     if (item.id === 'doubts' && activeView === 'doubts') return true;
     if (item.id === 'mock-tests' && activeView === 'mock-tests') return true;
     if (item.id === 'registrations' && activeView === 'registrations') return true;
+    if (item.id === 'permissions' && activeView === 'permissions') return true;
+    if (item.id === 'rankings' && activeView === 'rankings') return true;
     return false;
   };
 

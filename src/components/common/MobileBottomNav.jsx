@@ -17,7 +17,8 @@ export const MobileBottomNav = ({ onMobileMenuToggle }) => {
     pendingSubscriptionsCount,
     activeExamForAttempt,
     activeMockTest,
-    examinations
+    examinations,
+    studentModules
   } = useApp();
 
   // If inside active quiz or exam attempt screen, don't show the bottom nav so there's zero distraction
@@ -44,15 +45,16 @@ export const MobileBottomNav = ({ onMobileMenuToggle }) => {
   ];
 
   const studentItems = [
-    { id: 'subjects', label: 'Subjects', icon: BookOpen },
+    { id: 'subjects', module: 'subjects', label: 'Subjects', icon: BookOpen },
     {
       id: 'examinations',
+      module: 'examinations',
       label: 'Live Exams',
       icon: Radio,
       badge: liveCount > 0 ? 'Live' : null
     },
-    { id: 'results', label: 'My Results', icon: Award }
-  ];
+    { id: 'results', module: 'quizzes', label: 'My Results', icon: Award }
+  ].filter((item) => studentModules?.[item.module] !== false);
 
   const navItems = currentRole === 'teacher' ? teacherItems : studentItems;
 

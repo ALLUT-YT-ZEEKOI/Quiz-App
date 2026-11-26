@@ -354,7 +354,7 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
                   <span className="font-extrabold text-slate-900 dark:text-white font-mono text-sm">
                     {attempt.score}
                   </span>
-                  <span className="text-slate-400 text-[10px]"> / 30 ({attempt.percentage}%)</span>
+                  <span className="text-slate-400 text-[10px]"> / {attempt.totalMarks || exam?.totalMarks || 30} ({attempt.percentage}%)</span>
                 </div>
 
                 <div>
@@ -392,7 +392,7 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
                 <th className="py-3.5 px-4">Rank</th>
                 <th className="py-3.5 px-4">Student</th>
                 <th className="py-3.5 px-3">Batch</th>
-                <th className="py-3.5 px-3">Score (30 M)</th>
+                <th className="py-3.5 px-3">Score ({exam?.totalMarks || 30} M)</th>
                 <th className="py-3.5 px-3">Percentage</th>
                 <th className="py-3.5 px-4">Breakdown (C / W / U)</th>
                 <th className="py-3.5 px-3">Time Spent</th>
@@ -460,7 +460,7 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
                       <span className="font-extrabold text-slate-900 dark:text-white font-mono text-sm">
                         {attempt.score}
                       </span>
-                      <span className="text-slate-400 text-[10px] ml-0.5">/ 30</span>
+                      <span className="text-slate-400 text-[10px] ml-0.5">/ {attempt.totalMarks || exam?.totalMarks || 30}</span>
                     </td>
 
                     {/* Percentage */}
@@ -562,7 +562,7 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
               <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                 <span className="text-[10px] text-slate-400 uppercase font-bold block">Final Score</span>
                 <span className="text-xl font-extrabold text-slate-900 dark:text-white">
-                  {inspectedAttempt.score} / 30
+                  {inspectedAttempt.score} / {inspectedAttempt.totalMarks || exam?.totalMarks || 30}
                 </span>
               </div>
               <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">

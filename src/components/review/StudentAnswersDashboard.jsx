@@ -12,10 +12,19 @@ import {
   Play,
   Info,
   Target,
-  Trophy
+  Trophy,
+  ClipboardList,
+  Timer,
+  CalendarClock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { buildAssessmentRecords, computeSubjectMarks, latestPerAssessment } from '../../utils/assessmentRecords';
+import {
+  buildAssessmentRecords,
+  computeSubjectMarks,
+  latestPerAssessment,
+  formatDuration,
+  formatDateTime
+} from '../../utils/assessmentRecords';
 import { formatDate } from '../../utils/subscriptionUtils';
 import { QuestionReviewList } from './QuestionReviewList';
 import { AskDoubtModal } from '../doubts/AskDoubtModal';
@@ -28,7 +37,11 @@ export const pctTone = (pct) =>
     : { text: 'text-red-600 dark:text-red-400', bar: 'bg-red-500', soft: 'bg-red-50 dark:bg-red-950/40' };
 
 export const KindBadge = ({ kind }) =>
-  kind === 'exam' ? (
+  kind === 'mock' ? (
+    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 inline-flex items-center gap-1">
+      <ClipboardList className="w-2.5 h-2.5" /> Mock
+    </span>
+  ) : kind === 'exam' ? (
     <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300 inline-flex items-center gap-1">
       <Radio className="w-2.5 h-2.5" /> Exam
     </span>
@@ -38,12 +51,46 @@ export const KindBadge = ({ kind }) =>
     </span>
   );
 
+/** Correct / wrong / skipped / time taken for one attempt, plus when it started and was submitted. */
+export const AttemptStats = ({ record }) => {
+  const duration = formatDuration(record.timeSpentSeconds);
+  const submitted = formatDateTime(record.submittedAt || record.date);
+  const started = formatDateTime(record.startedAt);
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+        {[
+          { label: 'Correct', value: record.correct, cls: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' },
+          { label: 'Wrong', value: record.wrong, cls: 'text-red-600 bg-red-50 dark:bg-red-950/30' },
+          { label: 'Skipped', value: record.skipped, cls: 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60' },
+          { label: 'Time taken', value: duration || '—', cls: 'text-[#087F8C] dark:text-teal-300 bg-[#E6F4F6] dark:bg-[#0E353E]/60' }
+        ].map((c) => (
+          <div key={c.label} className={`py-2 rounded-xl ${c.cls}`}>
+            <div className="text-lg font-black leading-none">{c.value}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider mt-1 opacity-80">{c.label}</div>
+          </div>
+        ))}
+      </div>
+      {(started || submitted) && (
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
+          <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+          {started && <span>Started {started}</span>}
+          {started && submitted && <span aria-hidden="true">&bull;</span>}
+          {submitted && <span>Submitted {submitted}</span>}
+        </p>
+      )}
+    </div>
+  );
+};
+
 export const StudentAnswersDashboard = () => {
   const {
     currentUser,
     examAttempts,
     examinations,
     curriculumAttempts,
+    mockAttempts,
+    mockTests,
     getRetestFor,
     getExamAccess,
     requestRetest,
@@ -56,10 +103,10 @@ export const StudentAnswersDashboard = () => {
 
   const records = useMemo(
     () =>
-      buildAssessmentRecords({ examAttempts, examinations, curriculumAttempts }).filter(
+      buildAssessmentRecords({ examAttempts, examinations, curriculumAttempts, mockAttempts, mockTests }).filter(
         (r) => r.studentId === studentId
       ),
-    [examAttempts, examinations, curriculumAttempts, studentId]
+    [examAttempts, examinations, curriculumAttempts, mockAttempts, mockTests, studentId]
   );
   const latest = useMemo(() => latestPerAssessment(records), [records]);
   const subjectMarks = useMemo(() => computeSubjectMarks(records), [records]);
@@ -225,10 +272,11 @@ export const StudentAnswersDashboard = () => {
           <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
             Your Answers{subjectFilter !== 'All' ? ` • ${subjectFilter}` : ''}
           </h2>
-          <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800 text-[11px] font-bold">
+          <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800 text-[11px] font-bold">
             {[
               { id: 'all', label: 'All' },
               { id: 'exam', label: 'Exams' },
+              { id: 'mock', label: 'Mocks' },
               { id: 'quiz', label: 'Quizzes' }
             ].map((t) => (
               <button
@@ -297,6 +345,12 @@ export const AttemptRow = ({ record: r, onClick, showStudent = false }) => {
         </p>
         <p className="text-[10px] sm:text-[11px] text-slate-500 truncate">
           {r.subjectName} • {formatDate(r.date)}
+          {r.timeSpentSeconds ? (
+            <>
+              {' • '}
+              <Timer className="w-3 h-3 inline -mt-0.5" /> {formatDuration(r.timeSpentSeconds)}
+            </>
+          ) : null}
         </p>
       </div>
       <div className="text-right shrink-0 space-y-0.5">
@@ -377,22 +431,11 @@ const AttemptDetail = ({
           <div className="text-right shrink-0">
             <div className={`text-2xl sm:text-3xl font-black ${tone.text}`}>{record.pct}%</div>
             <div className="text-[11px] text-slate-500 font-semibold">
-              {record.score} / {record.maxScore} {record.kind === 'exam' ? 'marks' : 'correct'}
+              {record.score} / {record.maxScore} {record.kind === 'quiz' ? 'correct' : 'marks'}
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: 'Correct', value: record.correct, cls: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' },
-            { label: 'Wrong', value: record.wrong, cls: 'text-red-600 bg-red-50 dark:bg-red-950/30' },
-            { label: 'Skipped', value: record.skipped, cls: 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60' }
-          ].map((c) => (
-            <div key={c.label} className={`py-2 rounded-xl ${c.cls}`}>
-              <div className="text-lg font-black leading-none">{c.value}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider mt-1 opacity-80">{c.label}</div>
-            </div>
-          ))}
-        </div>
+        <AttemptStats record={record} />
 
         {sameAssessment.length > 1 && (
           <div className="flex items-center gap-1.5 flex-wrap pt-1">
@@ -511,7 +554,7 @@ const AttemptDetail = ({
           doubtedIndexes={doubtedIndexes}
           onAskDoubt={(a) =>
             setDoubtFor({
-              source: record.kind === 'exam' ? 'exam-review' : 'quiz',
+              source: record.kind === 'exam' ? 'exam-review' : record.kind === 'mock' ? 'review' : 'quiz',
               recordId: record.id,
               examId: record.examId,
               assessmentTitle: record.title,

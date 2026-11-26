@@ -34,8 +34,10 @@ import {
   GraduationCap,
   FolderPlus,
   ListVideo,
-  NotebookText
+  NotebookText,
+  CalendarDays
 } from 'lucide-react';
+import { CustomDatePicker } from '../common/CustomDatePicker';
 import { BulkQuestionUploadModal } from './BulkQuestionUploadModal';
 import { EditDifficultyModal } from './EditDifficultyModal';
 import {
@@ -50,7 +52,12 @@ import {
   VALIDITY_PRESETS,
   DEFAULT_VALIDITY_DAYS,
   formatValidity,
-  isLifetime
+  isLifetime,
+  addDays,
+  toYmd,
+  endOfDate,
+  formatDate,
+  formatAccess
 } from '../../utils/subscriptionUtils';
 
 export const TeacherCurriculum = () => {
@@ -108,6 +115,7 @@ export const TeacherCurriculum = () => {
     category: 'General',
     price: 499,
     validityDays: DEFAULT_VALIDITY_DAYS,
+    accessUntil: null,
     description: '',
     color: '#2563EB',
     thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -159,6 +167,11 @@ export const TeacherCurriculum = () => {
     : null;
 
   // Handlers for Subject Image & Form
+  // Calendar access end date that is already over (before today)
+  const accessDateInPast = Boolean(
+    newSubject.accessUntil && endOfDate(newSubject.accessUntil) && endOfDate(newSubject.accessUntil) < new Date()
+  );
+
   const handleOpenAddSubject = () => {
     setEditingSubjectId(null);
     setNewSubject({
@@ -167,6 +180,7 @@ export const TeacherCurriculum = () => {
       category: 'General',
       price: 499,
       validityDays: DEFAULT_VALIDITY_DAYS,
+      accessUntil: null,
       description: '',
       color: '#2563EB',
       thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -183,6 +197,7 @@ export const TeacherCurriculum = () => {
       price: sub.price !== undefined ? sub.price : 499,
       // Older subjects have no validity set: they were lifetime access
       validityDays: sub.validityDays !== undefined ? Number(sub.validityDays) : 0,
+      accessUntil: sub.accessUntil || null,
       description: sub.description || '',
       color: sub.color || '#2563EB',
       thumbnail: sub.thumbnail || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -213,11 +228,18 @@ export const TeacherCurriculum = () => {
       showToast('Subject name is required', 'warning');
       return;
     }
+    const isPaid = Number(newSubject.price) > 0;
+    if (isPaid && accessDateInPast) {
+      showToast('The access end date has already passed. Pick today or a later date.', 'warning');
+      return;
+    }
+    // A fixed end date only applies to paid subjects
+    const subjectData = { ...newSubject, accessUntil: isPaid ? newSubject.accessUntil || null : null };
     if (editingSubjectId) {
-      updateSubject(editingSubjectId, newSubject);
+      updateSubject(editingSubjectId, subjectData);
       showToast(`Subject "${newSubject.name}" updated`, 'success');
     } else {
-      addSubject(newSubject);
+      addSubject(subjectData);
     }
     setSubjectModalOpen(false);
     setEditingSubjectId(null);
@@ -227,6 +249,7 @@ export const TeacherCurriculum = () => {
       category: 'General',
       price: 499,
       validityDays: DEFAULT_VALIDITY_DAYS,
+      accessUntil: null,
       description: '',
       color: '#2563EB',
       thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
@@ -1527,7 +1550,7 @@ export const TeacherCurriculum = () => {
       currentSubject.category || 'General',
       currentSubject.price !== undefined
         ? Number(currentSubject.price) > 0
-          ? `₹${currentSubject.price} / ${formatValidity(currentSubject.validityDays)}`
+          ? `₹${currentSubject.price} / ${formatAccess(currentSubject)}`
           : 'Free'
         : null
     ]
@@ -1938,7 +1961,7 @@ export const TeacherCurriculum = () => {
                         {priceVal > 0 ? (
                           <>
                             ₹{priceVal}
-                            <span className="font-semibold opacity-80"> / {formatValidity(sub.validityDays)}</span>
+                            <span className="font-semibold opacity-80"> / {formatAccess(sub)}</span>
                           </>
                         ) : (
                           'Free'
@@ -2156,35 +2179,37 @@ export const TeacherCurriculum = () => {
                         <Clock className="w-3.5 h-3.5 text-[#087F8C]" />
                         <span>Access Duration *</span>
                       </label>
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          min="1"
-                          max="3650"
-                          aria-label="Custom number of days"
-                          placeholder="Days"
-                          value={isLifetime(newSubject.validityDays) ? '' : newSubject.validityDays}
-                          onChange={(e) =>
-                            setNewSubject({
-                              ...newSubject,
-                              validityDays: Math.max(0, Math.min(3650, Math.round(Number(e.target.value) || 0)))
-                            })
-                          }
-                          className="w-20 px-2.5 py-1.5 rounded-lg text-xs font-bold text-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
-                        />
-                        <span className="text-[11px] text-slate-400 font-medium">days</span>
-                      </div>
+                      {!newSubject.accessUntil && (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min="1"
+                            max="3650"
+                            aria-label="Custom number of days"
+                            placeholder="Days"
+                            value={isLifetime(newSubject.validityDays) ? '' : newSubject.validityDays}
+                            onChange={(e) =>
+                              setNewSubject({
+                                ...newSubject,
+                                validityDays: Math.max(0, Math.min(3650, Math.round(Number(e.target.value) || 0)))
+                              })
+                            }
+                            className="w-20 px-2.5 py-1.5 rounded-lg text-xs font-bold text-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
+                          />
+                          <span className="text-[11px] text-slate-400 font-medium">days</span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {VALIDITY_PRESETS.map((preset) => {
-                        const selected = isLifetime(preset.days)
+                        const selected = !newSubject.accessUntil && (isLifetime(preset.days)
                           ? isLifetime(newSubject.validityDays)
-                          : Number(newSubject.validityDays) === preset.days;
+                          : Number(newSubject.validityDays) === preset.days);
                         return (
                           <button
                             type="button"
                             key={preset.label}
-                            onClick={() => setNewSubject({ ...newSubject, validityDays: preset.days })}
+                            onClick={() => setNewSubject({ ...newSubject, validityDays: preset.days, accessUntil: null })}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
                               selected
                                 ? 'bg-[#E6F4F6] dark:bg-[#0E353E] text-[#0C4E5B] dark:text-cyan-300 border-[#087F8C]'
@@ -2195,10 +2220,47 @@ export const TeacherCurriculum = () => {
                           </button>
                         );
                       })}
+                      {/* Calendar: access ends on a fixed date instead of after N days */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNewSubject({
+                            ...newSubject,
+                            accessUntil: newSubject.accessUntil || toYmd(addDays(new Date(), 30))
+                          })
+                        }
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all inline-flex items-center gap-1 ${
+                          newSubject.accessUntil
+                            ? 'bg-[#E6F4F6] dark:bg-[#0E353E] text-[#0C4E5B] dark:text-cyan-300 border-[#087F8C]'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-transparent hover:bg-slate-200'
+                        }`}
+                      >
+                        <CalendarDays className="w-3 h-3" />
+                        Pick end date
+                      </button>
                     </div>
+                    {newSubject.accessUntil && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block">
+                          Access ends on
+                        </label>
+                        <CustomDatePicker
+                          value={newSubject.accessUntil}
+                          onChange={(ymd) => setNewSubject({ ...newSubject, accessUntil: ymd || null })}
+                          placeholder="Select last day of access"
+                        />
+                        {accessDateInPast && (
+                          <p className="text-[11px] font-semibold text-red-600 dark:text-red-400">
+                            This date has already passed. Pick today or a later date.
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 px-2.5 py-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
                       Students pay <strong className="text-emerald-700 dark:text-emerald-300">₹{Number(newSubject.price) || 0}</strong>
-                      {isLifetime(newSubject.validityDays) ? (
+                      {newSubject.accessUntil ? (
+                        <> for access until <strong className="text-emerald-700 dark:text-emerald-300">{formatDate(endOfDate(newSubject.accessUntil))}</strong>, whatever day you approve their payment.</>
+                      ) : isLifetime(newSubject.validityDays) ? (
                         <> once for <strong className="text-emerald-700 dark:text-emerald-300">lifetime access</strong>.</>
                       ) : (
                         <> for <strong className="text-emerald-700 dark:text-emerald-300">{formatValidity(newSubject.validityDays)}</strong> of access, counted from the day you approve their payment.</>
