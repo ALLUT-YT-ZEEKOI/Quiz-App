@@ -191,26 +191,14 @@ export const NotesList = ({ notes, onOpen, onDelete, emptyState }) => {
               ) : (
                 <>
                   {drive ? (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => onOpen(note)}
-                        className="px-3 py-1.5 rounded-lg bg-[#E6F4F6] hover:bg-[#d8eef1] dark:bg-[#0E353E] dark:hover:bg-[#12424d] text-[#0C4E5B] dark:text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-colors active:scale-95"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>{drive.kind === 'folder' ? 'Open Folder' : 'Read Notes'}</span>
-                      </button>
-                      <a
-                        href={drive.openUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-[#087F8C] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                        title="Open in Google Drive"
-                        aria-label={`Open ${note.title} in Google Drive`}
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onOpen(note)}
+                      className="px-3 py-1.5 rounded-lg bg-[#E6F4F6] hover:bg-[#d8eef1] dark:bg-[#0E353E] dark:hover:bg-[#12424d] text-[#0C4E5B] dark:text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-colors active:scale-95"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>{drive.kind === 'folder' ? 'Open Folder' : 'Read Notes'}</span>
+                    </button>
                   ) : note.type === 'link' ? (
                     linkUrl ? (
                       <a
@@ -305,17 +293,6 @@ export const NotePreviewModal = ({ note, onClose }) => {
               {note.type === 'file' ? `${note.fileName} • ${formatFileSize(note.fileSize)}` : label}
             </p>
           </div>
-          {drive && (
-            <a
-              href={drive.openUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold items-center gap-1.5"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Open in Drive</span>
-            </a>
-          )}
           {url && (
             <a
               href={url}
@@ -350,7 +327,7 @@ export const NotePreviewModal = ({ note, onClose }) => {
                 referrerPolicy="no-referrer-when-downgrade"
               />
               <p className="px-4 py-2 text-[11px] text-slate-400 border-t border-slate-200 dark:border-slate-800">
-                Not loading? Use &ldquo;Open in Drive&rdquo;, or ask your instructor to share it as &ldquo;Anyone with the link&rdquo;.
+                Not loading? Ask your instructor to share it as &ldquo;Anyone with the link&rdquo;.
               </p>
             </div>
           ) : note.type === 'text' ? (
