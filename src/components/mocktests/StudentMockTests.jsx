@@ -1,16 +1,23 @@
 import React, { useMemo, useState } from 'react';
-import { CalendarDays, Clock, ListChecks, Play, RotateCcw, Eye, CheckCircle2, ClipboardList, Timer, AlertTriangle } from 'lucide-react';
+import { CalendarDays, Clock, ListChecks, Play, RotateCcw, Eye, CheckCircle2, ClipboardList, Timer, AlertTriangle, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHero, Modal, primaryBtn, secondaryBtn } from './MockTestUi';
-import { formatDuration, groupByDay, getLocalSession } from '../../utils/mockTests';
+import { formatDuration, groupByDay, getLocalSession, canStudentSeeMockTest, isPrivateMockTest } from '../../utils/mockTests';
 
 export const StudentMockTests = ({ onStart, onViewResult }) => {
-  const { mockTests, mockAttempts, currentUserId } = useApp();
+  const { mockTests, mockAttempts, currentUserId, checkEnrollmentStatus, curriculumSubjects } = useApp();
   const [confirming, setConfirming] = useState(null);
   const [starting, setStarting] = useState(false);
 
-  // Disabled tests are never shown (the server doesn't send them; this also covers offline mode)
-  const days = useMemo(() => groupByDay(mockTests.filter((t) => t.enabled === true)), [mockTests]);
+  // Only tests this student may take: enabled, and public or private to a batch they're in.
+  // (The server doesn't send the others; this also covers offline mode and subscriptions that just ended.)
+  const isInBatch = (subjectId) => checkEnrollmentStatus(currentUserId, subjectId) === 'active';
+  const days = groupByDay(mockTests.filter((t) => canStudentSeeMockTest(t, isInBatch)));
+  const myBatchNames = (test) =>
+    (test.batchSubjectIds || [])
+      .filter(isInBatch)
+      .map((id) => (curriculumSubjects || []).find((s) => s.id === id)?.name)
+      .filter(Boolean);
 
   const myAttempts = useMemo(() => {
     const map = new Map();
@@ -81,6 +88,15 @@ export const StudentMockTests = ({ onStart, onViewResult }) => {
                       )}
                       {test.allowRetest && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#E8F3F4] dark:bg-slate-800 text-[#087F8C] dark:text-teal-300">Retest allowed</span>
+                      )}
+                      {isPrivateMockTest(test) && myBatchNames(test).length > 0 && (
+                        <span
+                          className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 inline-flex items-center gap-1 max-w-full"
+                          title="Only for students of your batch"
+                        >
+                          <Lock className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{myBatchNames(test).join(', ')}</span>
+                        </span>
                       )}
                     </div>
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug break-words">{test.title}</h3>

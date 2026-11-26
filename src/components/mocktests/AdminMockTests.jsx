@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, CalendarDays, Clock, ListChecks, Pencil, Trash2, BarChart3, ClipboardList, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Plus, CalendarDays, Clock, ListChecks, Pencil, Trash2, BarChart3, ClipboardList, Eye, EyeOff, RotateCcw, Globe, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { MockTestFormModal } from './MockTestFormModal';
 import { PageHero, Toggle, primaryBtn, secondaryBtn } from './MockTestUi';
-import { formatDuration, groupByDay } from '../../utils/mockTests';
+import { formatDuration, groupByDay, isPrivateMockTest } from '../../utils/mockTests';
 
 export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
-  const { mockTests, mockAttempts, createMockTest, updateMockTest, deleteMockTest, showToast } = useApp();
+  const { mockTests, mockAttempts, createMockTest, updateMockTest, deleteMockTest, showToast, curriculumSubjects } = useApp();
+  const batchName = (id) => (curriculumSubjects || []).find((s) => s.id === id)?.name || 'Deleted batch';
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [newForDay, setNewForDay] = useState(1);
@@ -134,6 +135,16 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
                         {test.enabled ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                         {test.enabled ? 'Visible' : 'Hidden'}
                       </span>
+                      <span
+                        className={`ml-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                          isPrivateMockTest(test)
+                            ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800'
+                            : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800'
+                        }`}
+                      >
+                        {isPrivateMockTest(test) ? <Lock className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
+                        {isPrivateMockTest(test) ? 'Private' : 'Public'}
+                      </span>
                       <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1.5 leading-snug break-words">{test.title}</h3>
                       {test.description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{test.description}</p>}
                     </div>
@@ -165,6 +176,25 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
                     <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" />{formatDuration(test.durationMinutes)}</span>
                     <span className="flex items-center gap-1"><RotateCcw className="w-3.5 h-3.5 text-slate-400" />{test.allowRetest ? 'Retest allowed' : 'One attempt'}</span>
                   </div>
+
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
+                    {isPrivateMockTest(test) ? (
+                      <>
+                        <Lock className="w-3.5 h-3.5 mt-px text-violet-500 shrink-0" />
+                        <span>
+                          Only for:{' '}
+                          <strong className="text-slate-700 dark:text-slate-200">
+                            {(test.batchSubjectIds || []).map(batchName).join(', ') || 'no batch chosen'}
+                          </strong>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Globe className="w-3.5 h-3.5 mt-px text-sky-500 shrink-0" />
+                        <span>Open to every student who signs in</span>
+                      </>
+                    )}
+                  </p>
 
                   <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-3">
                     <Toggle

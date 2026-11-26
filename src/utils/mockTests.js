@@ -42,6 +42,22 @@ export const scoreMockTest = (test, answers) => {
   };
 };
 
+/**
+ * Who can take a mock test.
+ *   access: 'public'  -> every signed-in student (the default for older tests)
+ *   access: 'private' -> only students in one of test.batchSubjectIds (a course they have an active
+ *                        subscription to, or a free course)
+ * `isInBatch(subjectId)` says whether the student is in that batch.
+ * Same rule as canStudentSeeMockTest in backend/src/sync/collections.js.
+ */
+export const isPrivateMockTest = (test) => test?.access === 'private';
+
+export const canStudentSeeMockTest = (test, isInBatch) => {
+  if (test?.enabled !== true) return false;
+  if (!isPrivateMockTest(test)) return true;
+  return (test.batchSubjectIds || []).some((id) => isInBatch(id));
+};
+
 /** "1 hr 30 min", "45 min" */
 export const formatDuration = (minutes) => {
   const m = Math.max(0, Math.round(Number(minutes) || 0));

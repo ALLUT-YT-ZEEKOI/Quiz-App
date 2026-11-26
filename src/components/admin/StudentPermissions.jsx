@@ -16,10 +16,18 @@ import {
   HelpCircle,
   ChevronDown,
   Layers,
-  Trophy
+  Trophy,
+  UserPlus,
+  Users,
+  FileQuestion,
+  Megaphone,
+  Settings,
+  Lock,
+  LayoutDashboard,
+  GraduationCap
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { STUDENT_MODULES, CONTENT_TYPES, getContentAccess } from '../../utils/studentModules';
+import { STUDENT_MODULES, ADMIN_MODULES, CONTENT_TYPES, getContentAccess } from '../../utils/studentModules';
 
 const CONTENT_ICONS = { videos: Video, notes: NotebookText, questions: HelpCircle };
 
@@ -53,7 +61,7 @@ const Toggle = ({ checked, onChange, label }) => (
   </button>
 );
 
-export const StudentPermissions = () => {
+const StudentAccessBoard = () => {
   const { studentModules, updateStudentModules, showToast, curriculumSubjects, contentAccess, updateContentAccess } = useApp();
   const [openSubjectId, setOpenSubjectId] = useState(null);
 
@@ -77,14 +85,11 @@ export const StudentPermissions = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200 pb-16">
+    <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div className="min-w-0">
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
-            Access Control
-          </span>
-          <h1 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">Student Permissions</h1>
-          <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+          <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">Student Modules</h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
             Choose which modules students can see. A disabled module is removed from every student's menu straight away.
           </p>
         </div>
@@ -290,6 +295,190 @@ export const StudentPermissions = () => {
           })}
         </div>
       )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Admin panel: which sections appear in the admin's own menu
+// ---------------------------------------------------------------------------
+const ADMIN_ICONS = {
+  subjects: BookOpen,
+  registrations: UserPlus,
+  students: Users,
+  examinations: Radio,
+  'mock-tests': ClipboardList,
+  quizzes: FileQuestion,
+  answers: ClipboardCheck,
+  rankings: Trophy,
+  doubts: MessageCircleQuestion,
+  notifications: Megaphone
+};
+
+const AdminPanelBoard = () => {
+  const { adminModules, updateAdminModules, showToast } = useApp();
+  const shownCount = ADMIN_MODULES.filter((m) => adminModules[m.id]).length;
+
+  const setOne = (module, shown) => {
+    updateAdminModules({ [module.id]: shown });
+    showToast(`${module.label} ${shown ? 'shown in' : 'hidden from'} the admin panel`, shown ? 'success' : 'info');
+  };
+
+  const showAll = () => {
+    updateAdminModules(Object.fromEntries(ADMIN_MODULES.map((m) => [m.id, true])));
+    showToast('All admin sections are shown', 'success');
+  };
+
+  return (
+    <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">Admin Panel Sections</h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+            Hide the sections you don&apos;t use from the admin menu. This only tidies the admin panel: students are not affected,
+            and nothing is deleted.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={showAll}
+          disabled={shownCount === ADMIN_MODULES.length}
+          className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 shrink-0"
+        >
+          <Eye className="w-4 h-4 text-emerald-600" /> Show all
+        </button>
+      </div>
+
+      <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[#087F8C] bg-[#E6F4F6] dark:bg-[#0E353E] dark:text-cyan-300">
+          <LayoutDashboard className="w-5 h-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-none">
+            {shownCount} / {ADMIN_MODULES.length}
+          </div>
+          <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 mt-1">Sections shown in the admin menu</div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800">
+        {ADMIN_MODULES.map((module) => {
+          const Icon = ADMIN_ICONS[module.id] || BookOpen;
+          const shown = adminModules[module.id];
+          return (
+            <div key={module.id} className="flex items-center gap-3 sm:gap-4 p-3.5 sm:p-4">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                  shown
+                    ? 'text-teal-700 bg-teal-50 dark:bg-teal-950/50 dark:text-teal-300'
+                    : 'text-slate-400 bg-slate-100 dark:bg-slate-800 dark:text-slate-500'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-sm font-bold ${shown ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {module.label}
+                  </span>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      shown
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}
+                  >
+                    {shown ? 'Shown' : 'Hidden'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{module.description}</p>
+              </div>
+              <Toggle checked={shown} onChange={(v) => setOne(module, v)} label={`Show ${module.label} in the admin menu`} />
+            </div>
+          );
+        })}
+
+        {/* Always on, so the admin can never lock themselves out */}
+        {[
+          { label: 'Permissions', description: 'This page. Always shown so you can change these settings.', Icon: ShieldCheck },
+          { label: 'Settings', description: 'Your profile and account. Always shown.', Icon: Settings }
+        ].map(({ label, description, Icon }) => (
+          <div key={label} className="flex items-center gap-3 sm:gap-4 p-3.5 sm:p-4 bg-slate-50/60 dark:bg-slate-900/30">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-teal-700 bg-teal-50 dark:bg-teal-950/50 dark:text-teal-300">
+              <Icon className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-sm font-bold text-slate-900 dark:text-white">{label}</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
+            </div>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 shrink-0">
+              <Lock className="w-3.5 h-3.5" /> Always on
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Permissions page: students' access + the admin's own panel
+// ---------------------------------------------------------------------------
+const TABS = [
+  { id: 'students', label: 'Students', Icon: GraduationCap },
+  { id: 'admin', label: 'Admin Panel', Icon: LayoutDashboard }
+];
+
+export const StudentPermissions = () => {
+  const { studentModules, adminModules } = useApp();
+  const [tab, setTab] = useState('students');
+  const hidden = {
+    students: STUDENT_MODULES.filter((m) => !studentModules[m.id]).length,
+    admin: ADMIN_MODULES.filter((m) => !adminModules[m.id]).length
+  };
+
+  return (
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200 pb-16">
+      <div className="min-w-0">
+        <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
+          Access Control
+        </span>
+        <h1 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">Permissions</h1>
+        <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+          Control what students can open, and which sections appear in your admin panel.
+        </p>
+      </div>
+
+      <div
+        role="tablist"
+        aria-label="Permission boards"
+        className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#E8F3F4] dark:bg-slate-800/80 border border-[#087F8C]/15 dark:border-slate-700/60 text-xs sm:text-sm font-bold max-w-md"
+      >
+        {TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={`min-h-[2.5rem] px-3 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${
+              tab === id
+                ? 'bg-[#087F8C] text-white shadow-md shadow-[#087F8C]/25'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <Icon className="w-4 h-4 shrink-0" />
+            <span>{label}</span>
+            {hidden[id] > 0 && (
+              <span className={`px-1.5 rounded-full text-[10px] font-extrabold ${tab === id ? 'bg-white/25' : 'bg-slate-400/90 text-white'}`}>
+                {hidden[id]} off
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'students' ? <StudentAccessBoard /> : <AdminPanelBoard />}
     </div>
   );
 };

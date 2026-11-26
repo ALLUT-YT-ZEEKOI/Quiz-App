@@ -17,17 +17,19 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { computeRankings, examEntry, mockEntry, shapeForStudent } from '../../utils/rankings';
 import { formatDuration, formatDateTime } from '../../utils/assessmentRecords';
+import { canStudentSeeMockTest } from '../../utils/mockTests';
 
 const REFRESH_MS = 60000;
 
 /** Rankings for the admin, or for a student without the backend, from the app's own data. */
-const useLocalRankings = ({ enabled, examinations, examAttempts, mockTests, mockAttempts, isAdmin, studentId }) =>
+// `batchKey` changes whenever the student's batches change (isInBatch itself is a new function each render)
+const useLocalRankings = ({ enabled, examinations, examAttempts, mockTests, mockAttempts, isAdmin, studentId, isInBatch, batchKey }) =>
   useMemo(() => {
     if (!enabled) return null;
     const assessments = [
       ...(examinations || []).map((e) => ({ key: `exam:${e.id}`, kind: 'exam', title: e.title || 'Examination', subtitle: e.subjectName || '' })),
       ...(mockTests || [])
-        .filter((t) => isAdmin || t.enabled === true)
+        .filter((t) => isAdmin || canStudentSeeMockTest(t, isInBatch))
         .map((t) => ({ key: `mock:${t.id}`, kind: 'mock', title: t.title || 'Mock Test', subtitle: t.day ? `Day ${t.day}` : '' }))
     ];
     const rankings = computeRankings(assessments, [
@@ -35,7 +37,7 @@ const useLocalRankings = ({ enabled, examinations, examAttempts, mockTests, mock
       ...(mockAttempts || []).map(mockEntry)
     ]);
     return isAdmin ? rankings : shapeForStudent(rankings, studentId);
-  }, [enabled, examinations, examAttempts, mockTests, mockAttempts, isAdmin, studentId]);
+  }, [enabled, examinations, examAttempts, mockTests, mockAttempts, isAdmin, studentId, batchKey]);
 
 const RankBadge = ({ rank }) => {
   if (rank === 1) return <span className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300 flex items-center justify-center"><Trophy className="w-4 h-4" /></span>;
@@ -99,7 +101,9 @@ export const RankingsDashboard = () => {
     mockTests,
     mockAttempts,
     students,
-    showToast
+    showToast,
+    checkEnrollmentStatus,
+    curriculumSubjects
   } = useApp();
   const isAdmin = currentRole === 'teacher' || currentRole === 'admin';
   const studentId = currentUser?.id;
@@ -112,7 +116,9 @@ export const RankingsDashboard = () => {
     mockTests,
     mockAttempts,
     isAdmin,
-    studentId
+    studentId,
+    isInBatch: (subjectId) => checkEnrollmentStatus(studentId, subjectId) === 'active',
+    batchKey: isAdmin ? '' : (curriculumSubjects || []).filter((s) => checkEnrollmentStatus(studentId, s.id) === 'active').map((s) => s.id).join(',')
   });
 
   // Students (with the backend) only hold their own attempts: the server builds the ranking

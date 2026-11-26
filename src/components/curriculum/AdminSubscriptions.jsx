@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StoredImage } from './StoredImage';
+import { AccessPeriodModal, subscriptionStart } from './AccessPeriodModal';
 import { useApp } from '../../context/AppContext';
 import {
   ShieldCheck,
@@ -14,7 +15,8 @@ import {
   CalendarClock,
   AlertTriangle,
   Infinity as InfinityIcon,
-  RefreshCw
+  RefreshCw,
+  CalendarCog
 } from 'lucide-react';
 import {
   getSubscriptionTiming,
@@ -33,8 +35,33 @@ export const AdminSubscriptions = () => {
     subscriptions,
     approveSubscription,
     rejectSubscription,
+    getDefaultAccessPeriod,
+    updateSubscriptionEnd,
     showToast
   } = useApp();
+
+  // Approve-with-dates / change-end-date dialog: { mode: 'approve' | 'edit', req }
+  const [periodDialog, setPeriodDialog] = useState(null);
+
+  // The furthest end of the student's OTHER approved periods for the same subject (if later than now)
+  const otherAccessEndFor = (req) => {
+    const ends = (subscriptions || [])
+      .filter((o) => o.id !== req.id && o.status === 'approved' && o.studentId === req.studentId && o.subjectId === req.subjectId)
+      .map((o) => getSubscriptionTiming(o).expiresAt)
+      .filter((d) => d && d > new Date());
+    return ends.length ? new Date(Math.max(...ends.map((d) => d.getTime()))) : null;
+  };
+
+  const dialogProps = (() => {
+    if (!periodDialog) return null;
+    const { mode, req } = periodDialog;
+    if (mode === 'approve') {
+      const period = getDefaultAccessPeriod(req.id);
+      if (!period) return null;
+      return { startsAt: period.startsAt, initialEnd: period.expiresAt };
+    }
+    return { startsAt: subscriptionStart(req), initialEnd: getSubscriptionTiming(req).expiresAt };
+  })();
 
   const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'active', 'expired', 'rejected', 'all'
   const [searchTerm, setSearchTerm] = useState('');
@@ -288,7 +315,7 @@ export const AdminSubscriptions = () => {
                     <div className="flex gap-1 sm:gap-1.5">
                       <button
                         type="button"
-                        onClick={() => approveSubscription(req.id)}
+                        onClick={() => setPeriodDialog({ mode: 'approve', req })}
                         className="flex-1 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] sm:text-[11px] inline-flex items-center justify-center gap-0.5 sm:gap-1 shadow-sm active:scale-95 transition-all"
                       >
                         <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
@@ -304,7 +331,17 @@ export const AdminSubscriptions = () => {
                       </button>
                     </div>
                   ) : isApproved ? (
-                    <SubscriptionValidity req={req} timing={timing} />
+                    <>
+                      <SubscriptionValidity req={req} timing={timing} />
+                      <button
+                        type="button"
+                        onClick={() => setPeriodDialog({ mode: 'edit', req })}
+                        className="w-full py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#087F8C]/50 hover:text-[#087F8C] dark:hover:text-teal-300 text-[10px] sm:text-[11px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <CalendarCog className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        Change end date
+                      </button>
+                    </>
                   ) : (
                     <div className="text-[10px] sm:text-[11px] text-slate-500">
                       Reviewed: <span className="font-semibold text-slate-700 dark:text-slate-300">{req.reviewedAt || 'Done'}</span>
@@ -315,6 +352,23 @@ export const AdminSubscriptions = () => {
             );
           })}
         </div>
+      )}
+
+      {periodDialog && dialogProps && (
+        <AccessPeriodModal
+          key={`${periodDialog.mode}:${periodDialog.req.id}`}
+          mode={periodDialog.mode}
+          request={periodDialog.req}
+          startsAt={dialogProps.startsAt}
+          initialEnd={dialogProps.initialEnd}
+          otherAccessEnd={otherAccessEndFor(periodDialog.req)}
+          onClose={() => setPeriodDialog(null)}
+          onConfirm={(expiresAt) => {
+            if (periodDialog.mode === 'approve') approveSubscription(periodDialog.req.id, { expiresAt });
+            else updateSubscriptionEnd(periodDialog.req.id, expiresAt);
+            setPeriodDialog(null);
+          }}
+        />
       )}
 
       {/* FULL SCREEN PAYMENT SCREENSHOT MODAL */}
@@ -371,7 +425,7 @@ const SubscriptionValidity = ({ req, timing }) => {
     return (
       <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-300 px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
         <InfinityIcon className="w-3.5 h-3.5 text-[#087F8C] shrink-0" />
-        <span className="font-bold">Lifetime access</span>
+        <span className="font-bold">Lifetime access{req.customEnd ? ' (set by admin)' : ''}</span>
         <span className="text-slate-400 truncate">• since {formatDate(req.startsAt || req.reviewedAt)}</span>
       </div>
     );
@@ -418,7 +472,11 @@ const SubscriptionValidity = ({ req, timing }) => {
       </div>
       <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">
         Started {formatDate(start)}
-        {hasFixedEndDate(req) || req.validityDays ? ` • ${formatAccess(req)}` : ''}
+        {req.customEnd
+          ? ' • End date set by admin'
+          : hasFixedEndDate(req) || req.validityDays
+          ? ` • ${formatAccess(req)}`
+          : ''}
       </div>
     </div>
   );

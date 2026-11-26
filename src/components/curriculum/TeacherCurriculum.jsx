@@ -742,7 +742,7 @@ export const TeacherCurriculum = () => {
                     No Notes Shared Yet
                   </h3>
                   <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                    Upload your own PDFs, slides or images, share a Drive link, or write notes for students to study.
+                    Paste a Google Drive link to a PDF, Doc, Slides or folder, and students read it right inside the app.
                   </p>
                   <button
                     onClick={() => setNoteModalOpen(true)}

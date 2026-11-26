@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FileText,
@@ -9,7 +9,6 @@ import {
   Download,
   ExternalLink,
   Eye,
-  CloudUpload,
   NotebookText,
   Presentation,
   FileSpreadsheet,
@@ -17,24 +16,36 @@ import {
   PenLine,
   Trash2,
   X,
-  Plus
+  Plus,
+  HardDrive,
+  FolderOpen,
+  CheckCircle2,
+  Info
 } from 'lucide-react';
-import { getNoteFile, formatFileSize, MAX_NOTE_FILE_BYTES } from '../../utils/notesStorage';
+import { getNoteFile, formatFileSize } from '../../utils/notesStorage';
+import { parseDriveLink, DRIVE_KINDS } from '../../utils/driveLinks';
 
 // =========================================================================
 // Helpers
 // =========================================================================
-
-const ACCEPTED_FILE_TYPES =
-  '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.webp,.gif,application/pdf,image/*';
 
 const isPdf = (note) =>
   note.fileType === 'application/pdf' || /\.pdf$/i.test(note.fileName || '');
 const isImage = (note) =>
   (note.fileType || '').startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(note.fileName || '');
 
+const DRIVE_KIND_STYLE = {
+  doc: { Icon: FileText, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300' },
+  sheet: { Icon: FileSpreadsheet, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300' },
+  slides: { Icon: Presentation, tone: 'bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-300' },
+  folder: { Icon: FolderOpen, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-300' },
+  file: { Icon: HardDrive, tone: 'bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-300' }
+};
+
 export const getNoteKind = (note) => {
   if (note.type === 'link') {
+    const drive = parseDriveLink(note.url);
+    if (drive) return { label: DRIVE_KINDS[drive.kind].label, ...DRIVE_KIND_STYLE[drive.kind] };
     return { label: 'Link', Icon: Link2, tone: 'bg-sky-50 text-sky-600 dark:bg-sky-950/50 dark:text-sky-300' };
   }
   if (note.type === 'text') {
@@ -115,9 +126,10 @@ export const NotesList = ({ notes, onOpen, onDelete, emptyState }) => {
       {notes.map((note) => {
         const { label, Icon, tone } = getNoteKind(note);
         const linkUrl = note.type === 'link' ? safeHttpUrl(note.url) : null;
+        const drive = note.type === 'link' ? parseDriveLink(note.url) : null;
         const meta = [
           note.type === 'file' ? formatFileSize(note.fileSize) : null,
-          note.type === 'link' && linkUrl ? new URL(linkUrl).hostname.replace(/^www\./, '') : null,
+          drive ? 'Google Drive' : note.type === 'link' && linkUrl ? new URL(linkUrl).hostname.replace(/^www\./, '') : null,
           formatDate(note.createdAt)
         ].filter(Boolean);
 
@@ -178,7 +190,28 @@ export const NotesList = ({ notes, onOpen, onDelete, emptyState }) => {
                 </div>
               ) : (
                 <>
-                  {note.type === 'link' ? (
+                  {drive ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onOpen(note)}
+                        className="px-3 py-1.5 rounded-lg bg-[#E6F4F6] hover:bg-[#d8eef1] dark:bg-[#0E353E] dark:hover:bg-[#12424d] text-[#0C4E5B] dark:text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-colors active:scale-95"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{drive.kind === 'folder' ? 'Open Folder' : 'Read Notes'}</span>
+                      </button>
+                      <a
+                        href={drive.openUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-[#087F8C] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        title="Open in Google Drive"
+                        aria-label={`Open ${note.title} in Google Drive`}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  ) : note.type === 'link' ? (
                     linkUrl ? (
                       <a
                         href={linkUrl}
@@ -242,6 +275,7 @@ export const NotePreviewModal = ({ note, onClose }) => {
 
   if (!note) return null;
   const { label, Icon, tone } = getNoteKind(note);
+  const drive = note.type === 'link' ? parseDriveLink(note.url) : null;
   // Mobile browsers generally can't render PDFs inside an iframe, so offer Open/Download there
   const showPdfInline = note.type === 'file' && isPdf(note) && !isTouch;
   const showImageInline = note.type === 'file' && isImage(note);
@@ -271,6 +305,17 @@ export const NotePreviewModal = ({ note, onClose }) => {
               {note.type === 'file' ? `${note.fileName} • ${formatFileSize(note.fileSize)}` : label}
             </p>
           </div>
+          {drive && (
+            <a
+              href={drive.openUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold items-center gap-1.5"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Open in Drive</span>
+            </a>
+          )}
           {url && (
             <a
               href={url}
@@ -292,7 +337,23 @@ export const NotePreviewModal = ({ note, onClose }) => {
 
         {/* Body */}
         <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50 dark:bg-slate-950/40">
-          {note.type === 'text' ? (
+          {drive ? (
+            <div className="flex flex-col">
+              {note.description && (
+                <p className="px-4 pt-3 text-xs text-slate-500 dark:text-slate-400">{note.description}</p>
+              )}
+              <iframe
+                src={drive.previewUrl}
+                title={note.title}
+                className="w-full h-[75vh] border-0 bg-white"
+                allow="autoplay"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+              <p className="px-4 py-2 text-[11px] text-slate-400 border-t border-slate-200 dark:border-slate-800">
+                Not loading? Use &ldquo;Open in Drive&rdquo;, or ask your instructor to share it as &ldquo;Anyone with the link&rdquo;.
+              </p>
+            </div>
+          ) : note.type === 'text' ? (
             <div className="p-5 sm:p-6 space-y-3">
               {note.description && (
                 <p className="text-xs text-slate-500 dark:text-slate-400">{note.description}</p>
@@ -378,34 +439,22 @@ export const NotePreviewModal = ({ note, onClose }) => {
 // Add Notes modal (teacher)
 // =========================================================================
 
+// Notes come from Google Drive; other links and written notes are still possible
 const NOTE_TYPES = [
-  { id: 'file', label: 'Upload File', Icon: CloudUpload },
-  { id: 'link', label: 'Link', Icon: Link2 },
+  { id: 'drive', label: 'Google Drive', Icon: HardDrive },
+  { id: 'link', label: 'Other Link', Icon: Link2 },
   { id: 'text', label: 'Write', Icon: PenLine }
 ];
 
 const EMPTY_FORM = { title: '', description: '', url: '', content: '' };
 
 export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
-  const [type, setType] = useState('file');
+  const [type, setType] = useState('drive');
   const [form, setForm] = useState(EMPTY_FORM);
-  const [file, setFile] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef(null);
 
-  const pickFile = (picked) => {
-    if (!picked) return;
-    if (picked.size > MAX_NOTE_FILE_BYTES) {
-      showToast(`File is too large. Maximum size is ${formatFileSize(MAX_NOTE_FILE_BYTES)}.`, 'warning');
-      return;
-    }
-    setFile(picked);
-    // Suggest a title from the file name if the teacher hasn't typed one
-    setForm((prev) =>
-      prev.title.trim() ? prev : { ...prev, title: picked.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ') }
-    );
-  };
+  const drive = type === 'drive' ? parseDriveLink(form.url) : null;
+  const driveUrlTyped = type === 'drive' && form.url.trim().length > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -413,8 +462,8 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
       showToast('Please give these notes a title', 'warning');
       return;
     }
-    if (type === 'file' && !file) {
-      showToast('Please choose a file to upload', 'warning');
+    if (type === 'drive' && !drive) {
+      showToast('Please paste a Google Drive or Google Docs link', 'warning');
       return;
     }
     if (type === 'link' && !safeHttpUrl(form.url.trim())) {
@@ -426,16 +475,18 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
       return;
     }
 
+    // Drive notes are stored as links; the app recognises Drive links when showing them
     const noteData = {
-      type,
+      type: type === 'text' ? 'text' : 'link',
       title: form.title.trim(),
       description: form.description.trim(),
+      ...(type === 'drive' ? { url: safeHttpUrl(form.url.trim()), provider: 'gdrive' } : {}),
       ...(type === 'link' ? { url: safeHttpUrl(form.url.trim()) } : {}),
       ...(type === 'text' ? { content: form.content.trim() } : {})
     };
 
     setSaving(true);
-    const ok = await onSave(noteData, type === 'file' ? file : null);
+    const ok = await onSave(noteData, null);
     setSaving(false);
     if (ok !== false) onClose();
   };
@@ -483,69 +534,37 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
             ))}
           </div>
 
-          {type === 'file' && (
-            <div>
+          {type === 'drive' && (
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Google Drive link *</label>
               <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPTED_FILE_TYPES}
-                className="hidden"
-                onChange={(e) => {
-                  pickFile(e.target.files?.[0]);
-                  e.target.value = '';
-                }}
+                type="url"
+                required
+                autoFocus
+                placeholder="https://drive.google.com/file/d/…"
+                value={form.url}
+                onChange={(e) => setForm({ ...form, url: e.target.value })}
+                className={inputClass}
               />
-              {file ? (
-                <div className="p-3 rounded-2xl border border-[#20B8C7]/40 bg-[#F4FAFB] dark:bg-slate-900/60 flex items-center gap-3">
-                  {(() => {
-                    const { Icon, tone } = getNoteKind({ type: 'file', fileName: file.name, fileType: file.type });
-                    return (
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                    );
-                  })()}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{file.name}</p>
-                    <p className="text-[11px] text-slate-400">{formatFileSize(file.size)}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#0C4E5B] dark:text-cyan-300 hover:bg-white dark:hover:bg-slate-800"
-                  >
-                    Change
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsDragging(false);
-                    pickFile(e.dataTransfer.files?.[0]);
-                  }}
-                  className={`w-full py-8 rounded-2xl border-2 border-dashed flex flex-col items-center gap-1.5 transition-colors ${
-                    isDragging
-                      ? 'border-[#087F8C] bg-[#E6F4F6] dark:bg-[#0E353E]'
-                      : 'border-slate-300 dark:border-slate-700 hover:border-[#20B8C7]/70 hover:bg-[#F4FAFB] dark:hover:bg-slate-900/40'
-                  }`}
-                >
-                  <CloudUpload className="w-8 h-8 text-[#087F8C]" />
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                    Tap to choose a file <span className="hidden sm:inline">or drag it here</span>
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    PDF, Word, PowerPoint, Excel or images • up to {formatFileSize(MAX_NOTE_FILE_BYTES)}
-                  </span>
-                </button>
+              {driveUrlTyped && (
+                drive ? (
+                  <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    {DRIVE_KINDS[drive.kind].label} link. Students will read it inside the app.
+                  </p>
+                ) : (
+                  <p className="text-[11px] font-semibold text-red-600 dark:text-red-400">
+                    This isn&apos;t a Google Drive link. Copy it from Drive with Share &rarr; Copy link.
+                  </p>
+                )
               )}
+              <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/50 text-[11px] text-sky-900 dark:text-sky-200 flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>
+                  In Google Drive, open <strong>Share</strong> and set General access to <strong>Anyone with the link &middot; Viewer</strong>,
+                  then <strong>Copy link</strong> and paste it here. Files, Docs, Sheets, Slides and folders all work.
+                </span>
+              </div>
             </div>
           )}
 
@@ -567,13 +586,13 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
               <input
                 type="url"
                 required
-                placeholder="https://drive.google.com/…"
+                placeholder="https://…"
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
                 className={inputClass}
               />
               <span className="text-[10px] text-slate-400 block mt-1">
-                Google Drive, OneDrive, Dropbox or any web page. Make sure students have access.
+                OneDrive, Dropbox or any web page. Students open it in a new tab. Make sure they have access.
               </span>
             </div>
           )}
@@ -616,7 +635,7 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
               className="flex-1 py-2.5 rounded-xl bg-[#087F8C] hover:bg-[#0C4E5B] disabled:opacity-60 text-xs font-bold text-white shadow-md shadow-[#087F8C]/20 flex items-center justify-center gap-1.5"
             >
               {saving ? <LoaderCircle className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              <span>{saving ? 'Uploading…' : 'Share Notes'}</span>
+              <span>{saving ? 'Saving…' : 'Share Notes'}</span>
             </button>
           </div>
         </form>

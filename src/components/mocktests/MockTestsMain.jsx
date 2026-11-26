@@ -9,7 +9,7 @@ import { MockTestResult } from './MockTestResult';
 
 /** Mock Tests module: admin manages tests by day, students take timed tests. */
 export const MockTestsMain = () => {
-  const { currentRole, mockTests, activeMockTest, setActiveMockTest, startMockTest } = useApp();
+  const { currentRole, currentUserId, mockTests, mockAttempts, activeMockTest, setActiveMockTest, startMockTest } = useApp();
   const [adminView, setAdminView] = useState({ page: 'list', testId: null });
   const [viewingAttempt, setViewingAttempt] = useState(null);
 
@@ -43,9 +43,15 @@ export const MockTestsMain = () => {
   if (viewingAttempt) {
     const test = mockTests.find((t) => t.id === viewingAttempt.testId);
     const canRetake = !!(test && test.enabled && test.allowRetest && (test.questions || []).length);
+    // All of this student's attempts of the test, oldest first, so earlier tries can be reviewed too
+    const myAttempts = (mockAttempts || [])
+      .filter((a) => a.testId === viewingAttempt.testId && a.studentId === currentUserId)
+      .sort((a, b) => (a.submittedAt || '').localeCompare(b.submittedAt || ''));
     return (
       <MockTestResult
         attempt={viewingAttempt}
+        attempts={myAttempts}
+        onSelectAttempt={setViewingAttempt}
         onBack={() => setViewingAttempt(null)}
         onRetake={
           canRetake

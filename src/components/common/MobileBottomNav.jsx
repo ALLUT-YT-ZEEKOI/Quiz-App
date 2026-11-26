@@ -18,7 +18,8 @@ export const MobileBottomNav = ({ onMobileMenuToggle }) => {
     activeExamForAttempt,
     activeMockTest,
     examinations,
-    studentModules
+    studentModules,
+    adminModules
   } = useApp();
 
   // If inside active quiz or exam attempt screen, don't show the bottom nav so there's zero distraction
@@ -56,7 +57,11 @@ export const MobileBottomNav = ({ onMobileMenuToggle }) => {
     { id: 'results', module: 'quizzes', label: 'My Results', icon: Award }
   ].filter((item) => studentModules?.[item.module] !== false);
 
-  const navItems = currentRole === 'teacher' ? teacherItems : studentItems;
+  // Admin bottom bar follows the admin sections shown on the Permissions page
+  const ADMIN_SECTION = { subjects: 'subjects', subscriptions: 'students', examinations: 'examinations', results: 'quizzes' };
+  const navItems = currentRole === 'teacher'
+    ? teacherItems.filter((item) => adminModules?.[ADMIN_SECTION[item.id]] !== false)
+    : studentItems;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-surface-darkCard/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2 py-1.5 transition-colors">

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { computeRankings, examEntry, mockEntry, shapeForStudent } from '../services/rankings.js';
+import { buildStudentContext, canStudentSeeMockTest } from '../sync/collections.js';
 
 export const rankingsRouter = Router();
 rankingsRouter.use(requireAuth);
@@ -27,15 +28,18 @@ rankingsRouter.get('/', async (req, res, next) => {
     }
 
     const alive = { _deleted: { $ne: true } };
-    const [exams, tests, examAttempts, mockAttempts] = await Promise.all([
+    const [exams, allTests, examAttempts, mockAttempts, ctx] = await Promise.all([
       db.collection('examinations').find(alive, { projection: { id: 1, title: 1, subjectName: 1 } }).toArray(),
       db
         .collection('mock_tests')
-        .find(isAdmin ? alive : { ...alive, enabled: true }, { projection: { id: 1, title: 1, day: 1 } })
+        .find(alive, { projection: { id: 1, title: 1, day: 1, enabled: 1, access: 1, batchSubjectIds: 1 } })
         .toArray(),
       db.collection('exam_attempts').find(alive, { projection: ATTEMPT_PROJECTION }).toArray(),
-      db.collection('mock_attempts').find(alive, { projection: ATTEMPT_PROJECTION }).toArray()
+      db.collection('mock_attempts').find(alive, { projection: ATTEMPT_PROJECTION }).toArray(),
+      isAdmin ? null : buildStudentContext(req.user.studentId)
     ]);
+    // Students only get rankings for mock tests they can see (enabled, and public or for their batch)
+    const tests = isAdmin ? allTests : allTests.filter((t) => canStudentSeeMockTest(t, ctx));
 
     const assessments = [
       ...exams.map((e) => ({ key: `exam:${e._id}`, kind: 'exam', title: e.title || 'Examination', subtitle: e.subjectName || '' })),

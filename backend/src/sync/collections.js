@@ -25,17 +25,29 @@ export const COLLECTIONS = {
   quizzes: { mongo: 'quizzes', key: byId },
   attempts: { mongo: 'quiz_attempts', key: byId, own: true },
   difficultyLevels: { mongo: 'difficulty_levels', key: byId },
-  // Mock tests: students only see enabled ones (and never the answers before submitting)
-  mockTests: { mongo: 'mock_tests', key: byId, hiddenFromStudent: (doc) => doc.enabled !== true },
+  // Mock tests: students only see enabled ones they may take (public, or private to a batch they're in),
+  // and never the answers before submitting
+  mockTests: { mongo: 'mock_tests', key: byId, hiddenFromStudent: (doc, ctx) => !canStudentSeeMockTest(doc, ctx) },
   // Mock test attempts go through POST /api/mock-tests/:id/submit (server-scored)
   mockAttempts: { mongo: 'mock_attempts', key: byId, own: true },
   // App-wide settings set by the admin (e.g. which modules students can use). Students read only.
   settings: { mongo: 'app_settings', key: byId }
 };
 
+/**
+ * Whether a student may see / take a mock test. Public tests: everyone. Private tests: only
+ * students with access to one of the test's batches (courses): an active subscription, or a free
+ * course. Same rule as canStudentSeeMockTest in the frontend's src/utils/mockTests.js.
+ */
+export const canStudentSeeMockTest = (test, ctx) => {
+  if (test?.enabled !== true) return false;
+  if (test.access !== 'private') return true;
+  return (test.batchSubjectIds || []).some((id) => ctx?.openSubjectIds?.has(id));
+};
+
 /** True when a stored document must not be shown to this user (treated as deleted for them). */
-export const isHiddenFor = (name, user, doc) =>
-  user.role !== 'admin' && !!COLLECTIONS[name]?.hiddenFromStudent?.(doc);
+export const isHiddenFor = (name, user, doc, ctx) =>
+  user.role !== 'admin' && !!COLLECTIONS[name]?.hiddenFromStudent?.(doc, ctx);
 
 export const COLLECTION_NAMES = Object.keys(COLLECTIONS);
 
@@ -64,10 +76,14 @@ export const cleanIncoming = (item) => {
 export const buildStudentContext = async (studentId) => {
   const db = getDb();
   const now = new Date();
-  const [subs, attempts, contentSetting] = await Promise.all([
+  const [subs, attempts, contentSetting, freeSubjects] = await Promise.all([
     db.collection('subscriptions').find({ studentId, status: 'approved', _deleted: { $ne: true } }).toArray(),
     db.collection('exam_attempts').find({ studentId, _deleted: { $ne: true } }, { projection: { examId: 1 } }).toArray(),
-    db.collection('app_settings').findOne({ _id: CONTENT_ACCESS_SETTING_ID, _deleted: { $ne: true } })
+    db.collection('app_settings').findOne({ _id: CONTENT_ACCESS_SETTING_ID, _deleted: { $ne: true } }),
+    db
+      .collection('curriculum_subjects')
+      .find({ _deleted: { $ne: true }, $or: [{ price: { $in: [0, '0', null, ''] } }, { price: { $exists: false } }] }, { projection: { _id: 1 } })
+      .toArray()
   ]);
   const activeSubjectIds = new Set(
     subs.filter((s) => !s.expiresAt || new Date(s.expiresAt) > now).map((s) => s.subjectId)
@@ -75,6 +91,8 @@ export const buildStudentContext = async (studentId) => {
   return {
     studentId,
     activeSubjectIds,
+    // Courses (batches) this student is in: active subscriptions plus free courses
+    openSubjectIds: new Set([...activeSubjectIds, ...freeSubjects.map((s) => s._id)]),
     attemptedExamIds: new Set(attempts.map((a) => a.examId)),
     // Lesson videos / study notes / Q&A the admin has hidden, per subject and course
     contentAccess: contentSetting?.subjects || null

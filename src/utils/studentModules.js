@@ -65,6 +65,37 @@ export const resolveStudentModules = (settings) => {
 export const moduleForView = (view) => STUDENT_MODULES.find((m) => m.views.includes(view))?.id || null;
 
 // ---------------------------------------------------------------------------
+// Admin panel sections the admin can hide from their own menu (ids match the admin sidebar items).
+// Stored as { id: 'adminModules', modules: { [moduleId]: boolean } }; never set = shown.
+// Permissions and Settings are always shown, so the admin can never lock themselves out.
+// Hiding a section only tidies the admin panel: it changes nothing for students.
+// ---------------------------------------------------------------------------
+
+export const ADMIN_MODULES_SETTING_ID = 'adminModules';
+
+export const ADMIN_MODULES = [
+  { id: 'subjects', label: 'Subjects & Curriculum', description: 'Create subjects, courses, videos, notes and questions.', views: ['subjects', 'dashboard'] },
+  { id: 'registrations', label: 'Registered Students', description: 'Student sign-ups, login activity and password resets.', views: ['registrations'] },
+  { id: 'students', label: 'Student Management', description: 'Payment approvals and subject subscriptions.', views: ['subscriptions'] },
+  { id: 'examinations', label: 'Live Examinations', description: 'Create, schedule and monitor live exams.', views: ['examinations', 'live-exams'] },
+  { id: 'mock-tests', label: 'Mock Tests', description: 'Build day-wise timed practice tests.', views: ['mock-tests'] },
+  { id: 'quizzes', label: 'Quiz & Assessments', description: 'Module quiz results and assessment reports.', views: ['results'] },
+  { id: 'answers', label: 'Student Answers', description: 'Every answer, question analysis, marks and retests.', views: ['answers', 'review'] },
+  { id: 'rankings', label: 'Student Rankings', description: 'Leaderboards with correct, wrong and time taken.', views: ['rankings'] },
+  { id: 'doubts', label: 'Doubts', description: 'Reply to questions from students.', views: ['doubts'] },
+  { id: 'notifications', label: 'Announcements & Alerts', description: 'Post notices and alerts to students.', views: ['notifications', 'announcements'] }
+];
+
+/** { moduleId: boolean } for every admin section, from the synced settings list. */
+export const resolveAdminModules = (settings) => {
+  const saved = (settings || []).find((s) => s?.id === ADMIN_MODULES_SETTING_ID)?.modules || {};
+  return Object.fromEntries(ADMIN_MODULES.map((m) => [m.id, saved[m.id] !== false]));
+};
+
+/** The admin section a view belongs to, or null for views that are always available. */
+export const adminModuleForView = (view) => ADMIN_MODULES.find((m) => m.views.includes(view))?.id || null;
+
+// ---------------------------------------------------------------------------
 // Subject content access: inside each subject the admin can hide Lesson Videos,
 // Study Notes or Questions & Answers, for the whole subject or for one course (module).
 // Stored as { id: 'contentAccess', subjects: { [subjectId]: { videos?, notes?, questions?, modules: { [moduleId]: { videos?, notes?, questions? } } } } }.

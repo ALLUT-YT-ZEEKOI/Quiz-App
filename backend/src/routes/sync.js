@@ -31,7 +31,7 @@ const readCollection = async (name, user, ctx, extraFilter = {}) => {
   if (!filter) return [];
   const docs = await collectionOf(name).find({ ...filter, ...extraFilter }).toArray();
   const shape = shapeFor(user, ctx);
-  return docs.filter((d) => !isHiddenFor(name, user, d)).map((d) => shape(name, d));
+  return docs.filter((d) => !isHiddenFor(name, user, d, ctx)).map((d) => shape(name, d));
 };
 
 const readAccounts = async (filter = {}) => {
@@ -77,13 +77,16 @@ syncRouter.get('/changes', async (req, res, next) => {
         const docs = await collectionOf(name).find({ ...scope, _updatedAt: { $gt: since } }).toArray();
         if (!docs.length) return;
         // Items this user may no longer see (e.g. a mock test the admin disabled) arrive as deletions
-        const gone = (d) => d._deleted || isHiddenFor(name, user, d);
+        const gone = (d) => d._deleted || isHiddenFor(name, user, d, ctx);
         changes[name] = {
           docs: docs.filter((d) => !gone(d)).map((d) => shape(name, d)),
           deleted: docs.filter(gone).map((d) => d._id)
         };
         // A student's access changed: their view of these collections must be rebuilt
-        if (user.role !== 'admin' && name === 'subscriptions') refetch.add('curriculum');
+        if (user.role !== 'admin' && name === 'subscriptions') {
+          refetch.add('curriculum');
+          refetch.add('mockTests'); // private mock tests follow the student's batches
+        }
         // The admin changed which lessons / notes / Q&A students can see
         if (user.role !== 'admin' && name === 'settings') refetch.add('curriculum');
         if (user.role !== 'admin' && name === 'examAttempts') refetch.add('examinations');
@@ -178,7 +181,7 @@ syncRouter.post('/:name', async (req, res, next) => {
     const docs = saved.length ? await coll.find({ _id: { $in: saved } }).toArray() : [];
     res.json({
       serverTime: new Date().toISOString(),
-      saved: docs.filter((d) => !isHiddenFor(name, user, d)).map((d) => shape(name, d)),
+      saved: docs.filter((d) => !isHiddenFor(name, user, d, ctx)).map((d) => shape(name, d)),
       ignored,
       rejected
     });

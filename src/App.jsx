@@ -35,7 +35,7 @@ import { DataImportBanner, ServerLoadingScreen } from './components/admin/DataIm
 import { StudentPermissions } from './components/admin/StudentPermissions';
 import { RankingsDashboard } from './components/rankings/RankingsDashboard';
 import { APP_VERSION } from './utils/version';
-import { STUDENT_MODULES, moduleForView } from './utils/studentModules';
+import { STUDENT_MODULES, moduleForView, ADMIN_MODULES, adminModuleForView } from './utils/studentModules';
 import { ShieldOff } from 'lucide-react';
 
 const AppContent = () => {
@@ -51,6 +51,7 @@ const AppContent = () => {
     serverInitialized,
     logout,
     studentModules,
+    adminModules,
     activeExamForAttempt,
     activeMockTest
   } = useApp();
@@ -71,6 +72,15 @@ const AppContent = () => {
       setActiveView(firstAllowedModule.views[0]);
     }
   }, [viewBlocked, firstAllowedModule, setActiveView]);
+
+  // Admin: sections hidden on the Permissions page are skipped too (Permissions itself is always open)
+  const adminViewModule = !isStudent ? adminModuleForView(activeView || 'dashboard') : null;
+  const adminViewHidden = adminViewModule !== null && !adminModules[adminViewModule];
+  const adminFallbackView = ADMIN_MODULES.find((m) => adminModules[m.id])?.views[0] || 'permissions';
+
+  useEffect(() => {
+    if (adminViewHidden) setActiveView(adminFallbackView);
+  }, [adminViewHidden, adminFallbackView, setActiveView]);
 
   // If user is logged out, show the login modal / portal
   if (!isAuthenticated) {
@@ -98,6 +108,8 @@ const AppContent = () => {
 
   // Streamlined view router: Focused exclusively on Subjects -> Modules -> Videos & Q&A + Live Examinations + Results + Approvals
   const renderCurrentView = () => {
+    if (adminViewHidden) return null; // moving to a section that is shown
+
     if (viewBlocked) {
       // Redirecting to an allowed module; nothing is allowed when the admin disabled them all
       if (firstAllowedModule) return null;

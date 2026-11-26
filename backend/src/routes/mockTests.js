@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { scoreMockTest } from '../services/scoring.js';
+import { buildStudentContext, canStudentSeeMockTest } from '../sync/collections.js';
 
 export const mockTestsRouter = Router();
 mockTestsRouter.use(requireAuth);
@@ -39,6 +40,10 @@ mockTestsRouter.post('/:testId/start', studentOnly, async (req, res, next) => {
     if (open) return res.json(sessionInfo(open));
 
     if (test.enabled !== true) return res.status(403).json({ error: 'This mock test is not available.' });
+    // Private tests: only students of the batches (courses) the admin chose
+    if (!canStudentSeeMockTest(test, await buildStudentContext(studentId))) {
+      return res.status(403).json({ error: 'This mock test is only for students of another batch.' });
+    }
     if (!(test.questions || []).length) return res.status(403).json({ error: 'This mock test has no questions yet.' });
     const previous = await db.collection('mock_attempts').countDocuments({ studentId, testId: test.id, _deleted: { $ne: true } });
     if (previous > 0 && !test.allowRetest) {

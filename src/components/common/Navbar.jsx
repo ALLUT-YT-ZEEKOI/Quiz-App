@@ -30,6 +30,7 @@ export const Navbar = ({ onMobileMenuToggle }) => {
   const {
     currentRole,
     studentModules,
+    adminModules,
     currentUser,
     switchRole,
     darkMode,
@@ -145,7 +146,7 @@ export const Navbar = ({ onMobileMenuToggle }) => {
           </div>
 
           {/* Notifications Bell (hidden for students when the admin disabled the Notice Board) */}
-          {(currentRole !== 'student' || studentModules?.notifications !== false) && (
+          {(currentRole === 'student' ? studentModules?.notifications !== false : adminModules?.notifications !== false) && (
           <div className="relative shrink-0" ref={notifRef}>
             <button
               onClick={() => {

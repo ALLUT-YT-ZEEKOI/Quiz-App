@@ -21,6 +21,7 @@ import {
   Trophy
 } from 'lucide-react';
 import { APP_VERSION } from '../../utils/version';
+import { canStudentSeeMockTest } from '../../utils/mockTests';
 
 export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) => {
   const {
@@ -41,14 +42,18 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     doubts,
     retests,
     studentAccounts,
-    studentModules
+    studentModules,
+    adminModules,
+    checkEnrollmentStatus
   } = useApp();
 
   const myId = currentUser?.id || 'STU001';
   const myNewDoubtReplies = (doubts || []).filter((d) => d.studentId === myId && !d.seenByStudent).length;
   const myGrantedRetests = (retests || []).filter((r) => r.studentId === myId && r.status === 'granted').length;
 
-  const visibleMockTests = (mockTests || []).filter((t) => t.enabled === true).length;
+  const visibleMockTests = (mockTests || []).filter((t) =>
+    canStudentSeeMockTest(t, (subjectId) => checkEnrollmentStatus?.(myId, subjectId) === 'active')
+  ).length;
   const liveExamsCount = (examinations || []).filter((e) => e.status === 'Live Now').length;
   const unreadNotifsCount = (notifications || []).filter((n) => !n.read).length;
 
@@ -64,7 +69,9 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     return true;
   });
   const studentUnreadCount = studentNotifs.filter((n) => !n.read).length;
-  const hiddenModulesCount = Object.values(studentModules || {}).filter((v) => v === false).length;
+  const hiddenModulesCount =
+    Object.values(studentModules || {}).filter((v) => v === false).length +
+    Object.values(adminModules || {}).filter((v) => v === false).length;
 
   const teacherNavItems = [
     {
@@ -144,7 +151,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     },
     {
       id: 'permissions',
-      label: 'Student Permissions',
+      label: 'Permissions',
       icon: ShieldCheck,
       targetView: 'permissions',
       badge: hiddenModulesCount > 0 ? `${hiddenModulesCount} off` : undefined,
@@ -217,8 +224,10 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
   ];
 
   // Students only see the modules the admin has enabled (sidebar item ids match module ids)
+  // Admin: sections hidden on the Permissions page drop out (Permissions itself always stays).
+  // Students: only the modules the admin has enabled. Item ids match module ids.
   const navItems = currentRole === 'teacher'
-    ? teacherNavItems
+    ? teacherNavItems.filter((item) => item.id === 'permissions' || adminModules?.[item.id] !== false)
     : studentNavItems.filter((item) => studentModules?.[item.id] !== false);
 
   const handleItemClick = (item) => {

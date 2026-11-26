@@ -7,7 +7,7 @@ import { INITIAL_EXAMINATIONS, generateLiveMonitoringData, generateCompletedExam
 import { formatEmbedUrl } from '../utils/videoUtils';
 import { createSectionId, normalizeCurriculumSections } from '../utils/curriculumSections';
 import { saveNoteFile, deleteNoteFiles, collectFileNoteIds } from '../utils/notesStorage';
-import { addDays, isLifetime, pickLatestApproved, endOfDate } from '../utils/subscriptionUtils';
+import { addDays, isLifetime, pickLatestApproved, endOfDate, formatDate } from '../utils/subscriptionUtils';
 import { hashPassword, verifyPassword } from '../utils/passwordHash';
 import { buildStudentFromRegistration, normalizePhone } from '../utils/studentRegistration';
 import { api, backendEnabled, getToken, setToken, clearToken, setUnauthorizedHandler } from '../api/client';
@@ -16,7 +16,9 @@ import {
   STUDENT_MODULES_SETTING_ID,
   resolveStudentModules,
   CONTENT_ACCESS_SETTING_ID,
-  resolveContentAccess
+  resolveContentAccess,
+  ADMIN_MODULES_SETTING_ID,
+  resolveAdminModules
 } from '../utils/studentModules';
 import {
   scoreMockTest,
@@ -696,6 +698,21 @@ export const AppProvider = ({ children }) => {
     });
   };
 
+  // Admin panel sections the admin chose to show in their own menu
+  const adminModules = resolveAdminModules(appSettings);
+
+  /** Admin: show/hide sections of the admin panel. `changes` is { moduleId: boolean }. */
+  const updateAdminModules = (changes) => {
+    setAppSettings((prev) => {
+      const item = {
+        id: ADMIN_MODULES_SETTING_ID,
+        modules: { ...resolveAdminModules(prev), ...changes },
+        updatedAt: new Date().toISOString()
+      };
+      return [item, ...(prev || []).filter((s) => s?.id !== ADMIN_MODULES_SETTING_ID)];
+    });
+  };
+
   // Lesson videos / study notes / Q&A visibility, per subject and per course (module)
   const contentAccess = resolveContentAccess(appSettings);
 
@@ -737,6 +754,9 @@ export const AppProvider = ({ children }) => {
       description: (data.description || '').trim(),
       durationMinutes: Math.max(1, Number(data.durationMinutes) || 60),
       allowRetest: !!data.allowRetest,
+      // Public: every student. Private: only students of the chosen batches (courses).
+      access: data.access === 'private' ? 'private' : 'public',
+      batchSubjectIds: data.access === 'private' ? [...new Set(data.batchSubjectIds || [])] : [],
       enabled: false, // hidden until the admin adds questions and enables it
       questions: [],
       createdAt: now,
@@ -2038,53 +2058,92 @@ export const AppProvider = ({ children }) => {
     showToast('Payment proof sent to Admin! Waiting for manual approval.', 'success', 5000);
   };
 
-  // Approval starts the access period. Renewing while still active extends from the
-  // current end date, so the student never loses remaining days.
-  const approveSubscription = (requestId) => {
+  /**
+   * The access period a pending request gets by default (from the subject's plan).
+   * Renewing while still active extends from the current end date, so the student never loses
+   * remaining days. Returns { startsAt: Date, expiresAt: Date | null (lifetime), days, accessUntil }.
+   */
+  const computeDefaultPeriod = (req, allSubscriptions, now = new Date()) => {
+    // Older requests have no snapshot: fall back to the subject's current validity
+    const subject = curriculumSubjects.find((sub) => sub.id === req.subjectId);
+    const subjectDays = Number(subject?.validityDays) || 0;
+    const days = req.validityDays ?? subjectDays;
+    // Calendar access: a fixed last day (older requests have no snapshot: use the subject's)
+    const accessUntil = req.accessUntil !== undefined ? req.accessUntil : subject?.accessUntil || null;
+    const fixedEnd = endOfDate(accessUntil);
+
+    const current = pickLatestApproved(
+      allSubscriptions.filter((s) => s.id !== req.id && s.studentId === req.studentId && s.subjectId === req.subjectId),
+      now
+    );
+    const currentEnd = current?.timing.expiresAt;
+    const stillActive = currentEnd && currentEnd > now;
+    if (fixedEnd) {
+      // Access runs from today until the chosen date (never shortening access already granted)
+      return { startsAt: now, expiresAt: stillActive && currentEnd > fixedEnd ? currentEnd : fixedEnd, days, accessUntil };
+    }
+    const startsAt = stillActive ? currentEnd : now;
+    return { startsAt, expiresAt: isLifetime(days) ? null : addDays(startsAt, days), days, accessUntil: null };
+  };
+
+  /** Default access period for a pending request, for the approval dialog. */
+  const getDefaultAccessPeriod = (requestId) => {
+    const req = subscriptions.find((s) => s.id === requestId);
+    return req ? computeDefaultPeriod(req, subscriptions) : null;
+  };
+
+  /**
+   * Approves a payment. Without options the plan's period is used; with
+   * { expiresAt } (ISO string, or null for lifetime) the admin's own end date is used.
+   */
+  const approveSubscription = (requestId, options = {}) => {
     const now = new Date();
+    const custom = Object.prototype.hasOwnProperty.call(options, 'expiresAt');
     setSubscriptions((prev) => {
       const req = prev.find((s) => s.id === requestId);
       if (!req) return prev;
-      // Older requests have no snapshot: fall back to the subject's current validity
-      const subject = curriculumSubjects.find((sub) => sub.id === req.subjectId);
-      const subjectDays = Number(subject?.validityDays) || 0;
-      const days = req.validityDays ?? subjectDays;
-      // Calendar access: a fixed last day (older requests have no snapshot: use the subject's)
-      const accessUntil = req.accessUntil !== undefined ? req.accessUntil : subject?.accessUntil || null;
-      const fixedEnd = endOfDate(accessUntil);
-
-      const current = pickLatestApproved(
-        prev.filter((s) => s.studentId === req.studentId && s.subjectId === req.subjectId),
-        now
-      );
-      const currentEnd = current?.timing.expiresAt;
-      const stillActive = currentEnd && currentEnd > now;
-      let startsAt;
-      let expiresAt;
-      if (fixedEnd) {
-        // Access runs from today until the chosen date (never shortening access already granted)
-        startsAt = now;
-        expiresAt = (stillActive && currentEnd > fixedEnd ? currentEnd : fixedEnd).toISOString();
-      } else {
-        startsAt = stillActive ? currentEnd : now;
-        expiresAt = isLifetime(days) ? null : addDays(startsAt, days).toISOString();
-      }
+      const period = computeDefaultPeriod(req, prev, now);
+      const expiresAt = custom ? options.expiresAt : period.expiresAt ? period.expiresAt.toISOString() : null;
 
       return prev.map((s) =>
         s.id === requestId
           ? {
               ...s,
               status: 'approved',
-              validityDays: Number(days) || 0,
-              accessUntil: fixedEnd ? accessUntil : null,
-              startsAt: startsAt.toISOString(),
+              validityDays: Number(period.days) || 0,
+              accessUntil: endOfDate(period.accessUntil) ? period.accessUntil : null,
+              startsAt: period.startsAt.toISOString(),
               expiresAt,
+              customEnd: custom,
               reviewedAt: now.toISOString().replace('T', ' ').slice(0, 16)
             }
           : s
       );
     });
     showToast('Subscription approved! Student access unlocked.', 'success');
+  };
+
+  /**
+   * Admin: change when an approved subscription ends (ISO string, or null for lifetime).
+   * A date that has already passed ends the student's access straight away.
+   */
+  const updateSubscriptionEnd = (subscriptionId, expiresAt) => {
+    setSubscriptions((prev) =>
+      prev.map((s) =>
+        s.id === subscriptionId && s.status === 'approved'
+          ? { ...s, expiresAt, customEnd: true, endChangedAt: new Date().toISOString() }
+          : s
+      )
+    );
+    const ended = expiresAt && new Date(expiresAt) <= new Date();
+    showToast(
+      expiresAt === null
+        ? 'Access changed to lifetime.'
+        : ended
+        ? 'Access ended. The student can no longer open this subject.'
+        : `Access now ends on ${formatDate(expiresAt)}.`,
+      ended ? 'info' : 'success'
+    );
   };
 
   const rejectSubscription = (requestId) => {
@@ -2497,6 +2556,8 @@ export const AppProvider = ({ children }) => {
         copyPortalUrl,
         studentModules,
         updateStudentModules,
+        adminModules,
+        updateAdminModules,
         contentAccess,
         updateContentAccess,
         curriculumSubjects,
@@ -2521,6 +2582,8 @@ export const AppProvider = ({ children }) => {
         subscriptions,
         submitSubscriptionRequest,
         approveSubscription,
+        getDefaultAccessPeriod,
+        updateSubscriptionEnd,
         rejectSubscription,
         checkEnrollmentStatus,
         getSubjectSubscription,
