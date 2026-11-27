@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { StoredImage } from './StoredImage';
 import { AccessPeriodModal, subscriptionStart } from './AccessPeriodModal';
+import { BulkEndDateModal } from './BulkEndDateModal';
 import { useApp } from '../../context/AppContext';
+import { confirmDialog } from '../common/ConfirmDialog';
 import {
   ShieldCheck,
   Clock,
@@ -16,7 +18,8 @@ import {
   AlertTriangle,
   Infinity as InfinityIcon,
   RefreshCw,
-  CalendarCog
+  CalendarCog,
+  BookOpen
 } from 'lucide-react';
 import {
   getSubscriptionTiming,
@@ -37,6 +40,8 @@ export const AdminSubscriptions = () => {
     rejectSubscription,
     getDefaultAccessPeriod,
     updateSubscriptionEnd,
+    bulkUpdateSubscriptionEnd,
+    curriculumSubjects,
     showToast
   } = useApp();
 
@@ -65,6 +70,8 @@ export const AdminSubscriptions = () => {
 
   const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'active', 'expired', 'rejected', 'all'
   const [searchTerm, setSearchTerm] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('all'); // 'all' or a subject (batch) id
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [previewScreenshotUrl, setPreviewScreenshotUrl] = useState(null);
 
   // Attach validity timing to every approved subscription
@@ -89,18 +96,19 @@ export const AdminSubscriptions = () => {
   const byExpiry = (a, b) =>
     (a.timing?.expiresAt?.getTime() ?? Infinity) - (b.timing?.expiresAt?.getTime() ?? Infinity);
 
-  const pendingList = enriched.filter((s) => s.status === 'pending');
-  const activeList = enriched
+  const scoped = subjectFilter === 'all' ? enriched : enriched.filter((s) => s.subjectId === subjectFilter);
+  const pendingList = scoped.filter((s) => s.status === 'pending');
+  const activeList = scoped
     .filter((s) => s.status === 'approved' && s.timing.state !== 'expired')
     .sort(byExpiry); // soonest to end first
-  const expiredList = enriched
+  const expiredList = scoped
     .filter((s) => s.status === 'approved' && s.timing.state === 'expired' && !s.renewed)
     .sort((a, b) => byExpiry(b, a)); // most recently ended first
-  const rejectedList = enriched.filter((s) => s.status === 'rejected');
+  const rejectedList = scoped.filter((s) => s.status === 'rejected');
   const expiringSoonCount = activeList.filter((s) => s.timing.state === 'expiring').length;
 
   const getFilteredList = () => {
-    let base = enriched;
+    let base = scoped;
     if (activeTab === 'pending') base = pendingList;
     else if (activeTab === 'active') base = activeList;
     else if (activeTab === 'expired') base = expiredList;
@@ -118,6 +126,13 @@ export const AdminSubscriptions = () => {
   };
 
   const filteredRequests = getFilteredList();
+  // Approved subscriptions on screen: these get the bulk end-date change
+  const bulkTargets = filteredRequests.filter((s) => s.status === 'approved');
+  const subjectName = (subjectFilter !== 'all' && (curriculumSubjects || []).find((c) => c.id === subjectFilter)?.name) || '';
+  // Subjects (batches) that have subscriptions, with how many
+  const subjectOptions = (curriculumSubjects || [])
+    .map((c) => ({ id: c.id, name: c.name, count: enriched.filter((s) => s.subjectId === c.id).length }))
+    .filter((c) => c.count > 0);
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200 pb-16">
@@ -149,7 +164,7 @@ export const AdminSubscriptions = () => {
             { id: 'active', short: 'Active', label: 'Active', count: activeList.length, active: 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25' },
             { id: 'expired', short: 'Expired', label: 'Expired', count: expiredList.length, active: 'bg-slate-600 text-white shadow-md shadow-slate-600/25' },
             { id: 'rejected', short: 'Rejected', label: 'Rejected', count: rejectedList.length, active: 'bg-red-500 text-white shadow-md shadow-red-500/25' },
-            { id: 'all', short: 'All', label: 'All', count: subscriptions.length, active: 'bg-[#087F8C] text-white shadow-md shadow-[#087F8C]/25' }
+            { id: 'all', short: 'All', label: 'All', count: scoped.length, active: 'bg-[#087F8C] text-white shadow-md shadow-[#087F8C]/25' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -190,16 +205,55 @@ export const AdminSubscriptions = () => {
           </button>
         )}
 
-        <div className="relative w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search student or phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20 focus:border-[#087F8C]/50 shadow-subtle"
-          />
+        <div className="flex flex-col md:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search student or phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20 focus:border-[#087F8C]/50 shadow-subtle"
+            />
+          </div>
+          <div className="relative md:w-72">
+            <BookOpen className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              aria-label="Subject or batch"
+              value={subjectFilter}
+              onChange={(e) => setSubjectFilter(e.target.value)}
+              className="w-full pl-10 pr-3 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
+            >
+              <option value="all">All subjects &amp; batches</option>
+              {subjectOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.count})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+
+        {bulkTargets.length > 0 && activeTab !== 'pending' && activeTab !== 'rejected' && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-[#E6F4F6]/70 dark:bg-[#0E353E]/40 border border-[#087F8C]/20">
+            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300">
+              <strong>{bulkTargets.length}</strong> approved {bulkTargets.length === 1 ? 'subscription' : 'subscriptions'} shown
+              {subjectName ? (
+                <>
+                  {' '}in <strong>{subjectName}</strong>
+                </>
+              ) : null}
+              . Extend or change all their end dates at once.
+            </p>
+            <button
+              type="button"
+              onClick={() => setBulkOpen(true)}
+              className="shrink-0 px-3.5 py-2 rounded-xl bg-[#087F8C] hover:bg-[#0C4E5B] text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <CalendarCog className="w-4 h-4" /> Change end date for all ({bulkTargets.length})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Requests — 2 cards per row on mobile */}
@@ -333,18 +387,46 @@ export const AdminSubscriptions = () => {
                   ) : isApproved ? (
                     <>
                       <SubscriptionValidity req={req} timing={timing} />
-                      <button
-                        type="button"
-                        onClick={() => setPeriodDialog({ mode: 'edit', req })}
-                        className="w-full py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#087F8C]/50 hover:text-[#087F8C] dark:hover:text-teal-300 text-[10px] sm:text-[11px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
-                      >
-                        <CalendarCog className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                        Change end date
-                      </button>
+                      <div className="flex gap-1 sm:gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setPeriodDialog({ mode: 'edit', req })}
+                          className="flex-1 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#087F8C]/50 hover:text-[#087F8C] dark:hover:text-teal-300 text-[10px] sm:text-[11px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
+                        >
+                          <CalendarCog className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          Change end date
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = await confirmDialog({
+                              title: `Reject ${req.studentName}'s subscription?`,
+                              message: `${req.studentName} loses access to ${req.subjectName} right away. You can approve it again later from the Rejected tab.`,
+                              confirmLabel: 'Reject',
+                              tone: 'danger'
+                            });
+                            if (ok) rejectSubscription(req.id);
+                          }}
+                          className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-red-200 dark:border-red-900/60 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-[10px] sm:text-[11px] font-semibold inline-flex items-center justify-center gap-0.5 sm:gap-1"
+                        >
+                          <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          <span>Reject</span>
+                        </button>
+                      </div>
                     </>
                   ) : (
-                    <div className="text-[10px] sm:text-[11px] text-slate-500">
-                      Reviewed: <span className="font-semibold text-slate-700 dark:text-slate-300">{req.reviewedAt || 'Done'}</span>
+                    <div className="space-y-2">
+                      <div className="text-[10px] sm:text-[11px] text-slate-500">
+                        Rejected: <span className="font-semibold text-slate-700 dark:text-slate-300">{req.reviewedAt || 'Done'}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPeriodDialog({ mode: 'approve', req })}
+                        className="w-full py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] sm:text-[11px] inline-flex items-center justify-center gap-0.5 sm:gap-1 shadow-sm active:scale-95 transition-all"
+                      >
+                        <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        Approve
+                      </button>
                     </div>
                   )}
                 </div>
@@ -352,6 +434,18 @@ export const AdminSubscriptions = () => {
             );
           })}
         </div>
+      )}
+
+      {bulkOpen && (
+        <BulkEndDateModal
+          targets={bulkTargets}
+          scopeLabel={[subjectName || 'All subjects & batches', searchTerm.trim() && `matching "${searchTerm.trim()}"`].filter(Boolean).join(' · ')}
+          onClose={() => setBulkOpen(false)}
+          onApply={(updates) => {
+            bulkUpdateSubscriptionEnd(updates);
+            setBulkOpen(false);
+          }}
+        />
       )}
 
       {periodDialog && dialogProps && (

@@ -45,6 +45,19 @@ export const scoreExam = (exam, answers) => {
   };
 };
 
+/**
+ * Marks taken off per wrong answer for a module's practice test (a section's day, or general
+ * practice). Same rule as dayQuizSettings in the frontend's src/utils/curriculumSections.js.
+ */
+const negativeMarkFor = (module, sectionId, day) => {
+  const fromModule = Math.max(0, Number(module?.negativeMark) || 0);
+  if (!sectionId) return fromModule;
+  const section = (module?.sections || []).find((s) => s.id === sectionId);
+  const stored = section?.daySettings?.[String(Number(day) || 1)];
+  if (!stored) return fromModule;
+  return Math.max(0, Number(stored.negativeMark) || 0);
+};
+
 /** Re-scores a module practice quiz attempt from the module's questions (matched by questionId). */
 export const scoreModuleQuiz = (subject, attempt) => {
   const module = (subject?.modules || []).find((m) => m.id === attempt.moduleId);
@@ -69,11 +82,21 @@ export const scoreModuleQuiz = (subject, attempt) => {
     .filter(Boolean);
   if (answers.length === 0) return null;
   const correctCount = answers.filter((a) => a.isCorrect).length;
-  const scorePct = Math.round((correctCount / answers.length) * 100);
+  const wrongCount = answers.filter((a) => a.selectedOption !== null && !a.isCorrect).length;
+  // +1 per correct, minus the day's negative mark per wrong answer (skipped = 0)
+  const negativeMark = negativeMarkFor(module, attempt.sectionId, attempt.day);
+  const negativeTotal = Math.round(wrongCount * negativeMark * 100) / 100;
+  const marks = Math.round((correctCount - negativeTotal) * 100) / 100;
+  const scorePct = Math.round((Math.max(0, marks) / answers.length) * 100);
   return {
     answers,
     totalQuestions: answers.length,
     correctCount,
+    wrongCount,
+    negativeMark,
+    negativeTotal,
+    marks,
+    maxMarks: answers.length,
     scorePct,
     status: scorePct >= 60 ? 'Passed' : 'Needs Practice'
   };

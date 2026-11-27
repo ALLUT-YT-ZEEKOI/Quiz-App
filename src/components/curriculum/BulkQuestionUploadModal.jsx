@@ -202,7 +202,8 @@ export const BulkQuestionUploadModal = ({
   onClose,
   subjectName,
   moduleName,
-  onImport
+  onImport,
+  extraSettings = null // optional settings shown above the paste area (e.g. the test's timer)
 }) => {
   const { difficultyLevels = [], matchesDifficulty = () => false } = useApp();
   const [inputText, setInputText] = useState('');
@@ -457,6 +458,7 @@ export const BulkQuestionUploadModal = ({
 
         {/* Content Area */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+          {extraSettings}
           {activeTab === 'paste' ? (
             <div className="space-y-4">
               {/* Instructions banner */}

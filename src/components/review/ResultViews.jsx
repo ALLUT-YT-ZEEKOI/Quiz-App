@@ -81,6 +81,14 @@ export const AttemptStats = ({ record }) => {
           </div>
         ))}
       </div>
+      {record.negativeMark > 0 && (
+        <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/30 border border-rose-200/70 dark:border-rose-900/50 rounded-lg px-2.5 py-1.5">
+          Negative marking: {record.wrong} wrong × −{record.negativeMark} = <strong>−{record.negativeTotal}</strong> marks · Final{' '}
+          <strong>
+            {record.score} / {record.maxScore}
+          </strong>
+        </p>
+      )}
       {(started || submitted) && (
         <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
           <CalendarClock className="w-3.5 h-3.5 shrink-0" />
@@ -193,7 +201,7 @@ export const AttemptReview = ({ record, attempts = [], onSelect, perspective = '
           <div className="text-right shrink-0">
             <div className={`text-2xl sm:text-3xl font-black ${tone.text}`}>{record.pct}%</div>
             <div className="text-[11px] text-slate-500 font-semibold">
-              {record.score} / {record.maxScore} {record.kind === 'quiz' ? 'correct' : 'marks'}
+              {record.score} / {record.maxScore} {record.kind === 'quiz' && !record.negativeMark ? 'correct' : 'marks'}
             </div>
           </div>
         </div>

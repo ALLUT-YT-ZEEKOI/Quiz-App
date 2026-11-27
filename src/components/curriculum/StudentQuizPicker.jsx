@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Lock, Award, CalendarDays, Layers, PlayCircle, RotateCcw, CheckCircle2, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { groupQuestionsBySection, testKeyOf, dayQuizSettings } from '../../utils/curriculumSections';
+import { groupQuestionsBySection, testKeyOf, dayQuizSettings, testLabelOf, isSortedQuestion } from '../../utils/curriculumSections';
+import { QuestionSearchBox, SearchResultCard, questionMatches } from '../common/QuestionSearch';
 
 // Colours per level (by the level's colour, so renamed levels keep theirs)
 const LEVEL_TONE = {
@@ -36,8 +37,12 @@ const ScoreRing = ({ pct }) => {
  * onStart(target, level), onViewResults(target) (left out when the admin hides Results)
  */
 export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResults }) => {
-  const { difficultyLevels, matchesDifficulty } = useApp();
+  const { difficultyLevels, matchesDifficulty, getDifficultyLabel } = useApp();
   const { groups, unsorted } = groupQuestionsBySection(module);
+  // Search the module's practice questions by a word (answers stay hidden until "Show answer")
+  const [search, setSearch] = useState('');
+  const term = search.trim();
+  const found = term ? (module.questions || []).filter((q) => questionMatches(q, term)) : [];
 
   const attemptsFor = (key) =>
     myAttempts
@@ -49,11 +54,14 @@ export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResu
     const tries = attemptsFor(key);
     const last = tries[0];
     const best = tries.length ? Math.max(...tries.map((a) => Number(a.scorePct) || 0)) : null;
-    const retestAllowed = dayQuizSettings(
+    const daySettings = dayQuizSettings(
       module,
       target.general ? null : target.sectionId,
       target.general ? null : target.day
-    ).allowRetest;
+    );
+    const retestAllowed = daySettings.allowRetest;
+    const timeLimit = daySettings.timeLimitMinutes || 0;
+    const negativeMark = daySettings.negativeMark || 0;
     const locked = !retestAllowed && !!last;
     const pct = last ? Number(last.scorePct) || 0 : null;
     const levels = difficultyLevels
@@ -71,6 +79,19 @@ export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResu
             <h4 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">{title}</h4>
             <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
               {questions.length} {questions.length === 1 ? 'question' : 'questions'}
+              {timeLimit > 0 && (
+                <span className="ml-1.5 inline-flex items-center gap-0.5 px-1.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 font-bold align-middle">
+                  ⏱ {timeLimit} min
+                </span>
+              )}
+              {negativeMark > 0 && (
+                <span
+                  className="ml-1.5 inline-flex items-center gap-0.5 px-1.5 rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold align-middle"
+                  title={`Each wrong answer takes off ${negativeMark} mark`}
+                >
+                  −{negativeMark} per wrong
+                </span>
+              )}
               {tries.length > 0 && (
                 <>
                   {' · '}
@@ -185,7 +206,32 @@ export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResu
         Choose a day to practise. Each day is its own test, and your result is saved for that day.
       </p>
 
-      {sectionsWithQuestions.map((g) => {
+      <QuestionSearchBox
+        value={search}
+        onChange={setSearch}
+        count={term ? found.length : undefined}
+        placeholder="Search this module's questions, e.g. standard"
+      />
+
+      {term && (
+        <div className="space-y-2.5">
+          {found.length === 0 ? (
+            <p className="p-6 text-center text-xs text-slate-400">No question contains &ldquo;{term}&rdquo;.</p>
+          ) : (
+            found.map((q) => (
+              <SearchResultCard
+                key={q.id}
+                context={`${isSortedQuestion(module, q) ? testLabelOf(module, q.sectionId, q.day) : 'General practice'} · ${getDifficultyLabel(q.difficulty)}`}
+                question={q}
+                term={term}
+                answer="toggle"
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {!term && sectionsWithQuestions.map((g) => {
         const days = g.days.filter((d) => d.questions.length > 0);
         const done = days.filter((d) => attemptsFor(testKeyOf(g.section.id, d.day)).length > 0).length;
         const totalQ = days.reduce((n, d) => n + d.questions.length, 0);
@@ -227,7 +273,7 @@ export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResu
         );
       })}
 
-      {unsorted.length > 0 && (
+      {!term && unsorted.length > 0 && (
         <section className="space-y-3">
           <header className="flex items-center gap-3">
             <span className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">

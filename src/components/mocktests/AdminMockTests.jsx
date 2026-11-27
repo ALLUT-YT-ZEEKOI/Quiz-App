@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Plus, CalendarDays, Clock, ListChecks, Pencil, Trash2, BarChart3, ClipboardList, Eye, EyeOff, RotateCcw, Globe, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { confirmDialog } from '../common/ConfirmDialog';
+import { QuestionSearchBox, SearchResultCard, questionMatches } from '../common/QuestionSearch';
 import { MockTestFormModal } from './MockTestFormModal';
 import { PageHero, Toggle, primaryBtn, secondaryBtn } from './MockTestUi';
 import { formatDuration, groupByDay, isPrivateMockTest } from '../../utils/mockTests';
@@ -15,6 +16,7 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
 
   // Filter: all / public / private tests, and for private ones a single batch
   const [accessFilter, setAccessFilter] = useState('all'); // 'all' | 'public' | 'private'
+  const [questionSearch, setQuestionSearch] = useState(''); // a word to find in every test's questions
   const [batchFilter, setBatchFilter] = useState('all'); // 'all' | batch (subject) id
   const privateTests = mockTests.filter(isPrivateMockTest);
   const counts = { all: mockTests.length, public: mockTests.length - privateTests.length, private: privateTests.length };
@@ -113,6 +115,50 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
       </div>
 
       {mockTests.length > 0 && (
+        <QuestionSearchBox
+          value={questionSearch}
+          onChange={setQuestionSearch}
+          count={
+            questionSearch.trim()
+              ? mockTests.reduce((n, t) => n + (t.questions || []).filter((q) => questionMatches(q, questionSearch)).length, 0)
+              : undefined
+          }
+          placeholder="Search questions in all mock tests, e.g. standard"
+        />
+      )}
+
+      {/* Questions found in any mock test */}
+      {questionSearch.trim() && (
+        <div className="space-y-2.5">
+          {mockTests
+            .flatMap((t) =>
+              (t.questions || []).map((q, i) => ({ t, q, i })).filter(({ q }) => questionMatches(q, questionSearch))
+            )
+            .map(({ t, q, i }) => (
+              <SearchResultCard
+                key={`${t.id}:${q.id || i}`}
+                context={`${t.title} · Day ${t.day} · Q${i + 1}`}
+                question={q}
+                term={questionSearch}
+                answer="shown"
+                action={
+                  <button
+                    type="button"
+                    onClick={() => onOpenQuestions(t.id)}
+                    className="px-2 py-1 rounded-lg text-[11px] font-bold bg-[#087F8C] hover:bg-[#0C4E5B] text-white"
+                  >
+                    Open test
+                  </button>
+                }
+              />
+            ))}
+          {!mockTests.some((t) => (t.questions || []).some((q) => questionMatches(q, questionSearch))) && (
+            <p className="p-6 text-center text-xs text-slate-400">No mock test question contains &ldquo;{questionSearch.trim()}&rdquo;.</p>
+          )}
+        </div>
+      )}
+
+      {!questionSearch.trim() && mockTests.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           <div role="group" aria-label="Show tests" className="inline-flex p-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle self-start">
             {[
@@ -165,7 +211,7 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
         </div>
       )}
 
-      {mockTests.length > 0 && filtering && days.length === 0 && (
+      {!questionSearch.trim() && mockTests.length > 0 && filtering && days.length === 0 && (
         <div className="p-6 sm:p-10 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center space-y-2">
           <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
             No {accessFilter} mock tests{batchFilter !== 'all' ? ` for ${batchName(batchFilter)}` : ''}.
@@ -189,7 +235,7 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
         </div>
       )}
 
-      {days.map(({ day, tests }) => (
+      {!questionSearch.trim() && days.map(({ day, tests }) => (
         <section key={day} className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">

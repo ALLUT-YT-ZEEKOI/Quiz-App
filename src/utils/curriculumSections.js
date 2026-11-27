@@ -142,7 +142,9 @@ export const dayQuizSettings = (module, sectionId, day) => {
   const fromModule = {
     allowRetest: module?.allowRetest !== false,
     shuffleQuestions: !!module?.shuffleQuestions,
-    shuffleOptions: !!module?.shuffleOptions
+    shuffleOptions: !!module?.shuffleOptions,
+    timeLimitMinutes: Math.max(0, Number(module?.timeLimitMinutes) || 0),
+    negativeMark: Math.max(0, Number(module?.negativeMark) || 0)
   };
   if (!sectionId) return fromModule;
 
@@ -153,7 +155,11 @@ export const dayQuizSettings = (module, sectionId, day) => {
   return {
     allowRetest: stored.allowRetest !== false,
     shuffleQuestions: !!stored.shuffleQuestions,
-    shuffleOptions: !!stored.shuffleOptions
+    shuffleOptions: !!stored.shuffleOptions,
+    // Minutes allowed for this day's test (0 = no timer)
+    timeLimitMinutes: Math.max(0, Number(stored.timeLimitMinutes) || 0),
+    // Marks taken off for each wrong answer (0 = no negative marking). Same rule on the server.
+    negativeMark: Math.max(0, Number(stored.negativeMark) || 0)
   };
 };
 
@@ -173,4 +179,21 @@ export const questionsForTest = (module, target) => {
   const questions = module?.questions || [];
   if (target.general) return questions.filter((q) => !isSortedQuestion(module, q));
   return questions.filter((q) => q.sectionId === target.sectionId && (Number(q.day) || 1) === Number(target.day));
+};
+
+/**
+ * Marks for a practice test: +1 per correct answer, minus `negativeMark` per wrong one (skipped = 0).
+ * Same calculation as the server (backend/src/services/scoring.js).
+ */
+export const quizMarks = (correct, wrong, total, negativeMark = 0) => {
+  const neg = Math.max(0, Number(negativeMark) || 0);
+  const minus = Math.round(wrong * neg * 100) / 100;
+  const marks = Math.round((correct - minus) * 100) / 100;
+  return {
+    marks,
+    maxMarks: total,
+    negativeMark: neg,
+    negativeTotal: minus,
+    scorePct: total ? Math.round((Math.max(0, marks) / total) * 100) : 0
+  };
 };

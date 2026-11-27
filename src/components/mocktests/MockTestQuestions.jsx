@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Plus, Upload, Pencil, Trash2, ListChecks, Check, Clock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { confirmDialog } from '../common/ConfirmDialog';
+import { QuestionSearchBox, Highlight, questionMatches } from '../common/QuestionSearch';
 import { BulkQuestionUploadModal } from '../curriculum/BulkQuestionUploadModal';
 import { Modal, Toggle, primaryBtn, secondaryBtn, inputCls, labelCls } from './MockTestUi';
 import { formatDuration } from '../../utils/mockTests';
@@ -117,6 +118,7 @@ export const MockTestQuestions = ({ testId, onBack }) => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [search, setSearch] = useState(''); // a word to find in this test's questions
 
   if (!test) {
     return (
@@ -224,13 +226,23 @@ export const MockTestQuestions = ({ testId, onBack }) => {
           <p className="text-xs text-slate-500 max-w-md mx-auto">Add questions one at a time, or paste many at once with Bulk Upload.</p>
         </div>
       ) : (
+        <>
+        <QuestionSearchBox
+          value={search}
+          onChange={setSearch}
+          count={search.trim() ? questions.filter((q) => questionMatches(q, search)).length : undefined}
+          placeholder="Search this test's questions, e.g. standard"
+        />
+        {search.trim() && !questions.some((q) => questionMatches(q, search)) && (
+          <p className="p-6 text-center text-xs text-slate-400">No question in this test contains &ldquo;{search.trim()}&rdquo;.</p>
+        )}
         <ol className="space-y-3">
-          {questions.map((q, idx) => (
+          {questions.map((q, idx) => !questionMatches(q, search) ? null : (
             <li key={q.id} className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
                   <span className="text-[#087F8C] dark:text-teal-300 mr-1.5">Q{idx + 1}.</span>
-                  {q.questionText}
+                  <Highlight text={q.questionText} term={search} />
                 </p>
                 <div className="flex gap-1 shrink-0">
                   <button
@@ -264,17 +276,19 @@ export const MockTestQuestions = ({ testId, onBack }) => {
                         : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                     }`}
                   >
-                    <strong className="mr-1.5">{LETTERS[i]}.</strong>{opt}
+                    <strong className="mr-1.5">{LETTERS[i]}.</strong>
+                    <Highlight text={opt} term={search} />
                     {i === q.correctAnswer && <Check className="inline w-3.5 h-3.5 ml-1.5 -mt-0.5" />}
                   </div>
                 ))}
               </div>
               {q.explanation && (
-                <p className="mt-2.5 text-xs text-slate-500 dark:text-slate-400"><strong>Explanation:</strong> {q.explanation}</p>
+                <p className="mt-2.5 text-xs text-slate-500 dark:text-slate-400"><strong>Explanation:</strong> <Highlight text={q.explanation} term={search} /></p>
               )}
             </li>
           ))}
         </ol>
+        </>
       )}
 
       <QuestionFormModal

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Inbox, NotebookText, Eye } from 'lucide-react';
+import { Plus, Inbox, NotebookText, Eye, Pencil } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { confirmDialog } from '../common/ConfirmDialog';
 import { groupNotesBySection } from '../../utils/curriculumSections';
@@ -10,7 +10,7 @@ import { NotesList } from './ModuleNotes';
  * questions). Older notes without a section are listed as "Unsorted" (admin) / "More notes" (students).
  * Admin (editable): add notes to a section, delete, and move unsorted notes into a section.
  */
-export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onOpen, onDelete }) => {
+export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onOpen, onDelete, onEdit }) => {
   const { moveNote } = useApp();
   const { groups, unsorted } = groupNotesBySection(module);
   const total = (module.notes || []).length;
@@ -56,7 +56,7 @@ export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onO
           </header>
           <div className="p-3 sm:p-4">
             {g.notes.length > 0 ? (
-              <NotesList notes={g.notes} onOpen={onOpen} onDelete={editable ? onDelete : undefined} emptyState={null} />
+              <NotesList notes={g.notes} onOpen={onOpen} onDelete={editable ? onDelete : undefined} onEdit={editable ? onEdit : undefined} emptyState={null} />
             ) : (
               <button
                 type="button"
@@ -128,6 +128,17 @@ export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onO
                       >
                         <Eye className="w-4 h-4" />
                       </button>
+                      {onEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(n)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-[#087F8C] hover:bg-slate-100 dark:hover:bg-slate-800"
+                          aria-label={`Edit ${n.title}`}
+                          title="Edit Notes"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
                       <select
                         aria-label={`Section for ${n.title}`}
                         value=""

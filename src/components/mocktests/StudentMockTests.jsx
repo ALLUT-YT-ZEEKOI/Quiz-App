@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { CalendarDays, Clock, ListChecks, Play, RotateCcw, Eye, CheckCircle2, ClipboardList, Timer, AlertTriangle, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { QuestionSearchBox, SearchResultCard, questionMatches } from '../common/QuestionSearch';
 import { PageHero, Modal, primaryBtn, secondaryBtn } from './MockTestUi';
 import { formatDuration, groupByDay, getLocalSession, canStudentSeeMockTest, isPrivateMockTest } from '../../utils/mockTests';
 
@@ -18,6 +19,10 @@ export const StudentMockTests = ({ onStart, onViewResult }) => {
       .filter(isInBatch)
       .map((id) => (curriculumSubjects || []).find((s) => s.id === id)?.name)
       .filter(Boolean);
+
+  // Search questions of mock tests the student has already submitted (never a test not yet taken)
+  const [search, setSearch] = useState('');
+  const term = search.trim();
 
   const myAttempts = useMemo(() => {
     const map = new Map();
@@ -46,7 +51,38 @@ export const StudentMockTests = ({ onStart, onViewResult }) => {
         description="Timed practice tests for each day. The timer starts when you begin and keeps running until you submit."
       />
 
-      {days.length === 0 && (
+      <QuestionSearchBox
+        value={search}
+        onChange={setSearch}
+        placeholder="Search questions from mock tests you've taken, e.g. standard"
+      />
+
+      {term && (() => {
+        // Latest attempt of each test: its questions with the student's answer and the correct one
+        const found = [...myAttempts.values()]
+          .map((list) => list[0])
+          .flatMap((a) => (a.answers || []).map((ans, i) => ({ a, ans, i })))
+          .filter(({ ans }) => questionMatches(ans, term));
+        return (
+          <div className="space-y-2.5">
+            <p className="text-[11px] text-slate-500">
+              {found.length} {found.length === 1 ? 'match' : 'matches'} in mock tests you&apos;ve submitted. Tests you haven&apos;t taken yet aren&apos;t searched.
+            </p>
+            {found.map(({ a, ans, i }) => (
+              <SearchResultCard
+                key={`${a.id}:${i}`}
+                context={`${a.testTitle || 'Mock test'}${a.day ? ` · Day ${a.day}` : ''} · Q${i + 1}`}
+                question={ans}
+                term={term}
+                answer="shown"
+                selectedOption={ans.selectedOption}
+              />
+            ))}
+          </div>
+        );
+      })()}
+
+      {!term && days.length === 0 && (
         <div className="p-8 sm:p-14 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center space-y-2">
           <ClipboardList className="w-12 h-12 text-slate-300 mx-auto" />
           <p className="text-base font-bold text-slate-800 dark:text-slate-100">No mock tests available</p>
@@ -54,7 +90,7 @@ export const StudentMockTests = ({ onStart, onViewResult }) => {
         </div>
       )}
 
-      {days.map(({ day, tests }) => (
+      {!term && days.map(({ day, tests }) => (
         <section key={day} className="space-y-3">
           <h2 className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
             <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-[#087F8C] dark:text-teal-300" />

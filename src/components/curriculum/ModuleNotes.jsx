@@ -20,7 +20,9 @@ import {
   HardDrive,
   FolderOpen,
   CheckCircle2,
-  Info
+  Info,
+  Pencil,
+  Check
 } from 'lucide-react';
 import { getNoteFile, formatFileSize } from '../../utils/notesStorage';
 import { parseDriveLink, DRIVE_KINDS } from '../../utils/driveLinks';
@@ -116,7 +118,7 @@ const useNoteFileUrl = (note) => {
 // Notes list (shared by teacher + student)
 // =========================================================================
 
-export const NotesList = ({ notes, onOpen, onDelete, emptyState }) => {
+export const NotesList = ({ notes, onOpen, onDelete, onEdit, emptyState }) => {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   if (!notes || notes.length === 0) return emptyState || null;
@@ -224,6 +226,17 @@ export const NotesList = ({ notes, onOpen, onDelete, emptyState }) => {
                     </button>
                   )}
 
+                  {onEdit && (
+                    <button
+                      type="button"
+                      onClick={() => onEdit(note)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-[#087F8C] hover:bg-[#E6F4F6] dark:hover:bg-[#0E353E] transition-colors ml-auto"
+                      title="Edit Notes"
+                      aria-label={`Edit ${note.title}`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   {onDelete && (
                     <button
                       type="button"
@@ -425,9 +438,30 @@ const NOTE_TYPES = [
 
 const EMPTY_FORM = { title: '', description: '', url: '', content: '' };
 
-export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
-  const [type, setType] = useState('drive');
-  const [form, setForm] = useState(EMPTY_FORM);
+/**
+ * Add a note, or edit one (initialNote). sections: [{ id, title }] shows a Section picker
+ * (initialSectionId selected); onSave(noteData, file, sectionId).
+ */
+export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast, initialNote = null, sections = null, initialSectionId = '' }) => {
+  const editing = !!initialNote;
+  const isFile = initialNote?.type === 'file'; // older uploaded files: only the details can change
+  const [type, setType] = useState(() => {
+    if (!initialNote) return 'drive';
+    if (initialNote.type === 'text') return 'text';
+    if (initialNote.type === 'link') return initialNote.provider === 'gdrive' || parseDriveLink(initialNote.url || '') ? 'drive' : 'link';
+    return 'file';
+  });
+  const [form, setForm] = useState(() =>
+    initialNote
+      ? {
+          title: initialNote.title || '',
+          description: initialNote.description || '',
+          url: initialNote.url || '',
+          content: initialNote.content || ''
+        }
+      : EMPTY_FORM
+  );
+  const [sectionId, setSectionId] = useState(initialSectionId || initialNote?.sectionId || '');
   const [saving, setSaving] = useState(false);
 
   const drive = type === 'drive' ? parseDriveLink(form.url) : null;
@@ -453,17 +487,19 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
     }
 
     // Drive notes are stored as links; the app recognises Drive links when showing them
-    const noteData = {
-      type: type === 'text' ? 'text' : 'link',
-      title: form.title.trim(),
-      description: form.description.trim(),
-      ...(type === 'drive' ? { url: safeHttpUrl(form.url.trim()), provider: 'gdrive' } : {}),
-      ...(type === 'link' ? { url: safeHttpUrl(form.url.trim()) } : {}),
-      ...(type === 'text' ? { content: form.content.trim() } : {})
-    };
+    const noteData = isFile
+      ? { title: form.title.trim(), description: form.description.trim() }
+      : {
+          type: type === 'text' ? 'text' : 'link',
+          title: form.title.trim(),
+          description: form.description.trim(),
+          ...(type === 'drive' ? { url: safeHttpUrl(form.url.trim()), provider: 'gdrive' } : {}),
+          ...(type === 'link' ? { url: safeHttpUrl(form.url.trim()) } : {}),
+          ...(type === 'text' ? { content: form.content.trim() } : {})
+        };
 
     setSaving(true);
-    const ok = await onSave(noteData, null);
+    const ok = await onSave(noteData, null, sectionId || null);
     setSaving(false);
     if (ok !== false) onClose();
   };
@@ -480,7 +516,7 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
               <NotebookText className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">Add Notes</h3>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">{editing ? 'Edit Notes' : 'Add Notes'}</h3>
               <p className="text-xs text-slate-400 truncate">Module: {moduleTitle}</p>
             </div>
           </div>
@@ -490,7 +526,36 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
+          {sections && sections.length > 0 && (
+            <div>
+              <label htmlFor="note-section" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Section
+              </label>
+              <select
+                id="note-section"
+                value={sectionId}
+                onChange={(e) => setSectionId(e.target.value)}
+                className={inputClass}
+              >
+                {sections.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}
+                  </option>
+                ))}
+                {editing && <option value="">Unsorted</option>}
+              </select>
+            </div>
+          )}
+
+          {isFile && (
+            <p className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 flex items-start gap-2">
+              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>This is an uploaded file. You can change its title, description and section. To replace the file, add new notes.</span>
+            </p>
+          )}
+
           {/* Note type switcher */}
+          {!isFile && (
           <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800" role="tablist">
             {NOTE_TYPES.map(({ id, label, Icon }) => (
               <button
@@ -510,6 +575,7 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
               </button>
             ))}
           </div>
+          )}
 
           {type === 'drive' && (
             <div className="space-y-2">
@@ -611,8 +677,8 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast }) => {
               disabled={saving}
               className="flex-1 py-2.5 rounded-xl bg-[#087F8C] hover:bg-[#0C4E5B] disabled:opacity-60 text-xs font-bold text-white shadow-md shadow-[#087F8C]/20 flex items-center justify-center gap-1.5"
             >
-              {saving ? <LoaderCircle className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              <span>{saving ? 'Saving…' : 'Share Notes'}</span>
+              {saving ? <LoaderCircle className="w-4 h-4 animate-spin" /> : editing ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              <span>{saving ? 'Saving…' : editing ? 'Save Changes' : 'Share Notes'}</span>
             </button>
           </div>
         </form>

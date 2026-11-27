@@ -1771,7 +1771,15 @@ export const AppProvider = ({ children }) => {
           shuffleQuestions:
             fields.shuffleQuestions !== undefined ? !!fields.shuffleQuestions : current.shuffleQuestions,
           shuffleOptions:
-            fields.shuffleOptions !== undefined ? !!fields.shuffleOptions : current.shuffleOptions
+            fields.shuffleOptions !== undefined ? !!fields.shuffleOptions : current.shuffleOptions,
+          timeLimitMinutes:
+            fields.timeLimitMinutes !== undefined
+              ? Math.max(0, Math.min(600, Math.round(Number(fields.timeLimitMinutes) || 0)))
+              : current.timeLimitMinutes,
+          negativeMark:
+            fields.negativeMark !== undefined
+              ? Math.max(0, Math.min(4, Math.round((Number(fields.negativeMark) || 0) * 100) / 100))
+              : current.negativeMark
         };
         return {
           ...sec,
@@ -1870,6 +1878,26 @@ export const AppProvider = ({ children }) => {
     };
     mapModule(subjectId, moduleId, (m) => ({ ...m, notes: [...(m.notes || []), newNote] }));
     showToast(`Notes "${newNote.title}" shared with students`, 'success');
+    return true;
+  };
+
+  /**
+   * Admin edits a study note (title, description, link / text, section). Switching between a link and
+   * written notes drops the old content; an uploaded file keeps its file.
+   */
+  const updateNote = (subjectId, moduleId, noteId, fields) => {
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      notes: (m.notes || []).map((n) => {
+        if (n.id !== noteId) return n;
+        const { url, content, provider, sectionId, ...rest } = n;
+        const base = n.type === 'file' ? { ...n } : { ...rest, ...(sectionId ? { sectionId } : {}) };
+        const next = { ...base, ...fields, updatedAt: new Date().toISOString() };
+        if ('sectionId' in fields && !fields.sectionId) delete next.sectionId;
+        return next;
+      })
+    }));
+    showToast('Notes updated', 'success');
     return true;
   };
 
@@ -2365,7 +2393,23 @@ export const AppProvider = ({ children }) => {
     );
   };
 
+  /** Admin: new end dates for many approved subscriptions at once ([{ id, expiresAt }], null = lifetime). */
+  const bulkUpdateSubscriptionEnd = (updates) => {
+    const byId = new Map((updates || []).map((u) => [u.id, u.expiresAt]));
+    if (!byId.size) return;
+    const at = new Date().toISOString();
+    setSubscriptions((prev) =>
+      prev.map((s) =>
+        byId.has(s.id) && s.status === 'approved'
+          ? { ...s, expiresAt: byId.get(s.id), customEnd: true, endChangedAt: at }
+          : s
+      )
+    );
+    showToast(`Updated the end date of ${byId.size} ${byId.size === 1 ? 'subscription' : 'subscriptions'}.`, 'success');
+  };
+
   const rejectSubscription = (requestId) => {
+    const wasApproved = subscriptions.find((s) => s.id === requestId)?.status === 'approved';
     setSubscriptions((prev) =>
       prev.map((s) =>
         s.id === requestId
@@ -2377,7 +2421,7 @@ export const AppProvider = ({ children }) => {
           : s
       )
     );
-    showToast('Subscription request rejected.', 'info');
+    showToast(wasApproved ? 'Subscription rejected. The student no longer has access.' : 'Subscription request rejected.', 'info');
   };
 
   const checkEnrollmentStatus = (studentId, subjectId) => {
@@ -2791,6 +2835,7 @@ export const AppProvider = ({ children }) => {
         updateDayQuizSettings,
         moveCurriculumQuestion,
         moveNote,
+        updateNote,
         deleteModule,
         addSection,
         updateSection,
@@ -2808,6 +2853,7 @@ export const AppProvider = ({ children }) => {
         approveSubscription,
         getDefaultAccessPeriod,
         updateSubscriptionEnd,
+        bulkUpdateSubscriptionEnd,
         grantSubscription,
         getGrantDefaultPeriod,
         rejectSubscription,

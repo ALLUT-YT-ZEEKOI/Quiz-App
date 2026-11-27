@@ -137,8 +137,11 @@ export const normalizeQuizAttempt = (attempt) => {
     time: toTime(
       /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(attempt.date || '') ? `${attempt.date.replace(' ', 'T')}:00Z` : attempt.date
     ),
-    score: correct,
-    maxScore: total,
+    // With negative marking the score is marks (correct - minus marks); otherwise correct answers
+    score: typeof attempt.marks === 'number' && Number(attempt.negativeMark) > 0 ? attempt.marks : correct,
+    maxScore: typeof attempt.maxMarks === 'number' && Number(attempt.negativeMark) > 0 ? attempt.maxMarks : total,
+    negativeMark: Number(attempt.negativeMark) || 0,
+    negativeTotal: Number(attempt.negativeTotal) || 0,
     pct: Number(attempt.scorePct) || (total ? Math.round((correct / total) * 100) : 0),
     passed: attempt.status === 'Passed' || Number(attempt.scorePct) >= 60,
     total,

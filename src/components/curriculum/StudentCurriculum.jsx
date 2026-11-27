@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { compressImageFile } from '../../utils/imageCompress';
 import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
@@ -11,6 +11,7 @@ import {
   testKeyOf,
   testLabelOf,
   dayQuizSettings,
+  quizMarks,
   groupQuestionsBySection,
   groupVideosBySection
 } from '../../utils/curriculumSections';
@@ -48,7 +49,8 @@ import {
   User as UserIcon,
   ShieldCheck,
   Eye,
-  Camera
+  Camera,
+  MinusCircle
 } from 'lucide-react';
 
 import {
@@ -298,8 +300,9 @@ export const StudentCurriculum = () => {
   };
 
   // Submit Quiz
-  const handleSubmitQuiz = () => {
+  const handleSubmitQuiz = (opts = {}) => {
     if (quizQuestions.length === 0) return;
+    const autoSubmitted = opts?.auto === true;
 
     let correctCount = 0;
     quizQuestions.forEach((q) => {
@@ -308,7 +311,13 @@ export const StudentCurriculum = () => {
       }
     });
 
-    const scorePct = Math.round((correctCount / quizQuestions.length) * 100);
+    // +1 per correct, minus the day's negative mark per wrong answer (skipped = 0). The server
+    // recalculates the same marks when the attempt is saved.
+    const wrongCount = quizQuestions.filter(
+      (q) => selectedAnswers[q.id] !== undefined && selectedAnswers[q.id] !== q.correctAnswer
+    ).length;
+    const markInfo = quizMarks(correctCount, wrongCount, quizQuestions.length, quizSettings.negativeMark);
+    const scorePct = markInfo.scorePct;
     const passed = scorePct >= 60;
     const finishedAt = new Date();
     const startedAt = new Date(quizStartedAt || finishedAt.getTime());
@@ -336,6 +345,14 @@ export const StudentCurriculum = () => {
       status: passed ? 'Passed' : 'Needs Practice',
       timeTaken: `${String(Math.floor(timeSpentSeconds / 60)).padStart(2, '0')}:${String(timeSpentSeconds % 60).padStart(2, '0')}`,
       timeSpentSeconds,
+      // The admin's time limit for this test, and whether time ran out
+      timeLimitMinutes: quizSettings.timeLimitMinutes || 0,
+      wrongCount,
+      negativeMark: markInfo.negativeMark,
+      negativeTotal: markInfo.negativeTotal,
+      marks: markInfo.marks,
+      maxMarks: markInfo.maxMarks,
+      autoSubmitted,
       startedAt: startedAt.toISOString(),
       submittedAt: finishedAt.toISOString(),
       date: finishedAt.toISOString().replace('T', ' ').slice(0, 16),
@@ -358,8 +375,33 @@ export const StudentCurriculum = () => {
     setQuizResult(resultData);
     setQuizCompleted(true);
     recordCurriculumAttempt(resultData);
-    showToast(`Quiz completed: ${scorePct}% (${passed ? 'PASSED' : 'NEEDS PRACTICE'})`, passed ? 'success' : 'info');
+    showToast(
+      autoSubmitted
+        ? `Time's up! Your answers were submitted: ${scorePct}%`
+        : `Quiz completed: ${scorePct}% (${passed ? 'PASSED' : 'NEEDS PRACTICE'})`,
+      autoSubmitted ? 'warning' : passed ? 'success' : 'info'
+    );
   };
+
+  // Timer: the admin's time limit for this test (0 = none). The quiz submits itself at 0:00.
+  const timeLimitSeconds = (quizSettings.timeLimitMinutes || 0) * 60;
+  const timerRunning = !!quizTarget && !quizCompleted && !!quizStartedAt && timeLimitSeconds > 0 && moduleMode === 'quiz' && !quizLocked;
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (!timerRunning) return undefined;
+    setNowTick(Date.now());
+    const id = setInterval(() => setNowTick(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [timerRunning]);
+  const secondsLeft = timerRunning
+    ? Math.max(0, Math.min(timeLimitSeconds, timeLimitSeconds - Math.floor((nowTick - quizStartedAt) / 1000)))
+    : null;
+  const submitRef = useRef(handleSubmitQuiz);
+  submitRef.current = handleSubmitQuiz;
+  useEffect(() => {
+    if (timerRunning && secondsLeft === 0) submitRef.current({ auto: true });
+  }, [timerRunning, secondsLeft]);
+  const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   // =========================================================================
   // VIEW 3: MODULE INTERACTIVE LEARNING (Watch Videos OR Attend Quiz)
@@ -517,7 +559,12 @@ export const StudentCurriculum = () => {
 
         {/* My Results: every practice attempt of this module with each answer */}
         {moduleMode === 'results' && resultsAllowed && (
-          <ModuleResults module={currentModule} perspective="student" onPractice={openDayPicker} />
+          <ModuleResults
+            module={currentModule}
+            perspective="student"
+            onPractice={openDayPicker}
+            onRetest={(target, level) => handleStartQuiz(level, target)}
+          />
         )}
 
         {/* ================================================================= */}
@@ -784,8 +831,9 @@ export const StudentCurriculum = () => {
 
         {moduleMode === 'quiz' && moduleAccess.questions && quizTarget && !quizLocked && (
           <div className="space-y-5">
-            {/* Difficulty Selector Bar (hidden once a one-attempt quiz has been taken) */}
-            {(dayRetestAllowed || myModuleAttemptCount === 0) && (
+            {/* Difficulty Selector Bar (hidden once a one-attempt quiz has been taken, and while a timed
+                quiz is running: switching level restarts the quiz, which would also restart the timer) */}
+            {(dayRetestAllowed || myModuleAttemptCount === 0) && secondsLeft === null && (
             <div className="bg-white dark:bg-surface-darkCard p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-slate-500 font-semibold">Practice Mode</span>
@@ -861,6 +909,24 @@ export const StudentCurriculum = () => {
                     <strong>{quizResult.totalQuestions}</strong> correct in{' '}
                     {quizResult.difficultyMode}.
                   </p>
+                  {quizResult.negativeMark > 0 && (
+                    <div className="mt-4 mx-auto max-w-md grid grid-cols-4 gap-2 text-center">
+                      {[
+                        { label: 'Correct', value: `+${quizResult.correctCount}`, cls: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' },
+                        { label: 'Wrong', value: quizResult.wrongCount, cls: 'text-red-600 bg-red-50 dark:bg-red-950/30' },
+                        { label: 'Minus marks', value: `−${quizResult.negativeTotal}`, cls: 'text-rose-700 bg-rose-50 dark:bg-rose-950/30' },
+                        { label: 'Final marks', value: `${quizResult.marks}/${quizResult.maxMarks}`, cls: 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800' }
+                      ].map((c) => (
+                        <div key={c.label} className={`py-2 rounded-xl ${c.cls}`}>
+                          <div className="text-base font-black leading-none">{c.value}</div>
+                          <div className="text-[9px] font-bold uppercase tracking-wider mt-1 opacity-80">{c.label}</div>
+                        </div>
+                      ))}
+                      <p className="col-span-4 text-[11px] text-slate-500">
+                        Negative marking: −{quizResult.negativeMark} for each wrong answer. Skipped questions cost nothing.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex justify-center gap-3 mt-6">
                     {dayRetestAllowed && (
@@ -1011,6 +1077,42 @@ export const StudentCurriculum = () => {
             ) : (
               // ACTIVE QUESTION SCREEN
               <div className="max-w-2xl mx-auto bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-5">
+                {/* Time left (when the admin set a timer for this test) */}
+                {secondsLeft !== null && (
+                  <div className="space-y-1.5">
+                    <div
+                      role="timer"
+                      aria-label={`Time left ${clock(secondsLeft)}`}
+                      className={`flex items-center justify-between px-3.5 py-2 rounded-xl border ${
+                        secondsLeft <= 60
+                          ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 animate-pulse'
+                          : 'bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-900/60 text-violet-700 dark:text-violet-300'
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold">
+                        <Clock className="w-4 h-4" /> Time left
+                      </span>
+                      <span className="font-mono text-lg font-black tabular-nums">{clock(secondsLeft)}</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${secondsLeft <= 60 ? 'bg-red-500' : 'bg-violet-500'}`}
+                        style={{ width: `${(secondsLeft / timeLimitSeconds) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Negative marking notice */}
+                {quizSettings.negativeMark > 0 && (
+                  <div className="px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-1.5">
+                    <MinusCircle className="w-4 h-4 shrink-0" />
+                    <span>
+                      Negative marking: <strong>−{quizSettings.negativeMark}</strong> for each wrong answer. Skipping a question costs nothing.
+                    </span>
+                  </div>
+                )}
+
                 {/* Header Progress */}
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">

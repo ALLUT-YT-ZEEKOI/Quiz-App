@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Search, Users, ClipboardCheck, Trophy, Target, Check, X, PlayCircle, BarChart3, ListChecks } from 'lucide-react';
+import { Search, Users, ClipboardCheck, Trophy, Target, Check, X, PlayCircle, BarChart3, ListChecks, RotateCcw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { normalizeQuizAttempt, optionLetter } from '../../utils/assessmentRecords';
 import { AttemptRow, AttemptReview, BackLink, pctTone } from '../review/ResultViews';
-import { testKeyOf, testLabelOf } from '../../utils/curriculumSections';
+import { testKeyOf, testLabelOf, dayQuizSettings } from '../../utils/curriculumSections';
 
 const avg = (nums) => (nums.length ? Math.round(nums.reduce((s, n) => s + n, 0) / nums.length) : 0);
 
@@ -73,7 +73,7 @@ const Tile = ({ Icon, label, value, tone = 'text-slate-900 dark:text-white' }) =
  * perspective 'admin': every student's attempts (correct, wrong, time, answers) and a per-question breakdown.
  * perspective 'student': the student's own attempts with every answer.
  */
-export const ModuleResults = ({ module, perspective = 'student', onPractice }) => {
+export const ModuleResults = ({ module, perspective = 'student', onPractice, onRetest }) => {
   const { curriculumAttempts, currentUser, students } = useApp();
   const admin = perspective === 'admin';
   const myId = currentUser?.id;
@@ -116,7 +116,38 @@ export const ModuleResults = ({ module, perspective = 'student', onPractice }) =
     return (
       <div className="space-y-3">
         <BackLink onClick={() => setSelectedId(null)} label={admin ? 'Back to results' : 'Back to my results'} />
-        <AttemptReview record={selected} attempts={attempts} onSelect={setSelectedId} perspective={admin ? 'admin' : 'student'} />
+        <AttemptReview record={selected} attempts={attempts} onSelect={setSelectedId} perspective={admin ? 'admin' : 'student'}>
+          {(() => {
+            // Students: take the same day (and level) again, when the admin allows a retest for it
+            if (admin || !onRetest) return null;
+            if (!dayQuizSettings(module, selected.sectionId, selected.day).allowRetest) return null;
+            const raw = (curriculumAttempts || []).find((a) => a.id === selected.id);
+            const mode = raw?.difficultyMode || 'All Questions';
+            const level = mode === 'All Questions' ? 'All' : mode.replace(/ Mode$/, '');
+            const label = testLabelOf(module, selected.sectionId, selected.day);
+            return (
+              <div className="p-3.5 sm:p-4 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <RotateCcw className="w-5 h-5 text-amber-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-extrabold text-slate-900 dark:text-white">Retest available</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      Take {label}
+                      {level !== 'All' ? ` (${level})` : ''} again. This result stays in your history.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onRetest(selected.sectionId ? { sectionId: selected.sectionId, day: selected.day } : { general: true }, level)}
+                  className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white text-xs sm:text-sm font-extrabold inline-flex items-center justify-center gap-1.5 shadow-sm shrink-0"
+                >
+                  <RotateCcw className="w-4 h-4" /> Retest
+                </button>
+              </div>
+            );
+          })()}
+        </AttemptReview>
       </div>
     );
   }

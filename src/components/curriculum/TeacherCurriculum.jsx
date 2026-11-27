@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { compressImageFile } from '../../utils/imageCompress';
+
+const COVER_MAX_BYTES = 1024 * 1024; // subject cover images: 1 MB at most
 import { useApp } from '../../context/AppContext';
 import { takeOpenRequest, OPEN_CURRICULUM } from '../../utils/openRequest';
 import { PageHeader } from '../common/PageHeader';
@@ -43,6 +45,8 @@ import { CustomDatePicker } from '../common/CustomDatePicker';
 import { BulkQuestionUploadModal } from './BulkQuestionUploadModal';
 import { ModuleResults } from './ModuleResults';
 import { ModuleQuestionsBoard } from './ModuleQuestionsBoard';
+import { TestTimerField } from './TestTimerField';
+import { QuestionSearchBox, questionMatches } from '../common/QuestionSearch';
 import { ModuleNotesBoard } from './ModuleNotesBoard';
 import { sectionDays, testLabelOf } from '../../utils/curriculumSections';
 import { EditDifficultyModal } from './EditDifficultyModal';
@@ -81,6 +85,7 @@ export const TeacherCurriculum = () => {
     deleteSection,
     addNote,
     deleteNote,
+    updateNote,
     addVideo,
     deleteVideo,
     addCurriculumQuestion,
@@ -111,6 +116,7 @@ export const TeacherCurriculum = () => {
   }, []);
   const [activeModuleTab, setActiveModuleTab] = useState('videos'); // 'videos', 'notes', 'questions' or 'results'
   const [questionDifficultyFilter, setQuestionDifficultyFilter] = useState('All');
+  const [questionSearch, setQuestionSearch] = useState(''); // a word to find in this module's questions
 
   // Modals state
   const [subjectModalOpen, setSubjectModalOpen] = useState(false);
@@ -171,6 +177,7 @@ export const TeacherCurriculum = () => {
 
   // Where a new note goes (section id) and where new questions go ({ sectionId, day })
   const [noteTarget, setNoteTarget] = useState(null);
+  const [editingNote, setEditingNote] = useState(null); // the study note being edited
   const [questionTarget, setQuestionTarget] = useState(null);
 
   // New Question form state
@@ -236,10 +243,17 @@ export const TeacherCurriculum = () => {
 
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image file (PNG, JPG, WebP)', 'warning');
+      e.target.value = '';
+      return;
+    }
+    // Cover images must be under 1 MB
+    if (file.size > COVER_MAX_BYTES) {
+      showToast(`This image is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Please choose an image under 1 MB.`, 'warning', 5000);
+      e.target.value = '';
       return;
     }
 
-    compressImageFile(file, { maxDim: 1200, quality: 0.8 })
+    compressImageFile(file, { maxDim: 1280, quality: 0.8 })
       .then((dataUrl) => {
         setNewSubject((prev) => ({ ...prev, thumbnail: dataUrl }));
         showToast('Subject image uploaded successfully!', 'success');
@@ -795,6 +809,24 @@ export const TeacherCurriculum = () => {
             }}
             onOpen={setViewingNote}
             onDelete={(note) => deleteNote(currentSubject.id, currentModule.id, note.id)}
+            onEdit={setEditingNote}
+          />
+        )}
+
+        {editingNote && (
+          <AddNoteModal
+            key={editingNote.id}
+            initialNote={editingNote}
+            sections={(currentModule.sections || []).map((sec) => ({ id: sec.id, title: sec.title }))}
+            initialSectionId={
+              (currentModule.sections || []).some((sec) => sec.id === editingNote.sectionId) ? editingNote.sectionId : ''
+            }
+            moduleTitle={currentModule.title}
+            showToast={showToast}
+            onClose={() => setEditingNote(null)}
+            onSave={(noteData, file, sectionId) =>
+              updateNote(currentSubject.id, currentModule.id, editingNote.id, { ...noteData, sectionId: sectionId || null })
+            }
           />
         )}
 
@@ -804,9 +836,11 @@ export const TeacherCurriculum = () => {
               noteTarget ? ` · ${(currentModule.sections || []).find((sec) => sec.id === noteTarget)?.title || ''}` : ''
             }`}
             showToast={showToast}
+            sections={(currentModule.sections || []).map((sec) => ({ id: sec.id, title: sec.title }))}
+            initialSectionId={noteTarget || currentModule.sections?.[0]?.id || ''}
             onClose={() => setNoteModalOpen(false)}
-            onSave={(noteData, file) =>
-              addNote(currentSubject.id, currentModule.id, noteTarget ? { ...noteData, sectionId: noteTarget } : noteData, file)
+            onSave={(noteData, file, sectionId) =>
+              addNote(currentSubject.id, currentModule.id, sectionId ? { ...noteData, sectionId } : noteData, file)
             }
           />
         )}
@@ -817,6 +851,14 @@ export const TeacherCurriculum = () => {
         {activeModuleTab === 'questions' && (
           <div className="space-y-4">
             {/* Retest / shuffle live on each Section · Day (and on Unsorted → general practice) */}
+            {/* Search this module's questions by a word */}
+            <QuestionSearchBox
+              value={questionSearch}
+              onChange={setQuestionSearch}
+              count={questionSearch.trim() ? filteredQuestions.filter((q) => questionMatches(q, questionSearch)).length : undefined}
+              placeholder="Search this module's questions, e.g. standard"
+            />
+
             {/* Difficulty Filter Tabs & Customization Button */}
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800 text-[11px] sm:text-xs font-bold shadow-2xs">
@@ -931,6 +973,7 @@ export const TeacherCurriculum = () => {
               subject={currentSubject}
               module={currentModule}
               levelFilter={questionDifficultyFilter}
+              search={questionSearch}
               onAdd={(target) => {
                 setQuestionTarget(target);
                 setQuestionModalOpen(true);
@@ -1353,6 +1396,9 @@ export const TeacherCurriculum = () => {
                   </select>
                 </div>
 
+                {/* Timer of that day's test */}
+                <TestTimerField subject={currentSubject} module={currentModule} target={questionTarget} />
+
                 {/* Difficulty Mode Selector */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -1492,6 +1538,9 @@ export const TeacherCurriculum = () => {
             currentModule
               ? `${currentModule.title}${questionTarget?.sectionId ? ` · ${testLabelOf(currentModule, questionTarget.sectionId, questionTarget.day)}` : ''}`
               : ''
+          }
+          extraSettings={
+            currentModule ? <TestTimerField subject={currentSubject} module={currentModule} target={questionTarget} /> : null
           }
           onImport={(questions) => {
             addCurriculumQuestionsBulk(
@@ -2284,11 +2333,14 @@ export const TeacherCurriculum = () => {
                     <span>Upload from Device</span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/png,image/jpeg,image/webp"
                       className="hidden"
                       onChange={handleImageFileUpload}
                     />
                   </label>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center -mt-1">
+                    JPG, PNG or WebP · <strong>under 1 MB</strong> · best size <strong>1280 × 720 px (16:9)</strong>. Keep text and faces in the middle: the card crops the top and bottom.
+                  </p>
 
                   <div className="relative">
                     <LinkIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
