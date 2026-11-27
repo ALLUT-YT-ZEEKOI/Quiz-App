@@ -21,7 +21,7 @@ const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
  * approved subscription.
  *
  * Props:
- *   mode         'approve' | 'edit'
+ *   mode         'approve' | 'edit' | 'grant' (admin gives access without a payment)
  *   request      the subscription
  *   startsAt     Date access starts (or started)
  *   initialEnd   Date | null (lifetime): the plan's end (approve) or the current end (edit)
@@ -88,7 +88,7 @@ export const AccessPeriodModal = ({ mode, request, startsAt, initialEnd, otherAc
           </div>
           <div className="min-w-0 flex-1">
             <h2 id="access-period-title" className="text-base font-black text-slate-900 dark:text-white">
-              {mode === 'approve' ? 'Approve & set access' : 'Change access end date'}
+              {mode === 'approve' ? 'Approve & set access' : mode === 'grant' ? 'Give access' : 'Change access end date'}
             </h2>
             <p className="text-xs text-slate-500 truncate">
               {request.studentName} &middot; {request.subjectName}
@@ -108,13 +108,13 @@ export const AccessPeriodModal = ({ mode, request, startsAt, initialEnd, otherAc
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {startsAt > now ? 'Starts' : mode === 'approve' ? 'Starts' : 'Started'}
+                {startsAt > now || mode !== 'edit' ? 'Starts' : 'Started'}
               </div>
               <div className="font-bold text-slate-800 dark:text-slate-100 mt-0.5">{formatDate(startsAt)}</div>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {mode === 'approve' ? 'Plan default' : 'Ends now'}
+                {mode === 'edit' ? 'Ends now' : 'Plan default'}
               </div>
               <div className="font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                 {initialEnd ? formatDate(initialEnd) : 'Lifetime'}
@@ -173,7 +173,11 @@ export const AccessPeriodModal = ({ mode, request, startsAt, initialEnd, otherAc
               <span className="flex items-start gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>
-                  This date has passed: <strong>{request.studentName} loses access right away</strong>.
+                  {mode === 'grant' ? (
+                    <>This date has passed. Pick a later date to give access.</>
+                  ) : (
+                    <>This date has passed: <strong>{request.studentName} loses access right away</strong>.</>
+                  )}
                 </span>
               </span>
             ) : (
@@ -217,11 +221,11 @@ export const AccessPeriodModal = ({ mode, request, startsAt, initialEnd, otherAc
           <button
             type="button"
             onClick={confirm}
-            disabled={beforeStart || unchanged}
+            disabled={beforeStart || unchanged || (mode === 'grant' && alreadyOver)}
             className="flex-[2] py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 shadow-sm"
           >
             <Check className="w-4 h-4" />
-            {mode === 'approve' ? 'Approve payment' : 'Save end date'}
+            {mode === 'approve' ? 'Approve payment' : mode === 'grant' ? 'Give access' : 'Save end date'}
           </button>
         </div>
       </div>

@@ -2,8 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Clock, ChevronLeft, ChevronRight, Send, LogOut, AlertTriangle, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
+import { SaveQuestionButton } from '../saved/SaveQuestionButton';
+import { DoubtQuestionButton } from '../doubts/DoubtQuestionButton';
 import { Modal, primaryBtn, secondaryBtn } from './MockTestUi';
 import { formatClock, getSavedAnswers, saveAnswers } from '../../utils/mockTests';
+import { orderQuestions, orderOptions } from '../../utils/shuffle';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
@@ -13,7 +16,10 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
  */
 export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
   const { currentUserId, submitMockTest, showToast } = useApp();
-  const questions = test.questions || [];
+  // Shuffled per student and per attempt when the admin turned it on (same order after a reload).
+  // Answers keep the option's original number, so the server marks them as usual.
+  const shuffleSeed = `${currentUserId}:${test.id}:${session?.startedAt || session?.deadline || ''}`;
+  const questions = orderQuestions(test.questions || [], !!test.shuffleQuestions, shuffleSeed);
   const total = questions.length;
 
   const [answers, setAnswers] = useState(() => getSavedAnswers(test.id, currentUserId));
@@ -132,10 +138,25 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
         {/* Question */}
         <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-          <p className="text-xs font-bold text-slate-500">Question {index + 1} of {total}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-bold text-slate-500">Question {index + 1} of {total}</p>
+            <div className="flex items-center gap-1.5">
+              <SaveQuestionButton source="mock" sourceId={test.id} sourceTitle={test.title} question={q} questionIndex={index} />
+              <DoubtQuestionButton
+                kind="mock"
+                duringTest
+                sourceId={test.id}
+                sourceTitle={test.title}
+                question={q}
+                questionIndex={index}
+                selectedOption={answers[q.id] ?? null}
+              />
+            </div>
+          </div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-relaxed whitespace-pre-line">{q.questionText}</h2>
           <div className="space-y-2.5" role="radiogroup" aria-label={`Options for question ${index + 1}`}>
-            {(q.options || []).map((opt, i) => {
+            {orderOptions(q, !!test.shuffleOptions, shuffleSeed).map(({ index: i, text: opt }, pos) => {
+              // i: the option's original number (what gets recorded); pos: its place on screen
               const picked = answers[q.id] === i;
               return (
                 <button
@@ -156,7 +177,7 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
                       picked ? 'bg-[#087F8C] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                     }`}
                   >
-                    {LETTERS[i]}
+                    {LETTERS[pos]}
                   </span>
                   <span>{opt}</span>
                 </button>

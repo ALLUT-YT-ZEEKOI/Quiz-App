@@ -10,22 +10,26 @@ import {
   Radio,
   BookOpen,
   ClipboardCheck,
+  ClipboardList,
   Inbox
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { optionLetter } from '../../utils/assessmentRecords';
 import { AskDoubtModal } from './AskDoubtModal';
+import { resolveSavedAnswer } from '../../utils/savedQuestions';
+import { takeOpenRequest, OPEN_DOUBT } from '../../utils/openRequest';
 
 const STATUS_META = {
   open: { label: 'Waiting for reply', adminLabel: 'Needs reply', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' },
   answered: { label: 'Answered', adminLabel: 'Answered', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' },
-  resolved: { label: 'Resolved', adminLabel: 'Resolved', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
+  resolved: { label: 'Cleared', adminLabel: 'Cleared', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
 };
 
 const SOURCE_META = {
   exam: { label: 'Asked during exam', Icon: Radio },
   'exam-review': { label: 'From exam review', Icon: ClipboardCheck },
   quiz: { label: 'From module quiz', Icon: BookOpen },
+  mock: { label: 'Asked during mock test', Icon: ClipboardList },
   review: { label: 'From answer review', Icon: ClipboardCheck }
 };
 
@@ -45,9 +49,11 @@ export const DoubtsDashboard = () => {
   const isAdmin = currentRole === 'teacher' || currentRole === 'admin';
   const studentId = currentUser?.id || 'STU001';
 
-  const [filter, setFilter] = useState(isAdmin ? 'open' : 'all');
+  // Coming from a question's "Doubt" button: open that conversation
+  const [initialId] = useState(() => takeOpenRequest(OPEN_DOUBT));
+  const [filter, setFilter] = useState(isAdmin && !initialId ? 'open' : 'all');
   const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(initialId);
   const [askOpen, setAskOpen] = useState(false);
 
   const mine = useMemo(
@@ -74,6 +80,18 @@ export const DoubtsDashboard = () => {
 
   const selected = mine.find((d) => d.id === selectedId) || null;
 
+  // A request to open a doubt while this page is already showing
+  useEffect(() => {
+    const apply = () => {
+      const id = takeOpenRequest(OPEN_DOUBT);
+      if (!id) return;
+      setFilter('all');
+      setSelectedId(id);
+    };
+    window.addEventListener(OPEN_DOUBT, apply);
+    return () => window.removeEventListener(OPEN_DOUBT, apply);
+  }, []);
+
   // Opening an answered doubt clears its "new reply" marker for the student
   useEffect(() => {
     if (!isAdmin && selected && !selected.seenByStudent) markDoubtSeen(selected.id);
@@ -83,7 +101,7 @@ export const DoubtsDashboard = () => {
     { id: 'all', label: 'All' },
     { id: 'open', label: isAdmin ? 'Needs Reply' : 'Waiting' },
     { id: 'answered', label: 'Answered' },
-    { id: 'resolved', label: 'Resolved' }
+    { id: 'resolved', label: 'Cleared' }
   ];
 
   return (
@@ -98,7 +116,7 @@ export const DoubtsDashboard = () => {
           </h1>
           <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
             {isAdmin
-              ? 'Doubts students sent from exams, quizzes and answer reviews. Reply and mark them resolved.'
+              ? 'Doubts students sent from exams, quizzes and answer reviews. Reply, then mark them cleared.'
               : 'Ask the admin anything, or tap "Ask a doubt" on any question in an exam or in Marks & Answers.'}
           </p>
         </div>
@@ -223,10 +241,28 @@ export const DoubtsDashboard = () => {
 };
 
 const DoubtThread = ({ doubt, isAdmin, onBack, onReply, onStatus }) => {
+  const app = useApp();
   const [reply, setReply] = useState('');
   const endRef = useRef(null);
-  const ctx = doubt.context;
-  const source = ctx ? SOURCE_META[ctx.source] || SOURCE_META.review : null;
+  const rawCtx = doubt.context;
+  const source = rawCtx ? SOURCE_META[rawCtx.source] || SOURCE_META.review : null;
+
+  // Doubts sent during a test don't carry the answer: the admin sees it looked up from the test
+  const ctx = useMemo(() => {
+    if (!rawCtx || !isAdmin || typeof rawCtx.correctAnswer === 'number') return rawCtx;
+    const kind =
+      rawCtx.kind || (['exam', 'exam-review'].includes(rawCtx.source) ? 'exam' : rawCtx.source === 'quiz' ? 'quiz' : rawCtx.source === 'mock' ? 'mock' : null);
+    const sourceId = rawCtx.sourceId || rawCtx.examId;
+    if (!kind || !sourceId) return rawCtx;
+    const found = resolveSavedAnswer(
+      { source: kind, sourceId, questionId: '', questionText: rawCtx.questionText, questionIndex: rawCtx.questionIndex ?? null, studentId: doubt.studentId },
+      app
+    );
+    return found.correctAnswer === null ? rawCtx : { ...rawCtx, correctAnswer: found.correctAnswer };
+  }, [rawCtx, isAdmin, doubt.studentId, app]);
+
+  // The admin clears a doubt once they've replied with an explanation
+  const adminReplied = doubt.messages.some((m) => m.from === 'admin');
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest' });
@@ -337,7 +373,7 @@ const DoubtThread = ({ doubt, isAdmin, onBack, onReply, onStatus }) => {
         {doubt.status === 'resolved' ? (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <p className="text-xs text-slate-500 inline-flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> This doubt is resolved.
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> This doubt is cleared.
             </p>
             <button type="button" onClick={() => onStatus(doubt.messages.at(-1)?.from === 'admin' ? 'answered' : 'open')} className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 inline-flex items-center gap-1.5 self-start">
               <RotateCcw className="w-3.5 h-3.5" /> Reopen
@@ -366,9 +402,21 @@ const DoubtThread = ({ doubt, isAdmin, onBack, onReply, onStatus }) => {
                 <Send className="w-4 h-4" />
               </button>
             </form>
-            <div className="flex justify-end">
-              <button type="button" onClick={() => onStatus('resolved')} className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
-                <CheckCircle2 className="w-3.5 h-3.5" /> {isAdmin ? 'Mark resolved' : 'My doubt is cleared'}
+            <div className="flex items-center justify-end gap-2">
+              {isAdmin && !adminReplied && (
+                <span className="text-[11px] text-slate-400">Reply with an explanation first, then mark it cleared.</span>
+              )}
+              <button
+                type="button"
+                onClick={() => onStatus('resolved')}
+                disabled={isAdmin && !adminReplied}
+                className={`text-[11px] font-bold inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed ${
+                  isAdmin
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" /> {isAdmin ? 'Mark as cleared' : 'My doubt is cleared'}
               </button>
             </div>
           </>

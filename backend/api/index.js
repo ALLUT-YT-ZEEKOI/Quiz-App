@@ -2,7 +2,7 @@
 // The database connection and setup run once per server instance and are reused between requests.
 import { createApp } from '../src/app.js';
 import { connectDb } from '../src/db.js';
-import { ensureAdmin, ensureCollectionIndexes } from '../src/setup.js';
+import { ensureAdmin, ensureCollectionIndexes, ensureRollNumbers } from '../src/setup.js';
 
 const app = createApp();
 let ready = null;
@@ -13,6 +13,7 @@ const init = () => {
       await connectDb();
       await ensureCollectionIndexes();
       await ensureAdmin();
+      await ensureRollNumbers();
     })().catch((err) => {
       ready = null; // try again on the next request
       throw err;

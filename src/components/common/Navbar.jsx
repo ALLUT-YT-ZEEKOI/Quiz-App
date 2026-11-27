@@ -124,9 +124,9 @@ export const Navbar = ({ onMobileMenuToggle }) => {
             <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </button>
 
-          {/* Active Portal Badge (Production Clean) */}
+          {/* Active Portal Badge (Production Clean). On phones a student sees their roll number here instead. */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold border transition-all whitespace-nowrap shrink-0 ${
+            className={`${currentRole === 'student' && currentUser?.studentId ? 'hidden sm:flex' : 'flex'} items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold border transition-all whitespace-nowrap shrink-0 ${
               currentRole === 'teacher'
                 ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800/60'
                 : 'bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 border-blue-200 dark:border-blue-800/60'
@@ -366,6 +366,18 @@ export const Navbar = ({ onMobileMenuToggle }) => {
               </>
             )}
           </div>
+          )}
+
+          {/* Student's roll number */}
+          {currentRole === 'student' && currentUser?.studentId && (
+            <div
+              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl bg-[#E6F4F6] dark:bg-teal-950/40 border border-[#087F8C]/20 dark:border-teal-800 shrink-0"
+              title={`${currentUser.name || 'Student'} · Roll No. ${currentUser.studentId}`}
+            >
+              <GraduationCap className="hidden sm:block w-4 h-4 text-[#087F8C] dark:text-teal-300" />
+              <span className="hidden md:inline text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Roll No.</span>
+              <span className="text-xs font-extrabold font-mono text-[#087F8C] dark:text-teal-300">{currentUser.studentId}</span>
+            </div>
           )}
 
           {/* Dark / Light Mode Toggle */}

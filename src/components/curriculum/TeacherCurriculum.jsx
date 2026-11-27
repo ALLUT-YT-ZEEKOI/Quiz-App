@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { compressImageFile } from '../../utils/imageCompress';
 import { useApp } from '../../context/AppContext';
+import { takeOpenRequest, OPEN_CURRICULUM } from '../../utils/openRequest';
 import { PageHeader } from '../common/PageHeader';
 import {
   BookOpen,
@@ -35,10 +36,15 @@ import {
   FolderPlus,
   ListVideo,
   NotebookText,
-  CalendarDays
+  CalendarDays,
+  ClipboardCheck
 } from 'lucide-react';
 import { CustomDatePicker } from '../common/CustomDatePicker';
 import { BulkQuestionUploadModal } from './BulkQuestionUploadModal';
+import { ModuleResults } from './ModuleResults';
+import { ModuleQuestionsBoard } from './ModuleQuestionsBoard';
+import { ModuleNotesBoard } from './ModuleNotesBoard';
+import { sectionDays, testLabelOf } from '../../utils/curriculumSections';
 import { EditDifficultyModal } from './EditDifficultyModal';
 import {
   formatEmbedUrl,
@@ -63,6 +69,8 @@ import {
 export const TeacherCurriculum = () => {
   const {
     curriculumSubjects,
+    curriculumAttempts,
+    updateModule,
     addSubject,
     updateSubject,
     deleteSubject,
@@ -88,7 +96,20 @@ export const TeacherCurriculum = () => {
   // Navigation hierarchy: null = Subjects list; object = selected subject
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
-  const [activeModuleTab, setActiveModuleTab] = useState('videos'); // 'videos', 'notes' or 'questions'
+
+  // Search (and other pages) can ask to open one subject / module
+  useEffect(() => {
+    const apply = () => {
+      const req = takeOpenRequest(OPEN_CURRICULUM);
+      if (!req?.subjectId) return;
+      setSelectedSubject({ id: req.subjectId });
+      setSelectedModule(req.moduleId ? { id: req.moduleId } : null);
+    };
+    apply();
+    window.addEventListener(OPEN_CURRICULUM, apply);
+    return () => window.removeEventListener(OPEN_CURRICULUM, apply);
+  }, []);
+  const [activeModuleTab, setActiveModuleTab] = useState('videos'); // 'videos', 'notes', 'questions' or 'results'
   const [questionDifficultyFilter, setQuestionDifficultyFilter] = useState('All');
 
   // Modals state
@@ -147,6 +168,10 @@ export const TeacherCurriculum = () => {
   // Notes tab state
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [viewingNote, setViewingNote] = useState(null);
+
+  // Where a new note goes (section id) and where new questions go ({ sectionId, day })
+  const [noteTarget, setNoteTarget] = useState(null);
+  const [questionTarget, setQuestionTarget] = useState(null);
 
   // New Question form state
   const [newQuestion, setNewQuestion] = useState({
@@ -340,7 +365,11 @@ export const TeacherCurriculum = () => {
       showToast('All 4 options must be filled', 'warning');
       return;
     }
-    addCurriculumQuestion(currentSubject.id, currentModule.id, newQuestion);
+    addCurriculumQuestion(
+      currentSubject.id,
+      currentModule.id,
+      questionTarget?.sectionId ? { ...newQuestion, sectionId: questionTarget.sectionId, day: Number(questionTarget.day) || 1 } : newQuestion
+    );
     setQuestionModalOpen(false);
     setNewQuestion({
       question: '',
@@ -433,16 +462,22 @@ export const TeacherCurriculum = () => {
               </div>
             ) : activeModuleTab === 'notes' ? (
               <button
-                onClick={() => setNoteModalOpen(true)}
+                onClick={() => {
+                  setNoteTarget(currentModule.sections?.[0]?.id || null);
+                  setNoteModalOpen(true);
+                }}
                 className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Notes</span>
               </button>
-            ) : (
+            ) : activeModuleTab === 'questions' ? (
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
-                  onClick={() => setBulkModalOpen(true)}
+                  onClick={() => {
+                    setQuestionTarget({ sectionId: currentModule.sections?.[0]?.id, day: 1 });
+                    setBulkModalOpen(true);
+                  }}
                   className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
                   title="Bulk upload questions from A4 format"
                 >
@@ -451,19 +486,22 @@ export const TeacherCurriculum = () => {
                   <span className="sm:hidden">Bulk</span>
                 </button>
                 <button
-                  onClick={() => setQuestionModalOpen(true)}
+                  onClick={() => {
+                    setQuestionTarget({ sectionId: currentModule.sections?.[0]?.id, day: 1 });
+                    setQuestionModalOpen(true);
+                  }}
                   className="flex-1 sm:flex-none justify-center px-3.5 sm:px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Question</span>
                 </button>
               </div>
-            )
+            ) : null
           }
         />
 
-        {/* Tab Switcher: Videos / Notes / Questions */}
-        <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-[#E8F3F4] dark:bg-slate-800/80 border border-[#087F8C]/15 dark:border-slate-700/60 text-[11px] sm:text-xs font-bold">
+        {/* Tab Switcher: Videos / Notes / Questions / Results */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-xl bg-[#E8F3F4] dark:bg-slate-800/80 border border-[#087F8C]/15 dark:border-slate-700/60 text-[11px] sm:text-xs font-bold">
           <button
             type="button"
             onClick={() => setActiveModuleTab('videos')}
@@ -503,7 +541,24 @@ export const TeacherCurriculum = () => {
             <span className="sm:hidden truncate">Q&A ({currentModule.questions?.length || 0})</span>
             <span className="hidden sm:inline truncate">Questions & Answers ({currentModule.questions?.length || 0})</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveModuleTab('results')}
+            className={`min-h-[2.5rem] px-2 sm:px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeModuleTab === 'results'
+                ? 'bg-violet-600 text-white shadow-md shadow-violet-600/25'
+                : 'text-slate-600 dark:text-slate-400 hover:text-[#07242B] hover:bg-white/70 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <ClipboardCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">
+              Results ({(curriculumAttempts || []).filter((a) => a.moduleId === currentModule.id).length})
+            </span>
+          </button>
         </div>
+
+        {/* TAB 4: STUDENT RESULTS (each attempt with correct / wrong answers, marks and time) */}
+        {activeModuleTab === 'results' && <ModuleResults module={currentModule} perspective="admin" />}
 
         {/* TAB 1: VIDEOS GROUPED BY SECTION */}
         {activeModuleTab === 'videos' && (
@@ -730,38 +785,29 @@ export const TeacherCurriculum = () => {
 
         {/* TAB: STUDY NOTES */}
         {activeModuleTab === 'notes' && (
-          <div className="space-y-4">
-            <NotesList
-              notes={currentModule.notes || []}
-              onOpen={setViewingNote}
-              onDelete={(note) => deleteNote(currentSubject.id, currentModule.id, note.id)}
-              emptyState={
-                <div className="p-8 sm:p-10 text-center bg-white dark:bg-surface-darkCard rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
-                  <NotebookText className="w-10 h-10 text-slate-300 mx-auto" />
-                  <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm sm:text-base">
-                    No Notes Shared Yet
-                  </h3>
-                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                    Paste a Google Drive link to a PDF, Doc, Slides or folder, and students read it right inside the app.
-                  </p>
-                  <button
-                    onClick={() => setNoteModalOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs border border-[#20B8C7]/30"
-                  >
-                    <Plus className="w-4 h-4" /> Add First Notes
-                  </button>
-                </div>
-              }
-            />
-          </div>
+          <ModuleNotesBoard
+            editable
+            subject={currentSubject}
+            module={currentModule}
+            onAdd={(sectionId) => {
+              setNoteTarget(sectionId);
+              setNoteModalOpen(true);
+            }}
+            onOpen={setViewingNote}
+            onDelete={(note) => deleteNote(currentSubject.id, currentModule.id, note.id)}
+          />
         )}
 
         {noteModalOpen && (
           <AddNoteModal
-            moduleTitle={currentModule.title}
+            moduleTitle={`${currentModule.title}${
+              noteTarget ? ` · ${(currentModule.sections || []).find((sec) => sec.id === noteTarget)?.title || ''}` : ''
+            }`}
             showToast={showToast}
             onClose={() => setNoteModalOpen(false)}
-            onSave={(noteData, file) => addNote(currentSubject.id, currentModule.id, noteData, file)}
+            onSave={(noteData, file) =>
+              addNote(currentSubject.id, currentModule.id, noteTarget ? { ...noteData, sectionId: noteTarget } : noteData, file)
+            }
           />
         )}
 
@@ -770,6 +816,7 @@ export const TeacherCurriculum = () => {
         {/* TAB 2: QUESTIONS & ANSWERS LIST */}
         {activeModuleTab === 'questions' && (
           <div className="space-y-4">
+            {/* Retest / shuffle live on each Section · Day (and on Unsorted → general practice) */}
             {/* Difficulty Filter Tabs & Customization Button */}
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800 text-[11px] sm:text-xs font-bold shadow-2xs">
@@ -872,7 +919,7 @@ export const TeacherCurriculum = () => {
                   type="button"
                   onClick={() => setDifficultyModalOpen(true)}
                   className="shrink-0 px-2.5 py-1.5 rounded-xl text-amber-700 dark:text-amber-300 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 text-[11px] font-bold inline-flex items-center gap-1 transition-colors border border-amber-200/70 dark:border-amber-800/50"
-                  title="Customize all mode labels (Easy, Medium, Tough)"
+                  title="Customize all mode labels (Basic, Medium, Advanced)"
                 >
                   <Sliders className="w-3 h-3 text-amber-500" />
                   <span>Customize</span>
@@ -880,128 +927,19 @@ export const TeacherCurriculum = () => {
               </div>
             </div>
 
-            {filteredQuestions.length === 0 ? (
-              <div className="p-8 sm:p-10 text-center bg-white dark:bg-surface-darkCard rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
-                <div className="w-12 h-12 rounded-xl mx-auto bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
-                  <HelpCircle className="w-6 h-6" />
-                </div>
-                <h3 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm sm:text-base">
-                  No {questionDifficultyFilter !== 'All' ? `"${questionDifficultyFilter}"` : ''} Questions Found
-                </h3>
-                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                  Add assessments with {difficultyLevels.map((l) => l.label).join(', ')} modes so students can practice effectively.
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                  <button
-                    onClick={() => setBulkModalOpen(true)}
-                    className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard text-slate-700 dark:text-slate-200 hover:bg-slate-50 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>Bulk Upload (A4 Format)</span>
-                  </button>
-                  <button
-                    onClick={() => setQuestionModalOpen(true)}
-                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs border border-[#20B8C7]/30 active:scale-95 transition-all"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Question
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
-                {filteredQuestions.map((q, idx) => {
-                  const diffMeta = getDifficultyMeta(q.difficulty);
-                  const difficultyColor =
-                    diffMeta.color === 'emerald'
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
-                      : diffMeta.color === 'red'
-                      ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border-red-200 dark:border-red-800/60'
-                      : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800/60';
-
-                  return (
-                    <div
-                      key={q.id || idx}
-                      className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 shadow-2xs card-hover-lift hover:border-[#20B8C7]/50 transition-all flex flex-col justify-between group"
-                    >
-                      <div>
-                        {/* Question Card Top Bar */}
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-black text-[11px] shrink-0 font-mono">
-                              Q{idx + 1}
-                            </span>
-                            <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${difficultyColor}`}
-                            >
-                              {diffMeta.label}
-                            </span>
-                          </div>
-
-                          <button
-                            onClick={() =>
-                              deleteCurriculumQuestion(currentSubject.id, currentModule.id, q.id)
-                            }
-                            className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                            title="Delete Question"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        {/* Question Text */}
-                        <h4
-                          className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug line-clamp-3 mb-2.5"
-                          title={q.question}
-                        >
-                          {q.question}
-                        </h4>
-
-                        {/* Options Stack (Compact) */}
-                        <div className="space-y-1.5">
-                          {q.options?.map((opt, oIdx) => {
-                            const isCorrect = oIdx === q.correctAnswer;
-                            return (
-                              <div
-                                key={oIdx}
-                                className={`px-2 py-1.5 rounded-lg text-[11px] flex items-center gap-2 border transition-colors ${
-                                  isCorrect
-                                    ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/80 font-bold text-emerald-950 dark:text-emerald-200'
-                                    : 'bg-slate-50/70 dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-800 text-slate-700 dark:text-slate-300'
-                                }`}
-                              >
-                                <span
-                                  className={`w-4 h-4 rounded text-[9px] flex items-center justify-center font-bold shrink-0 ${
-                                    isCorrect
-                                      ? 'bg-emerald-600 text-white'
-                                      : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                                  }`}
-                                >
-                                  {String.fromCharCode(65 + oIdx)}
-                                </span>
-                                <span className="flex-1 truncate">{opt}</span>
-                                {isCorrect && (
-                                  <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Explanation Callout (Compact) */}
-                      {q.explanation && (
-                        <div
-                          className="mt-2.5 p-2 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 text-[10px] text-blue-900 dark:text-blue-200 border border-blue-200/60 dark:border-blue-900/50 line-clamp-2 leading-tight"
-                          title={q.explanation}
-                        >
-                          <strong>Sol:</strong> {q.explanation}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <ModuleQuestionsBoard
+              subject={currentSubject}
+              module={currentModule}
+              levelFilter={questionDifficultyFilter}
+              onAdd={(target) => {
+                setQuestionTarget(target);
+                setQuestionModalOpen(true);
+              }}
+              onBulk={(target) => {
+                setQuestionTarget(target);
+                setBulkModalOpen(true);
+              }}
+            />
           </div>
         )}
 
@@ -1390,6 +1328,31 @@ export const TeacherCurriculum = () => {
               </div>
 
               <form onSubmit={handleCreateQuestion} className="space-y-3.5">
+                {/* Section & day */}
+                <div>
+                  <label htmlFor="question-target" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Section &amp; day *
+                  </label>
+                  <select
+                    id="question-target"
+                    value={questionTarget?.sectionId ? `${questionTarget.sectionId}|${questionTarget.day || 1}` : ''}
+                    onChange={(e) => {
+                      const [sectionId, day] = e.target.value.split('|');
+                      setQuestionTarget(sectionId ? { sectionId, day: Number(day) } : null);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100"
+                  >
+                    {(currentModule.sections || []).flatMap((sec) =>
+                      sectionDays(currentModule, sec.id).map((day) => (
+                        <option key={`${sec.id}|${day}`} value={`${sec.id}|${day}`}>
+                          {sec.title} · Day {day}
+                        </option>
+                      ))
+                    )}
+                    <option value="">Unsorted (General practice)</option>
+                  </select>
+                </div>
+
                 {/* Difficulty Mode Selector */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -1525,9 +1488,19 @@ export const TeacherCurriculum = () => {
           isOpen={bulkModalOpen}
           onClose={() => setBulkModalOpen(false)}
           subjectName={currentSubject?.name}
-          moduleName={currentModule?.title}
+          moduleName={
+            currentModule
+              ? `${currentModule.title}${questionTarget?.sectionId ? ` · ${testLabelOf(currentModule, questionTarget.sectionId, questionTarget.day)}` : ''}`
+              : ''
+          }
           onImport={(questions) => {
-            addCurriculumQuestionsBulk(currentSubject.id, currentModule.id, questions);
+            addCurriculumQuestionsBulk(
+              currentSubject.id,
+              currentModule.id,
+              questionTarget?.sectionId
+                ? questions.map((q) => ({ ...q, sectionId: questionTarget.sectionId, day: Number(questionTarget.day) || 1 }))
+                : questions
+            );
           }}
         />
 

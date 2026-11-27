@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomDropdown } from '../common/CustomDropdown';
 import { PageHeader } from '../common/PageHeader';
+import { AttemptReview, AdminRetestPanel, BackLink } from '../review/ResultViews';
+import { normalizeExamAttempt } from '../../utils/assessmentRecords';
 import {
   BarChart3,
   Download,
@@ -28,7 +30,11 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
     examinations,
     examAttempts,
     exportExamResultsCSV,
-    showToast
+    showToast,
+    retests,
+    students,
+    grantRetest,
+    declineRetest
   } = useApp();
 
   const [selectedExamId, setSelectedExamId] = useState(examId || 'EXAM-2026-006');
@@ -129,6 +135,40 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
     });
   }, [rankedAttempts, filterStatus, searchQuery]);
 
+  // Retest requests waiting for this exam
+  const retestRequests = (retests || []).filter((r) => r.examId === selectedExamId && r.status === 'requested');
+  const nameOf = (studentId) =>
+    examAttempts.find((a) => a.studentId === studentId)?.studentName ||
+    (students || []).find((st) => st.id === studentId)?.name ||
+    'Student';
+
+  if (inspectedAttempt) {
+    const rollOf = (id) => (students || []).find((st) => st.id === id)?.studentId || inspectedAttempt.studentRollNo || '';
+    const toRecord = (a) => ({ ...normalizeExamAttempt(a, exam), rollNo: rollOf(a.studentId) });
+    const record = toRecord(inspectedAttempt);
+    // This student's attempts of this exam (first try and retests), oldest first
+    const mine = attempts
+      .filter((a) => a.studentId === inspectedAttempt.studentId)
+      .map(toRecord)
+      .sort((a, b) => a.time - b.time);
+    const isLatest = mine[mine.length - 1]?.id === record.id;
+    return (
+      <div className="space-y-3 max-w-4xl mx-auto pb-16">
+        <BackLink onClick={() => setInspectedAttempt(null)} label="Back to exam results" />
+        <AttemptReview
+          record={record}
+          attempts={mine}
+          onSelect={(id) => setInspectedAttempt(attempts.find((a) => a.id === id) || inspectedAttempt)}
+          perspective="admin"
+        >
+          {isLatest && (
+            <AdminRetestPanel examId={selectedExamId} studentId={inspectedAttempt.studentId} studentName={inspectedAttempt.studentName} />
+          )}
+        </AttemptReview>
+      </div>
+    );
+  }
+
   const handlePrint = () => {
     window.print();
   };
@@ -179,6 +219,39 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
           </div>
         }
       />
+
+      {/* Retest requests for this exam */}
+      {retestRequests.length > 0 && (
+        <div className="p-3.5 sm:p-4 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/20 space-y-2.5">
+          <p className="text-sm font-extrabold text-amber-900 dark:text-amber-200">
+            Retest requests ({retestRequests.length})
+          </p>
+          {retestRequests.map((r) => (
+            <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-100 dark:border-amber-900/40">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">{nameOf(r.studentId)}</p>
+                <p className="text-[11px] text-slate-500 truncate">{r.reason ? `"${r.reason}"` : 'No reason given'}</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => declineRetest(r.id)}
+                  className="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/60 text-red-600 text-xs font-bold"
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  onClick={() => grantRetest(r.studentId, r.examId)}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#087F8C] hover:bg-[#0C4E5B] text-white text-xs font-bold"
+                >
+                  Enable Retest
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Analytics Charts Grid: Score Distribution & Difficulty-Wise Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -528,77 +601,6 @@ export const ExamResultsAnalytics = ({ examId, onBack, onInspectStudent }) => {
         </div>
       </div>
 
-      {/* Inspect Student Attempt Scorecard Modal */}
-      {inspectedAttempt && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-3">
-                <img
-                  src={inspectedAttempt.avatar}
-                  alt={inspectedAttempt.studentName}
-                  className="w-10 h-10 rounded-2xl object-cover"
-                />
-                <div>
-                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-                    {inspectedAttempt.studentName} – Scorecard
-                  </h3>
-                  <p className="text-xs text-slate-400 font-mono">
-                    {inspectedAttempt.studentRollNo} • {inspectedAttempt.batch}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setInspectedAttempt(null)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Scorecard Stats Grid */}
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Final Score</span>
-                <span className="text-xl font-extrabold text-slate-900 dark:text-white">
-                  {inspectedAttempt.score} / {inspectedAttempt.totalMarks || exam?.totalMarks || 30}
-                </span>
-              </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Percentage</span>
-                <span className="text-xl font-extrabold text-teal-600">
-                  {inspectedAttempt.percentage}%
-                </span>
-              </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Time Spent</span>
-                <span className="text-xl font-extrabold text-slate-900 dark:text-white">
-                  {inspectedAttempt.timeSpentMinutes}m
-                </span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-teal-50 dark:bg-teal-950/30 rounded-2xl border border-teal-200 dark:border-teal-900/40 text-xs text-teal-900 dark:text-teal-200 flex items-center justify-between">
-              <div>
-                <strong>Correct:</strong> {inspectedAttempt.correctCount} |{' '}
-                <strong>Incorrect:</strong> {inspectedAttempt.incorrectCount} |{' '}
-                <strong>Unattempted:</strong> {inspectedAttempt.unattemptedCount}
-              </div>
-              <span className="font-bold font-mono">
-                {inspectedAttempt.passed ? 'STATUS: PASSED ✅' : 'STATUS: FAILED ❌'}
-              </span>
-            </div>
-
-            <button
-              onClick={() => setInspectedAttempt(null)}
-              className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 font-bold text-xs text-slate-800 dark:text-slate-200"
-            >
-              Close Scorecard
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

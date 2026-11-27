@@ -113,16 +113,21 @@ export const normalizeQuizAttempt = (attempt) => {
   const correct = attempt.correctCount ?? answers.filter((a) => a.isCorrect).length;
   const skipped = answers.length ? answers.filter((a) => a.selectedOption === null).length : 0;
   const mode = attempt.difficultyMode && attempt.difficultyMode !== 'All Questions' ? ` (${attempt.difficultyMode})` : '';
+  // Practice tests are per section day ("Section 1 · Day 2"); older attempts have none
+  const test = attempt.sectionId && attempt.testLabel ? ` · ${attempt.testLabel}` : '';
 
   return {
     id: attempt.id,
     kind: 'quiz',
-    assessmentKey: `quiz:${attempt.moduleId}:${attempt.difficultyMode || 'All'}`,
+    assessmentKey: `quiz:${attempt.moduleId}:${attempt.sectionId || 'general'}:${attempt.day || ''}:${attempt.difficultyMode || 'All'}`,
     moduleId: attempt.moduleId,
+    sectionId: attempt.sectionId || null,
+    day: attempt.sectionId ? Number(attempt.day) || 1 : null,
+    testLabel: attempt.testLabel || '',
     studentId: attempt.studentId,
     studentName: attempt.studentName,
     avatar: attempt.studentAvatar || '',
-    title: `${attempt.moduleTitle || 'Module Quiz'}${mode}`,
+    title: `${attempt.moduleTitle || 'Module Quiz'}${test}${mode}`,
     subjectId: attempt.subjectId || '',
     subjectName: attempt.subjectName || 'General',
     // Quiz dates are stored as UTC "YYYY-MM-DD HH:mm" (from toISOString): read them as UTC

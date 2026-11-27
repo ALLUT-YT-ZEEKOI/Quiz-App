@@ -14,8 +14,11 @@ import {
   X
 } from 'lucide-react';
 import { PageHeader } from '../common/PageHeader';
+import { StudentRetestPanel } from '../review/ResultViews';
+import { SaveQuestionButton } from '../saved/SaveQuestionButton';
+import { DoubtQuestionButton } from '../doubts/DoubtQuestionButton';
 
-export const StudentExamResult = ({ attempt, onBack }) => {
+export const StudentExamResult = ({ attempt, onBack, onStartRetest }) => {
   const [filterMode, setFilterMode] = useState('All'); // 'All', 'Correct', 'Incorrect', 'Unanswered'
   const [expandedIndex, setExpandedIndex] = useState(null);
 
@@ -179,6 +182,9 @@ export const StudentExamResult = ({ attempt, onBack }) => {
         </div>
       </div>
 
+      {/* Retest: status, or ask the admin for one */}
+      {attempt.examId && <StudentRetestPanel examId={attempt.examId} onStartRetest={onStartRetest} />}
+
       {/* Question-by-Question Solution Review Section */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -252,8 +258,28 @@ export const StudentExamResult = ({ attempt, onBack }) => {
                     </span>
                   </div>
 
-                  <span className="text-[10px] font-bold text-slate-400">
+                  <span className="text-[10px] font-bold text-slate-400 inline-flex items-center gap-2">
                     {item.difficulty || 'Medium'}
+                    <SaveQuestionButton
+                      compact
+                      source="exam"
+                      sourceId={attempt.examId}
+                      sourceTitle={examTitle}
+                      subjectName={subjectName}
+                      question={item}
+                      questionIndex={item.questionIndex}
+                    />
+                    <DoubtQuestionButton
+                      compact
+                      kind="exam"
+                      sourceId={attempt.examId}
+                      sourceTitle={examTitle}
+                      subjectName={subjectName}
+                      question={item}
+                      questionIndex={item.questionIndex}
+                      selectedOption={item.selectedOption ?? null}
+                      correctAnswer={item.correctAnswer}
+                    />
                   </span>
                 </div>
 

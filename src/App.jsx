@@ -4,13 +4,13 @@ import { Navbar } from './components/common/Navbar';
 import { Sidebar } from './components/common/Sidebar';
 import { ToastContainer } from './components/common/ToastContainer';
 import { GlobalSearchModal } from './components/common/GlobalSearchModal';
+import { ConfirmHost } from './components/common/ConfirmDialog';
 import { MobileBottomNav } from './components/common/MobileBottomNav';
 import { AuthModal } from './components/auth/AuthModal';
 
 // Streamlined Curriculum Components (Subjects -> Modules -> Videos & Q&A)
 import { TeacherCurriculum } from './components/curriculum/TeacherCurriculum';
 import { StudentCurriculum } from './components/curriculum/StudentCurriculum';
-import { CurriculumResults } from './components/curriculum/CurriculumResults';
 import { AdminSubscriptions } from './components/curriculum/AdminSubscriptions';
 
 // Live & Scheduled Examination Module
@@ -27,10 +27,10 @@ import { StudentNoticeBoard } from './components/notifications/StudentNoticeBoar
 import { ProfileManagement } from './components/profile/ProfileManagement';
 
 // Answer review, subject marks, retests & doubts
-import { StudentAnswersDashboard } from './components/review/StudentAnswersDashboard';
-import { AdminAnswersDashboard } from './components/review/AdminAnswersDashboard';
 import { DoubtsDashboard } from './components/doubts/DoubtsDashboard';
 import { StudentRegistrations } from './components/students/StudentRegistrations';
+import { StudentSavedQuestions } from './components/saved/StudentSavedQuestions';
+import { AdminSavedQuestions } from './components/saved/AdminSavedQuestions';
 import { DataImportBanner, ServerLoadingScreen } from './components/admin/DataImportBanner';
 import { StudentPermissions } from './components/admin/StudentPermissions';
 import { RankingsDashboard } from './components/rankings/RankingsDashboard';
@@ -66,6 +66,14 @@ const AppContent = () => {
   const attemptInProgress = Boolean(activeExamForAttempt || activeMockTest);
   const viewBlocked = isStudent && !attemptInProgress && viewModule !== null && !studentModules[viewModule];
   const firstAllowedModule = STUDENT_MODULES.find((m) => studentModules[m.id]);
+
+  // Results now live inside each area (subject modules, mock tests, live exams). Links to the old
+  // Quiz & Assessments / Marks & Answers / Student Answers pages land on Subjects & Curriculum.
+  useEffect(() => {
+    if (['results', 'quizzes', 'review', 'answers'].includes(activeView)) {
+      setActiveView('subjects');
+    }
+  }, [activeView, setActiveView]);
 
   useEffect(() => {
     if (viewBlocked && firstAllowedModule) {
@@ -131,6 +139,11 @@ const AppContent = () => {
       return <RankingsDashboard />;
     }
 
+    // Saved questions: students revise their own; the admin sees who saved what
+    if (activeView === 'saved') {
+      return isStudent ? <StudentSavedQuestions /> : <AdminSavedQuestions />;
+    }
+
     // Student module permissions (admin only)
     if (activeView === 'permissions' && !isStudent) {
       return <StudentPermissions />;
@@ -146,9 +159,9 @@ const AppContent = () => {
       return <MockTestsMain />;
     }
 
-    // If Results view
-    if (activeView === 'results') {
-      return <CurriculumResults />;
+    // Removed pages (results are inside each area now); redirecting
+    if (['results', 'quizzes', 'review', 'answers'].includes(activeView)) {
+      return null;
     }
 
     // If Announcements & Notifications view
@@ -162,13 +175,6 @@ const AppContent = () => {
     // If Payment Approvals view (Admin only)
     if (activeView === 'subscriptions') {
       return <AdminSubscriptions />;
-    }
-
-    // Marks & Answers (student) / Student Answers (admin)
-    if (activeView === 'review' || activeView === 'answers') {
-      return currentRole === 'teacher' || currentRole === 'admin'
-        ? <AdminAnswersDashboard />
-        : <StudentAnswersDashboard />;
     }
 
     // Registered students (admin only)
@@ -239,6 +245,7 @@ const AppContent = () => {
 
       {/* Global Overlays */}
       <GlobalSearchModal />
+      <ConfirmHost />
       <ToastContainer />
     </div>
   );

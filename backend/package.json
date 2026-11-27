@@ -1,6 +1,6 @@
 {
   "name": "cohesiontech-backend",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "private": true,
   "description": "CohesionTech API: Node.js + Express + MongoDB",
   "type": "module",

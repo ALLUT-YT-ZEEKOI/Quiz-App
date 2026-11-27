@@ -12,7 +12,11 @@ import { useApp } from '../../context/AppContext';
 
 const DIFFICULTY_PRESETS = [
   {
-    name: 'Easy • Medium • Tough (Requested)',
+    name: 'Basic • Medium • Advanced (Default)',
+    labels: ['Basic', 'Medium', 'Advanced']
+  },
+  {
+    name: 'Easy • Medium • Tough',
     labels: ['Easy', 'Medium', 'Tough']
   },
   {
@@ -97,9 +101,9 @@ export const EditDifficultyModal = ({ isOpen, onClose }) => {
 
   const handleReset = () => {
     resetDifficultyLevels();
-    setEasyLabel('Easy');
+    setEasyLabel('Basic');
     setMedLabel('Medium');
-    setHardLabel('Hard');
+    setHardLabel('Advanced');
   };
 
   return (
@@ -117,7 +121,7 @@ export const EditDifficultyModal = ({ isOpen, onClose }) => {
                 Customize Question Difficulty Labels
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Rename Easy, Medium, and Hard (e.g. Easy, Moderate, Tough) for teachers & students.
+                Rename the three levels (e.g. Basic, Medium, Advanced) for teachers & students.
               </p>
             </div>
           </div>

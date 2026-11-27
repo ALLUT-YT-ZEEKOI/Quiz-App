@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { SaveQuestionButton } from '../saved/SaveQuestionButton';
 import {
   Clock,
   AlertTriangle,
@@ -309,6 +310,14 @@ export const StudentLiveExam = ({ exam, onExitExam, onExamSubmitted }) => {
                     <span className="text-red-500 font-bold hidden sm:inline">-{exam?.negativeMarkValue || 0.25} Neg.</span>
                   </>
                 )}
+                <SaveQuestionButton
+                  source="exam"
+                  sourceId={exam?.id}
+                  sourceTitle={exam?.title}
+                  subjectName={exam?.subjectName}
+                  question={currentQ}
+                  questionIndex={currentQuestionIndex}
+                />
                 <button
                   type="button"
                   onClick={() => setDoubtOpen(true)}

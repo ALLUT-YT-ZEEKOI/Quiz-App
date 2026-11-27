@@ -476,7 +476,7 @@ export const BulkQuestionUploadModal = ({
                     <div>C) Third option</div>
                     <div>D) Fourth option</div>
                     <div className="text-emerald-600 dark:text-emerald-400 font-bold">Answer: B</div>
-                    <div className="text-amber-600 dark:text-amber-400">Difficulty: Medium <span className="text-slate-400 font-normal">(Optional: Easy, Medium, or Hard)</span></div>
+                    <div className="text-amber-600 dark:text-amber-400">Difficulty: Medium <span className="text-slate-400 font-normal">(Optional: Basic, Medium or Advanced)</span></div>
                     <div className="text-slate-400">Explanation: Brief notes <span className="font-normal">(Optional)</span></div>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import { hashPassword } from '../services/passwords.js';
 import { normalizePhone, buildStudentRecord } from '../services/students.js';
 import { COLLECTIONS, cleanIncoming } from '../sync/collections.js';
 import { externalizeScreenshot } from '../services/screenshots.js';
+import { formatRollNumber, rollSeq, isLegacyRegistrationId } from '../services/rollNumbers.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireAdmin);
@@ -118,7 +119,9 @@ adminRouter.post('/import', json({ limit: '60mb' }), async (req, res, next) => {
       const user = {
         role: 'student',
         studentId: a.studentId,
-        registrationId: a.registrationId,
+        // Browser accounts may still carry an old CT-2026-0001 ID: give them their CN roll number
+        registrationId: rollSeq(a.registrationId) ? formatRollNumber(rollSeq(a.registrationId)) : a.registrationId,
+        ...(isLegacyRegistrationId(a.registrationId) ? { legacyRegistrationId: String(a.registrationId).toUpperCase() } : {}),
         email,
         phone,
         name: a.name,
@@ -138,7 +141,7 @@ adminRouter.post('/import', json({ limit: '60mb' }), async (req, res, next) => {
       await db.collection('users').insertOne(user);
       const student = buildStudentRecord(user);
       await db.collection('students').updateOne({ _id: student.id }, { $setOnInsert: { ...student, _updatedAt: now } }, { upsert: true });
-      const seq = Number(String(a.registrationId || '').split('-').pop());
+      const seq = rollSeq(a.registrationId) || 0;
       if (seq > maxSeq) maxSeq = seq;
       accounts++;
     }

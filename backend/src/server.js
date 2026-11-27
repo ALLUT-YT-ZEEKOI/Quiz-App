@@ -1,12 +1,13 @@
 import { config } from './config.js';
 import { connectDb, closeDb } from './db.js';
 import { createApp } from './app.js';
-import { ensureAdmin, ensureCollectionIndexes } from './setup.js';
+import { ensureAdmin, ensureCollectionIndexes, ensureRollNumbers } from './setup.js';
 
 export const startServer = async (mongoUri) => {
   await connectDb(mongoUri);
   await ensureCollectionIndexes();
   await ensureAdmin();
+  await ensureRollNumbers();
   const app = createApp();
   const server = app.listen(config.port, () => {
     console.log(`🚀 CohesionTech API running on http://localhost:${config.port}/api`);

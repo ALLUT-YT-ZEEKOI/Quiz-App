@@ -8,14 +8,8 @@ export const STUDENT_MODULES = [
   {
     id: 'subjects',
     label: 'Subjects & Curriculum',
-    description: 'Subjects, modules, videos, notes and module quizzes.',
+    description: 'Subjects, modules, videos, notes, module quizzes and their results.',
     views: ['subjects', 'dashboard']
-  },
-  {
-    id: 'examinations',
-    label: 'Live Examinations',
-    description: 'Scheduled and live exams, and exam results.',
-    views: ['examinations', 'live-exams']
   },
   {
     id: 'mock-tests',
@@ -24,16 +18,16 @@ export const STUDENT_MODULES = [
     views: ['mock-tests']
   },
   {
-    id: 'quizzes',
-    label: 'Quiz & Assessments',
-    description: 'Quiz attempts and assessment results.',
-    views: ['results']
+    id: 'examinations',
+    label: 'Live Examinations',
+    description: 'Scheduled and live exams, exam results and retest requests.',
+    views: ['examinations', 'live-exams']
   },
   {
-    id: 'review',
-    label: 'Marks & Answers',
-    description: 'Subject marks, answer review and retest requests.',
-    views: ['review', 'answers']
+    id: 'saved',
+    label: 'Saved Questions',
+    description: 'Save questions from quizzes, mock tests and exams to revise later.',
+    views: ['saved']
   },
   {
     id: 'rankings',
@@ -42,16 +36,16 @@ export const STUDENT_MODULES = [
     views: ['rankings']
   },
   {
-    id: 'doubts',
-    label: 'My Doubts',
-    description: 'Ask doubts and read replies from the admin.',
-    views: ['doubts']
-  },
-  {
     id: 'notifications',
     label: 'Notice Board',
     description: 'Announcements and alerts from the admin.',
     views: ['notifications', 'announcements']
+  },
+  {
+    id: 'doubts',
+    label: 'My Doubts',
+    description: 'Ask doubts and read replies from the admin.',
+    views: ['doubts']
   }
 ];
 
@@ -75,13 +69,12 @@ export const ADMIN_MODULES_SETTING_ID = 'adminModules';
 
 export const ADMIN_MODULES = [
   { id: 'subjects', label: 'Subjects & Curriculum', description: 'Create subjects, courses, videos, notes and questions.', views: ['subjects', 'dashboard'] },
+  { id: 'mock-tests', label: 'Mock Tests', description: 'Build day-wise timed practice tests.', views: ['mock-tests'] },
+  { id: 'examinations', label: 'Live Examinations', description: 'Create, schedule and monitor live exams.', views: ['examinations', 'live-exams'] },
   { id: 'registrations', label: 'Registered Students', description: 'Student sign-ups, login activity and password resets.', views: ['registrations'] },
   { id: 'students', label: 'Student Management', description: 'Payment approvals and subject subscriptions.', views: ['subscriptions'] },
-  { id: 'examinations', label: 'Live Examinations', description: 'Create, schedule and monitor live exams.', views: ['examinations', 'live-exams'] },
-  { id: 'mock-tests', label: 'Mock Tests', description: 'Build day-wise timed practice tests.', views: ['mock-tests'] },
-  { id: 'quizzes', label: 'Quiz & Assessments', description: 'Module quiz results and assessment reports.', views: ['results'] },
-  { id: 'answers', label: 'Student Answers', description: 'Every answer, question analysis, marks and retests.', views: ['answers', 'review'] },
   { id: 'rankings', label: 'Student Rankings', description: 'Leaderboards with correct, wrong and time taken.', views: ['rankings'] },
+  { id: 'saved', label: 'Saved Questions', description: 'Which student saved which question.', views: ['saved'] },
   { id: 'doubts', label: 'Doubts', description: 'Reply to questions from students.', views: ['doubts'] },
   { id: 'notifications', label: 'Announcements & Alerts', description: 'Post notices and alerts to students.', views: ['notifications', 'announcements'] }
 ];
@@ -108,7 +101,8 @@ export const CONTENT_ACCESS_SETTING_ID = 'contentAccess';
 export const CONTENT_TYPES = [
   { id: 'videos', label: 'Lesson Videos' },
   { id: 'notes', label: 'Study Notes' },
-  { id: 'questions', label: 'Questions & Answers' }
+  { id: 'questions', label: 'Questions & Answers' },
+  { id: 'results', label: 'Results' }
 ];
 
 /** The raw content-access config ({ [subjectId]: {...} }) from the synced settings list. */

@@ -2,7 +2,8 @@
 // Same rules as the frontend's src/utils/studentModules.js: a course setting wins over its
 // subject's setting, and anything never set counts as visible.
 
-const CONTENT_TYPES = ['videos', 'notes', 'questions'];
+// 'results' only hides the students' My Results tab (no course content to remove)
+const CONTENT_TYPES = ['videos', 'notes', 'questions', 'results'];
 
 export const CONTENT_ACCESS_SETTING_ID = 'contentAccess';
 

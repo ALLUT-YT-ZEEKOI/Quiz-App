@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Plus, Upload, Pencil, Trash2, ListChecks, Check, Clock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { confirmDialog } from '../common/ConfirmDialog';
 import { BulkQuestionUploadModal } from '../curriculum/BulkQuestionUploadModal';
 import { Modal, Toggle, primaryBtn, secondaryBtn, inputCls, labelCls } from './MockTestUi';
 import { formatDuration } from '../../utils/mockTests';
@@ -148,8 +149,14 @@ export const MockTestQuestions = ({ testId, onBack }) => {
     }
   };
 
-  const handleDelete = (q, idx) => {
-    if (!window.confirm(`Delete question ${idx + 1}?`)) return;
+  const handleDelete = async (q, idx) => {
+    const ok = await confirmDialog({
+      title: `Delete question ${idx + 1}?`,
+      message: q.questionText,
+      confirmLabel: 'Delete',
+      tone: 'danger'
+    });
+    if (!ok) return;
     setQuestions(questions.filter((x) => x.id !== q.id));
   };
 

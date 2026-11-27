@@ -169,8 +169,12 @@ syncRouter.post('/:name', async (req, res, next) => {
     for (const key of deletes) {
       if (typeof key !== 'string') continue;
       if (!isAdmin) {
-        ignored.push(key); // students never delete
-        continue;
+        // Students only delete their own items, and only where allowed (e.g. un-saving a question)
+        const doc = def.studentDeletable ? await coll.findOne({ _id: key, _deleted: { $ne: true } }) : null;
+        if (!doc || doc.studentId !== user.studentId) {
+          ignored.push(key);
+          continue;
+        }
       }
       await coll.updateOne({ _id: key }, { $set: { _deleted: true, _updatedAt: now } });
     }

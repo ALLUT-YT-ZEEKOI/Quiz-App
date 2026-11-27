@@ -29,7 +29,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { STUDENT_MODULES, ADMIN_MODULES, CONTENT_TYPES, getContentAccess } from '../../utils/studentModules';
 
-const CONTENT_ICONS = { videos: Video, notes: NotebookText, questions: HelpCircle };
+const CONTENT_ICONS = { videos: Video, notes: NotebookText, questions: HelpCircle, results: Award };
 
 const ICONS = {
   subjects: BookOpen,
@@ -174,7 +174,7 @@ const StudentAccessBoard = () => {
       <div className="pt-2">
         <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">Subject Content Access</h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
-          Inside each subject, choose whether students see Lesson Videos, Study Notes and Questions &amp; Answers.
+          Inside each subject, choose whether students see Lesson Videos, Study Notes, Questions &amp; Answers and their Results.
           A subject switch applies to all its courses. Open a subject to set courses one by one.
         </p>
       </div>
@@ -223,7 +223,7 @@ const StudentAccessBoard = () => {
                     <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
                   </button>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 xl:w-[690px] shrink-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 xl:w-[860px] shrink-0">
                     {CONTENT_TYPES.map((type) => {
                       const Icon = CONTENT_ICONS[type.id];
                       const custom = customCount(type.id);
@@ -267,7 +267,7 @@ const StudentAccessBoard = () => {
                               <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{module.title}</div>
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 xl:w-[690px] shrink-0">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 xl:w-[860px] shrink-0">
                             {CONTENT_TYPES.map((type) => {
                               const Icon = CONTENT_ICONS[type.id];
                               return (

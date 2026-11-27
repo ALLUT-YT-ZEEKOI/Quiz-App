@@ -200,7 +200,7 @@ const ChangePasswordCard = ({ account }) => {
         <div>
           <h3 className="font-bold text-base text-slate-900 dark:text-white">Change password</h3>
           <p className="text-xs text-slate-500">
-            Sign in with <strong>{account.email}</strong> or your WhatsApp number. Registration ID: {account.registrationId}
+            Sign in with <strong>{account.email}</strong> or your WhatsApp number. Roll number: <strong>{account.registrationId}</strong>
           </p>
         </div>
       </div>

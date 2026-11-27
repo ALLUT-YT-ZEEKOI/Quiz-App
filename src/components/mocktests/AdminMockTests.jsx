@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Plus, CalendarDays, Clock, ListChecks, Pencil, Trash2, BarChart3, ClipboardList, Eye, EyeOff, RotateCcw, Globe, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { confirmDialog } from '../common/ConfirmDialog';
 import { MockTestFormModal } from './MockTestFormModal';
 import { PageHero, Toggle, primaryBtn, secondaryBtn } from './MockTestUi';
 import { formatDuration, groupByDay, isPrivateMockTest } from '../../utils/mockTests';
@@ -12,8 +13,30 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
   const [editing, setEditing] = useState(null);
   const [newForDay, setNewForDay] = useState(1);
 
-  const days = useMemo(() => groupByDay(mockTests), [mockTests]);
-  const existingDays = days.map((d) => d.day);
+  // Filter: all / public / private tests, and for private ones a single batch
+  const [accessFilter, setAccessFilter] = useState('all'); // 'all' | 'public' | 'private'
+  const [batchFilter, setBatchFilter] = useState('all'); // 'all' | batch (subject) id
+  const privateTests = mockTests.filter(isPrivateMockTest);
+  const counts = { all: mockTests.length, public: mockTests.length - privateTests.length, private: privateTests.length };
+  // Batches that private tests are open to (for the batch picker)
+  const usedBatchIds = [...new Set(privateTests.flatMap((t) => t.batchSubjectIds || []))].sort((a, b) =>
+    batchName(a).localeCompare(batchName(b))
+  );
+  const shownTests = mockTests.filter((t) => {
+    if (accessFilter === 'public') return !isPrivateMockTest(t);
+    if (accessFilter === 'private') {
+      return isPrivateMockTest(t) && (batchFilter === 'all' || (t.batchSubjectIds || []).includes(batchFilter));
+    }
+    return true;
+  });
+  const filtering = accessFilter !== 'all';
+  const pickAccess = (value) => {
+    setAccessFilter(value);
+    setBatchFilter('all');
+  };
+
+  const days = groupByDay(shownTests);
+  const existingDays = groupByDay(mockTests).map((d) => d.day);
   const visibleCount = mockTests.filter((t) => t.enabled).length;
 
   const attemptsByTest = useMemo(() => {
@@ -50,12 +73,17 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
     showToast(value ? `"${test.title}" is now visible to students` : `"${test.title}" is hidden from students`, 'info');
   };
 
-  const handleDelete = (test) => {
+  const handleDelete = async (test) => {
     const n = attemptsByTest.get(test.id) || 0;
-    const msg = n
-      ? `Delete "${test.title}"? Its ${n} student attempt${n === 1 ? '' : 's'} will stay in the results, but the test itself is removed.`
-      : `Delete "${test.title}"?`;
-    if (window.confirm(msg)) deleteMockTest(test.id);
+    const ok = await confirmDialog({
+      title: `Delete "${test.title}"?`,
+      message: n
+        ? `Its ${n} student attempt${n === 1 ? '' : 's'} will stay in the results, but the test itself is removed.`
+        : 'The test and its questions are removed.',
+      confirmLabel: 'Delete test',
+      tone: 'danger'
+    });
+    if (ok) deleteMockTest(test.id);
   };
 
   return (
@@ -84,7 +112,71 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
         ))}
       </div>
 
-      {days.length === 0 && (
+      {mockTests.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <div role="group" aria-label="Show tests" className="inline-flex p-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle self-start">
+            {[
+              { id: 'all', label: 'All', Icon: ListChecks },
+              { id: 'public', label: 'Public', Icon: Globe },
+              { id: 'private', label: 'Private', Icon: Lock }
+            ].map(({ id, label, Icon }) => {
+              const active = accessFilter === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => pickAccess(id)}
+                  aria-pressed={active}
+                  className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold inline-flex items-center gap-1.5 transition-colors ${
+                    active
+                      ? id === 'private'
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : id === 'public'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-[#087F8C] text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                  <span className={`text-[10px] font-extrabold px-1.5 rounded-full ${active ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+                    {counts[id]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {accessFilter === 'private' && usedBatchIds.length > 0 && (
+            <select
+              aria-label="Batch"
+              value={batchFilter}
+              onChange={(e) => setBatchFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 shadow-subtle focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 sm:max-w-xs"
+            >
+              <option value="all">All batches</option>
+              {usedBatchIds.map((id) => (
+                <option key={id} value={id}>
+                  {batchName(id)} ({privateTests.filter((t) => (t.batchSubjectIds || []).includes(id)).length})
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      {mockTests.length > 0 && filtering && days.length === 0 && (
+        <div className="p-6 sm:p-10 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center space-y-2">
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+            No {accessFilter} mock tests{batchFilter !== 'all' ? ` for ${batchName(batchFilter)}` : ''}.
+          </p>
+          <button type="button" onClick={() => pickAccess('all')} className="text-xs font-bold text-[#087F8C] dark:text-teal-300 hover:underline">
+            Show all tests
+          </button>
+        </div>
+      )}
+
+      {mockTests.length === 0 && (
         <div className="p-8 sm:p-14 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center space-y-3">
           <ClipboardList className="w-12 h-12 text-slate-300 mx-auto" />
           <p className="text-base font-bold text-slate-800 dark:text-slate-100">No mock tests yet</p>
@@ -208,6 +300,16 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
                       onChange={(v) => updateMockTest(test.id, { allowRetest: v })}
                       label="Allow retest"
                       tone="amber"
+                    />
+                    <Toggle
+                      checked={!!test.shuffleQuestions}
+                      onChange={(v) => updateMockTest(test.id, { shuffleQuestions: v })}
+                      label="Shuffle questions"
+                    />
+                    <Toggle
+                      checked={!!test.shuffleOptions}
+                      onChange={(v) => updateMockTest(test.id, { shuffleOptions: v })}
+                      label="Shuffle answers"
                     />
                   </div>
 

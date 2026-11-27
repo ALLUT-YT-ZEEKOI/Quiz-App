@@ -103,6 +103,11 @@ export const ExaminationsMain = () => {
     return (
       <StudentExamResult
         attempt={viewingResultAttempt}
+        onStartRetest={(examId) => {
+          setViewingResultAttempt(null);
+          setStudentSubView('list');
+          startStudentExam(examId);
+        }}
         onBack={() => {
           setViewingResultAttempt(null);
           setStudentSubView('list');

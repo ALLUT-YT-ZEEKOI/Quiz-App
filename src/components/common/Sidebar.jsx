@@ -1,10 +1,9 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import {
+  Bookmark,
   BookOpen,
   Users,
-  FileQuestion,
-  Award,
   Radio,
   ChevronLeft,
   ChevronRight,
@@ -13,7 +12,6 @@ import {
   Bell,
   Settings,
   LogOut,
-  ClipboardCheck,
   MessageCircleQuestion,
   UserPlus,
   ClipboardList,
@@ -30,7 +28,6 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     activeView,
     setActiveView,
     curriculumSubjects,
-    curriculumAttempts,
     pendingSubscriptionsCount,
     examinations,
     notifications,
@@ -44,7 +41,8 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     studentAccounts,
     studentModules,
     adminModules,
-    checkEnrollmentStatus
+    checkEnrollmentStatus,
+    savedQuestions
   } = useApp();
 
   const myId = currentUser?.id || 'STU001';
@@ -82,6 +80,21 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badge: curriculumSubjects?.length || 0
     },
     {
+      id: 'mock-tests',
+      label: 'Mock Tests',
+      icon: ClipboardList,
+      targetView: 'mock-tests',
+      badge: (mockTests || []).length || undefined
+    },
+    {
+      id: 'examinations',
+      label: 'Live Examinations',
+      icon: Radio,
+      targetView: 'examinations',
+      badge: liveExamsCount > 0 ? `${liveExamsCount} Live` : undefined,
+      badgeColor: 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse'
+    },
+    {
       id: 'registrations',
       label: 'Registered Students',
       icon: UserPlus,
@@ -98,40 +111,17 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badgeColor: 'bg-amber-500 text-white'
     },
     {
-      id: 'examinations',
-      label: 'Live Examinations',
-      icon: Radio,
-      targetView: 'examinations',
-      badge: liveExamsCount > 0 ? `${liveExamsCount} Live` : undefined,
-      badgeColor: 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse'
-    },
-    {
-      id: 'mock-tests',
-      label: 'Mock Tests',
-      icon: ClipboardList,
-      targetView: 'mock-tests',
-      badge: (mockTests || []).length || undefined
-    },
-    {
-      id: 'quizzes',
-      label: 'Quiz & Assessments',
-      icon: FileQuestion,
-      targetView: 'results',
-      badge: curriculumAttempts?.length || undefined
-    },
-    {
-      id: 'answers',
-      label: 'Student Answers',
-      icon: ClipboardCheck,
-      targetView: 'answers',
-      badge: pendingRetestCount > 0 ? pendingRetestCount : undefined,
-      badgeColor: 'bg-amber-500 text-white'
-    },
-    {
       id: 'rankings',
       label: 'Student Rankings',
       icon: Trophy,
       targetView: 'rankings'
+    },
+    {
+      id: 'saved',
+      label: 'Saved Questions',
+      icon: Bookmark,
+      targetView: 'saved',
+      badge: (savedQuestions || []).length || undefined
     },
     {
       id: 'doubts',
@@ -168,6 +158,13 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badge: curriculumSubjects?.length || 0
     },
     {
+      id: 'mock-tests',
+      label: 'Mock Tests',
+      icon: ClipboardList,
+      targetView: 'mock-tests',
+      badge: visibleMockTests || undefined
+    },
+    {
       id: 'examinations',
       label: 'Live Examinations',
       icon: Radio,
@@ -176,28 +173,11 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       badgeColor: 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse'
     },
     {
-      id: 'mock-tests',
-      label: 'Mock Tests',
-      icon: ClipboardList,
-      targetView: 'mock-tests',
-      badge: visibleMockTests || undefined
-    },
-    {
-      id: 'quizzes',
-      label: 'Quiz & Assessments',
-      icon: Award,
-      targetView: 'results',
-      badge: (curriculumAttempts || []).filter(
-        (a) => a.studentId === (currentUser?.id || 'STU001')
-      ).length || undefined
-    },
-    {
-      id: 'review',
-      label: 'Marks & Answers',
-      icon: ClipboardCheck,
-      targetView: 'review',
-      badge: myGrantedRetests > 0 ? 'Retest' : undefined,
-      badgeColor: 'bg-emerald-500 text-white'
+      id: 'saved',
+      label: 'Saved Questions',
+      icon: Bookmark,
+      targetView: 'saved',
+      badge: (savedQuestions || []).filter((q) => q.studentId === myId).length || undefined
     },
     {
       id: 'rankings',
@@ -206,20 +186,20 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       targetView: 'rankings'
     },
     {
-      id: 'doubts',
-      label: 'My Doubts',
-      icon: MessageCircleQuestion,
-      targetView: 'doubts',
-      badge: myNewDoubtReplies > 0 ? myNewDoubtReplies : undefined,
-      badgeColor: 'bg-violet-500 text-white'
-    },
-    {
       id: 'notifications',
       label: 'Notice Board',
       icon: Bell,
       targetView: 'notifications',
       badge: studentUnreadCount > 0 ? studentUnreadCount : undefined,
       badgeColor: 'bg-teal-500 text-white'
+    },
+    {
+      id: 'doubts',
+      label: 'My Doubts',
+      icon: MessageCircleQuestion,
+      targetView: 'doubts',
+      badge: myNewDoubtReplies > 0 ? myNewDoubtReplies : undefined,
+      badgeColor: 'bg-violet-500 text-white'
     }
   ];
 
@@ -243,11 +223,8 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
     if (item.id === 'subjects' && (activeView === 'subjects' || activeView === 'dashboard')) return true;
     if (item.id === 'students' && activeView === 'subscriptions') return true;
     if (item.id === 'examinations' && activeView === 'examinations') return true;
-    if (item.id === 'quizzes' && activeView === 'results') return true;
     if (item.id === 'notifications' && (activeView === 'notifications' || activeView === 'announcements')) return true;
     if (item.id === 'profile' && activeView === 'profile') return true;
-    if (item.id === 'answers' && (activeView === 'answers' || activeView === 'review')) return true;
-    if (item.id === 'review' && (activeView === 'review' || activeView === 'answers')) return true;
     if (item.id === 'doubts' && activeView === 'doubts') return true;
     if (item.id === 'mock-tests' && activeView === 'mock-tests') return true;
     if (item.id === 'registrations' && activeView === 'registrations') return true;

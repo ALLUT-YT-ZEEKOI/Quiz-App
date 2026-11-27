@@ -2,8 +2,7 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   BookOpen,
-  Award,
-  BarChart3,
+  ClipboardList,
   ShieldCheck,
   Radio,
   Menu
@@ -42,7 +41,7 @@ export const MobileBottomNav = ({ onMobileMenuToggle }) => {
       icon: Radio,
       badge: liveCount > 0 ? 'Live' : null
     },
-    { id: 'results', label: 'Results', icon: BarChart3 }
+    { id: 'mock-tests', label: 'Mock Tests', icon: ClipboardList }
   ];
 
   const studentItems = [
@@ -54,11 +53,11 @@ export const MobileBottomNav = ({ onMobileMenuToggle }) => {
       icon: Radio,
       badge: liveCount > 0 ? 'Live' : null
     },
-    { id: 'results', module: 'quizzes', label: 'My Results', icon: Award }
+    { id: 'mock-tests', module: 'mock-tests', label: 'Mock Tests', icon: ClipboardList }
   ].filter((item) => studentModules?.[item.module] !== false);
 
   // Admin bottom bar follows the admin sections shown on the Permissions page
-  const ADMIN_SECTION = { subjects: 'subjects', subscriptions: 'students', examinations: 'examinations', results: 'quizzes' };
+  const ADMIN_SECTION = { subjects: 'subjects', subscriptions: 'students', examinations: 'examinations', 'mock-tests': 'mock-tests' };
   const navItems = currentRole === 'teacher'
     ? teacherItems.filter((item) => adminModules?.[ADMIN_SECTION[item.id]] !== false)
     : studentItems;

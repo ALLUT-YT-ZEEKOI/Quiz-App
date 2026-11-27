@@ -7,6 +7,7 @@ import { config } from '../config.js';
 import { signToken, requireAuth } from '../middleware/auth.js';
 import { hashPassword, checkPassword } from '../services/passwords.js';
 import { normalizePhone, validateRegistration, buildStudentRecord } from '../services/students.js';
+import { formatRollNumber, normalizeRollInput } from '../services/rollNumbers.js';
 
 export const authRouter = Router();
 
@@ -41,7 +42,7 @@ const nextRegistrationId = async () => {
   const counter = await getDb()
     .collection('counters')
     .findOneAndUpdate({ _id: 'registration' }, { $inc: { seq: 1 } }, { upsert: true, returnDocument: 'after' });
-  return `CT-${new Date().getFullYear()}-${String(counter.seq).padStart(4, '0')}`;
+  return formatRollNumber(counter.seq); // CN101, CN102, ...
 };
 
 /** Student self-registration (the registration form). */
@@ -112,14 +113,15 @@ authRouter.post('/login', authLimiter, async (req, res, next) => {
       user = await users().findOne({ role: 'admin', $or: [{ username: identifier }, { email: identifier }] });
     } else {
       const phone = normalizePhone(identifier);
-      const or = [{ email: identifier }, { registrationId: identifier.toUpperCase() }];
+      // Roll number ("CN101", "cn 101"), or the old CT-2026-0001 ID from before roll numbers
+      const or = [{ email: identifier }, { registrationId: normalizeRollInput(identifier) }, { legacyRegistrationId: identifier.toUpperCase() }];
       if (phone.length === 10) or.push({ phone });
       user = await users().findOne({ role: 'student', $or: or });
     }
 
     if (!user) {
       return res.status(401).json({
-        error: wantAdmin ? 'Admin account not found. Please check your username/email.' : 'No registered student account found with this email, phone, or ID.'
+        error: wantAdmin ? 'Admin account not found. Please check your username/email.' : 'No registered student account found with this email, phone, or roll number.'
       });
     }
 

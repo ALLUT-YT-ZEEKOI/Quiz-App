@@ -5,11 +5,18 @@ import { INITIAL_QUIZZES, INITIAL_ATTEMPTS, INITIAL_NOTIFICATIONS } from '../dat
 import { INITIAL_CURRICULUM, INITIAL_CURRICULUM_ATTEMPTS, INITIAL_SUBSCRIPTIONS, INITIAL_DOUBTS } from '../data/curriculumData';
 import { INITIAL_EXAMINATIONS, generateLiveMonitoringData, generateCompletedExamAttempts } from '../data/examinationsData';
 import { formatEmbedUrl } from '../utils/videoUtils';
-import { createSectionId, normalizeCurriculumSections } from '../utils/curriculumSections';
+import {
+  createSectionId,
+  normalizeCurriculumSections,
+  sectionDays,
+  dayQuizSettings
+} from '../utils/curriculumSections';
 import { saveNoteFile, deleteNoteFiles, collectFileNoteIds } from '../utils/notesStorage';
 import { addDays, isLifetime, pickLatestApproved, endOfDate, formatDate } from '../utils/subscriptionUtils';
 import { hashPassword, verifyPassword } from '../utils/passwordHash';
 import { buildStudentFromRegistration, normalizePhone } from '../utils/studentRegistration';
+import { formatRollNumber, normalizeRollInput, rollSeq } from '../utils/rollNumbers';
+import { buildSavedQuestion, savedIdFor } from '../utils/savedQuestions';
 import { api, backendEnabled, getToken, setToken, clearToken, setUnauthorizedHandler } from '../api/client';
 import { SyncManager } from '../api/syncManager';
 import {
@@ -39,9 +46,9 @@ const persistLocal = (key, value) => {
 const AppContext = createContext();
 
 export const DEFAULT_DIFFICULTY_LEVELS = [
-  { id: 'easy', label: 'Easy', color: 'emerald', dot: '🟢' },
+  { id: 'easy', label: 'Basic', color: 'emerald', dot: '🟢' },
   { id: 'medium', label: 'Medium', color: 'amber', dot: '🟡' },
-  { id: 'hard', label: 'Hard', color: 'red', dot: '🔴' }
+  { id: 'hard', label: 'Advanced', color: 'red', dot: '🔴' }
 ];
 
 const CURRENT_DATA_VERSION = 'cohesiontech_v5_clean_production_empty';
@@ -64,6 +71,7 @@ export const AppProvider = ({ children }) => {
       localStorage.removeItem('cohesion_curriculum_attempts');
       localStorage.removeItem('cohesion_subscriptions');
       localStorage.removeItem('cohesion_doubts');
+      localStorage.removeItem('cohesion_saved_questions');
       localStorage.removeItem('cohesion_examinations');
       localStorage.removeItem('cohesion_exam_attempts');
       localStorage.removeItem('cohesion_exam_monitoring');
@@ -398,6 +406,25 @@ export const AppProvider = ({ children }) => {
       persistLocal('cohesion_doubts', doubts);
     } catch (e) {}
   }, [doubts]);
+
+  // Saved questions: questions students bookmarked from quizzes, mock tests and live exams
+  const [savedQuestions, setSavedQuestions] = useState(() => {
+    if (needsDataReset) return [];
+    try {
+      const saved = localStorage.getItem('cohesion_saved_questions');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      persistLocal('cohesion_saved_questions', savedQuestions);
+    } catch (e) {}
+  }, [savedQuestions]);
 
   const [activeExamForAttempt, setActiveExamForAttempt] = useState(null);
   const [lastExamResult, setLastExamResult] = useState(null);
@@ -754,6 +781,9 @@ export const AppProvider = ({ children }) => {
       description: (data.description || '').trim(),
       durationMinutes: Math.max(1, Number(data.durationMinutes) || 60),
       allowRetest: !!data.allowRetest,
+      // Shuffle the question order / the answer options for each student
+      shuffleQuestions: !!data.shuffleQuestions,
+      shuffleOptions: !!data.shuffleOptions,
       // Public: every student. Private: only students of the chosen batches (courses).
       access: data.access === 'private' ? 'private' : 'public',
       batchSubjectIds: data.access === 'private' ? [...new Set(data.batchSubjectIds || [])] : [],
@@ -938,26 +968,29 @@ export const AppProvider = ({ children }) => {
 
   // Helper to resolve question difficulty label & meta
   const getDifficultyMeta = (difficultyValue) => {
-    if (!difficultyValue) return difficultyLevels[1] || DEFAULT_DIFFICULTY_LEVELS[1];
+    // Never look up in an empty list (that returned nothing and crashed the page)
+    const levels = Array.isArray(difficultyLevels) && difficultyLevels.length >= 3 ? difficultyLevels : DEFAULT_DIFFICULTY_LEVELS;
+    const fallback = levels[1] || DEFAULT_DIFFICULTY_LEVELS[1];
+    if (!difficultyValue) return fallback;
     const val = String(difficultyValue).trim().toLowerCase();
 
-    for (const lvl of difficultyLevels) {
-      if (lvl.id === val || lvl.label.toLowerCase() === val) {
+    for (const lvl of levels) {
+      if (lvl?.id === val || String(lvl?.label || '').toLowerCase() === val) {
         return lvl;
       }
     }
 
     if (['easy', 'simple', 'beginner', 'basic', 'level 1'].includes(val)) {
-      return difficultyLevels.find((l) => l.id === 'easy') || difficultyLevels[0];
+      return levels.find((l) => l.id === 'easy') || levels[0] || fallback;
     }
     if (['medium', 'moderate', 'intermediate', 'normal', 'average', 'level 2'].includes(val)) {
-      return difficultyLevels.find((l) => l.id === 'medium') || difficultyLevels[1];
+      return levels.find((l) => l.id === 'medium') || fallback;
     }
     if (['hard', 'tough', 'advanced', 'difficult', 'expert', 'level 3'].includes(val)) {
-      return difficultyLevels.find((l) => l.id === 'hard') || difficultyLevels[2];
+      return levels.find((l) => l.id === 'hard') || levels[2] || fallback;
     }
 
-    return difficultyLevels[1] || DEFAULT_DIFFICULTY_LEVELS[1];
+    return fallback;
   };
 
   const getDifficultyLabel = (difficultyValue) => {
@@ -1036,12 +1069,22 @@ export const AppProvider = ({ children }) => {
     m.register('examMonitoring', setExamMonitoringSessions);
     m.register('retests', setRetests);
     m.register('doubts', setDoubts);
+    m.register('savedQuestions', setSavedQuestions);
     m.register('notifications', setNotifications);
     m.register('students', setStudents);
     m.register('questions', setQuestions);
     m.register('quizzes', setQuizzes);
     m.register('attempts', setAttempts);
-    m.register('difficultyLevels', setDifficultyLevels);
+    // An empty or broken list from the server falls back to Easy / Medium / Hard (an empty list
+    // made pages crash when showing a question's difficulty)
+    m.register('difficultyLevels', (next) =>
+      setDifficultyLevels((prev) => {
+        const value = typeof next === 'function' ? next(prev) : next;
+        return Array.isArray(value) && value.length >= 3 && value.every((l) => l && l.id && l.label)
+          ? value
+          : DEFAULT_DIFFICULTY_LEVELS;
+      })
+    );
     m.register('mockTests', setMockTests);
     m.register('mockAttempts', setMockAttempts);
     m.register('settings', setAppSettings);
@@ -1057,6 +1100,7 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { syncRef.current?.track('examMonitoring', examMonitoringSessions); }, [examMonitoringSessions]);
   useEffect(() => { syncRef.current?.track('retests', retests); }, [retests]);
   useEffect(() => { syncRef.current?.track('doubts', doubts); }, [doubts]);
+  useEffect(() => { syncRef.current?.track('savedQuestions', savedQuestions); }, [savedQuestions]);
   useEffect(() => { syncRef.current?.track('notifications', notifications); }, [notifications]);
   useEffect(() => { syncRef.current?.track('students', students); }, [students]);
   useEffect(() => { syncRef.current?.track('questions', questions); }, [questions]);
@@ -1128,7 +1172,7 @@ export const AppProvider = ({ children }) => {
           return { ok: true, mustChangePassword: true, accountId: res.resetToken, name: res.name };
         }
         await startServerSession(res.token);
-        showToast(`Welcome, ${res.user.name}!`, 'success');
+        showToast(res.user.registrationId ? `Welcome, ${res.user.name}! Your roll number is ${res.user.registrationId}.` : `Welcome, ${res.user.name}!`, 'success', 5000);
         return { ok: true };
       } catch (err) {
         return { ok: false, error: err.message };
@@ -1307,7 +1351,8 @@ export const AppProvider = ({ children }) => {
     return (
       studentAccounts.find((a) => a.email === raw) ||
       (phone.length === 10 ? studentAccounts.find((a) => a.phone === phone) : null) ||
-      studentAccounts.find((a) => a.registrationId.toLowerCase() === raw) ||
+      studentAccounts.find((a) => (a.registrationId || '').toUpperCase() === normalizeRollInput(raw)) ||
+      studentAccounts.find((a) => (a.legacyRegistrationId || '').toLowerCase() === raw) ||
       null
     );
   };
@@ -1337,7 +1382,7 @@ export const AppProvider = ({ children }) => {
       try {
         const res = await api('/auth/register', { method: 'POST', auth: false, body: form });
         await startServerSession(res.token);
-        showToast(`Welcome, ${res.user.name}! Your registration ID is ${res.user.registrationId}.`, 'success', 6000);
+        showToast(`Welcome, ${res.user.name}! Your roll number is ${res.user.registrationId}.`, 'success', 6000);
         return { ok: true, registrationId: res.user.registrationId };
       } catch (err) {
         return { ok: false, field: err.data?.field || 'email', error: err.message };
@@ -1354,11 +1399,12 @@ export const AppProvider = ({ children }) => {
 
     const credentials = await hashPassword(form.password);
     const now = new Date();
-    const seq = studentAccounts.length + 1;
+    // Next roll number after the highest one given so far (CN101 for the first student)
+    const seq = Math.max(0, ...studentAccounts.map((a) => rollSeq(a.registrationId) || 0)) + 1;
     const account = {
       id: `acc-${now.getTime()}`,
       studentId: `STU-R${now.getTime().toString().slice(-6)}`,
-      registrationId: `CT-${now.getFullYear()}-${String(seq).padStart(4, '0')}`,
+      registrationId: formatRollNumber(seq), // CN101, CN102, ...
       email,
       phone,
       name: form.name.trim(),
@@ -1381,12 +1427,12 @@ export const AppProvider = ({ children }) => {
     setCurrentUserId(account.studentId);
     setIsAuthenticated(true);
     setActiveView('dashboard');
-    showToast(`Welcome, ${account.name}! Your registration ID is ${account.registrationId}.`, 'success', 6000);
+    showToast(`Welcome, ${account.name}! Your roll number is ${account.registrationId}.`, 'success', 6000);
     return { ok: true, registrationId: account.registrationId };
   };
 
   /**
-   * Student signs in with email / WhatsApp number / registration ID + password.
+   * Student signs in with email / WhatsApp number / roll number + password.
    * If the admin reset their password, returns { ok: true, mustChangePassword, accountId }
    * without signing in, so they can set a new password first.
    */
@@ -1394,7 +1440,7 @@ export const AppProvider = ({ children }) => {
     if (backendEnabled) return loginWithPassword('student', identifier, password);
     const account = findAccount(identifier);
     if (!account) {
-      return { ok: false, error: 'No student account found with this email, WhatsApp number, or registration ID.' };
+      return { ok: false, error: 'No student account found with this email, WhatsApp number, or roll number.' };
     }
     const isPasswordValid = await verifyPassword(password, account.credentials);
     if (!isPasswordValid) {
@@ -1509,6 +1555,7 @@ export const AppProvider = ({ children }) => {
       drop('examMonitoring', examMonitoringSessions, (i) => (i.examId && i.studentId ? `${i.examId}:${i.studentId}` : undefined));
       drop('retests', retests);
       drop('doubts', doubts);
+      drop('savedQuestions', savedQuestions);
       drop('attempts', attempts);
       drop('mockAttempts', mockAttempts);
       setStudentAccounts((prev) => prev.filter((a) => a.id !== accountId));
@@ -1521,6 +1568,7 @@ export const AppProvider = ({ children }) => {
       setExamMonitoringSessions(keep);
       setRetests(keep);
       setDoubts(keep);
+      setSavedQuestions(keep);
       setAttempts(keep);
       setMockAttempts(keep);
       setStudentAccounts((prev) => prev.filter((a) => a.id !== accountId));
@@ -1528,6 +1576,33 @@ export const AppProvider = ({ children }) => {
     showToast(`${account.name} was deleted permanently`, 'success');
     return { ok: true };
   };
+
+  // =========================================================================
+  // SAVED QUESTIONS (students bookmark questions to revise; the admin sees who saved what)
+  // =========================================================================
+
+  /** Whether the signed-in student saved this question of this quiz / mock test / exam. */
+  const isQuestionSaved = (source, sourceId, question) => {
+    if (!currentUserId) return false;
+    const id = savedIdFor(currentUserId, source, sourceId, question);
+    return savedQuestions.some((q) => q.id === id);
+  };
+
+  /**
+   * Saves or un-saves a question for the signed-in student.
+   * { source: 'quiz' | 'mock' | 'exam', sourceId, sourceTitle, subjectId, subjectName, question, questionIndex }
+   */
+  const toggleSaveQuestion = (details) => {
+    if (currentRole !== 'student' || !currentUserId) return;
+    const student = students.find((st) => st.id === currentUserId) || { id: currentUserId, name: 'Student' };
+    const item = buildSavedQuestion({ student, ...details });
+    if (!item.questionText) return;
+    const exists = savedQuestions.some((q) => q.id === item.id);
+    setSavedQuestions((prev) => (exists ? prev.filter((q) => q.id !== item.id) : [item, ...prev]));
+    showToast(exists ? 'Removed from Saved Questions' : 'Question saved. Find it in Saved Questions.', exists ? 'info' : 'success', 2500);
+  };
+
+  const removeSavedQuestion = (id) => setSavedQuestions((prev) => prev.filter((q) => q.id !== id));
 
   // =========================================================================
   // STREAMLINED CURRICULUM CRUD: SUBJECTS -> MODULES -> VIDEOS & QUESTIONS
@@ -1650,19 +1725,117 @@ export const AppProvider = ({ children }) => {
     showToast('Section updated', 'success');
   };
 
-  // Removes the section and every video inside it. A module always keeps at least one section.
+  // Removes the section and every video inside it. Its notes and questions are kept as "unsorted"
+  // (so nothing students answered disappears). A module always keeps at least one section.
   const deleteSection = (subjectId, moduleId, sectionId) => {
     mapModule(subjectId, moduleId, (m) => {
       const remaining = (m.sections || []).filter((sec) => sec.id !== sectionId);
+      const unsort = ({ sectionId: sid, day, ...rest }) => rest;
       return {
         ...m,
         sections: remaining.length
           ? remaining
           : [{ id: createSectionId(), title: 'Section 1', description: '' }],
-        videos: (m.videos || []).filter((v) => v.sectionId !== sectionId)
+        videos: (m.videos || []).filter((v) => v.sectionId !== sectionId),
+        notes: (m.notes || []).map((n) => (n.sectionId === sectionId ? unsort(n) : n)),
+        questions: (m.questions || []).map((q) => (q.sectionId === sectionId ? unsort(q) : q))
       };
     });
     showToast('Section removed', 'info');
+  };
+
+  // Days inside a section's Questions & Answers (Day 1, Day 2, ...)
+  const addSectionDay = (subjectId, moduleId, sectionId) => {
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      sections: (m.sections || []).map((sec) =>
+        sec.id === sectionId ? { ...sec, days: sectionDays(m, sectionId).length + 1 } : sec
+      )
+    }));
+  };
+
+  /**
+   * Quiz behaviour for one section · day: allow retest, shuffle questions, shuffle answers.
+   * Writes the full resolved settings onto section.daySettings so that day is independent
+   * of the module-level defaults.
+   */
+  const updateDayQuizSettings = (subjectId, moduleId, sectionId, day, fields) => {
+    const dayKey = String(Number(day) || 1);
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      sections: (m.sections || []).map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        const current = dayQuizSettings(m, sectionId, day);
+        const next = {
+          allowRetest: fields.allowRetest !== undefined ? !!fields.allowRetest : current.allowRetest,
+          shuffleQuestions:
+            fields.shuffleQuestions !== undefined ? !!fields.shuffleQuestions : current.shuffleQuestions,
+          shuffleOptions:
+            fields.shuffleOptions !== undefined ? !!fields.shuffleOptions : current.shuffleOptions
+        };
+        return {
+          ...sec,
+          daySettings: { ...(sec.daySettings || {}), [dayKey]: next }
+        };
+      })
+    }));
+  };
+
+  /** Removes one day of a section: its questions become unsorted, later days move up by one. */
+  const removeSectionDay = (subjectId, moduleId, sectionId, day) => {
+    mapModule(subjectId, moduleId, (m) => {
+      const count = sectionDays(m, sectionId).length;
+      if (count <= 1) return m;
+      return {
+        ...m,
+        sections: (m.sections || []).map((sec) => {
+          if (sec.id !== sectionId) return sec;
+          const oldSettings = sec.daySettings || {};
+          const nextSettings = {};
+          Object.keys(oldSettings).forEach((k) => {
+            const d = Number(k);
+            if (d === day) return;
+            if (d > day) nextSettings[String(d - 1)] = oldSettings[k];
+            else nextSettings[k] = oldSettings[k];
+          });
+          return { ...sec, days: count - 1, daySettings: nextSettings };
+        }),
+        questions: (m.questions || []).map((q) => {
+          if (q.sectionId !== sectionId) return q;
+          const d = Number(q.day) || 1;
+          if (d === day) {
+            const { sectionId: sid, day: dd, ...rest } = q;
+            return rest;
+          }
+          return d > day ? { ...q, day: d - 1 } : q;
+        })
+      };
+    });
+    showToast(`Day ${day} removed. Its questions are under "Unsorted".`, 'info');
+  };
+
+  /** Moves a question to a section's day ({ sectionId, day }), or to unsorted (sectionId null). */
+  const moveCurriculumQuestion = (subjectId, moduleId, questionId, target) => {
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      questions: (m.questions || []).map((q) => {
+        if (q.id !== questionId) return q;
+        const { sectionId, day, ...rest } = q;
+        return target?.sectionId ? { ...rest, sectionId: target.sectionId, day: Number(target.day) || 1 } : rest;
+      })
+    }));
+  };
+
+  /** Moves a study note to a section (or to unsorted with sectionId null). */
+  const moveNote = (subjectId, moduleId, noteId, sectionId) => {
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      notes: (m.notes || []).map((n) => {
+        if (n.id !== noteId) return n;
+        const { sectionId: old, ...rest } = n;
+        return sectionId ? { ...rest, sectionId } : rest;
+      })
+    }));
   };
 
   // Notes CRUD (teacher study material: uploaded files, links, or written notes)
@@ -2146,6 +2319,52 @@ export const AppProvider = ({ children }) => {
     );
   };
 
+  /**
+   * Default period when the admin gives a student access directly (no payment request):
+   * the subject's plan, continuing after any access the student still has.
+   */
+  const getGrantDefaultPeriod = (studentId, subjectId) =>
+    computeDefaultPeriod({ id: '__grant__', studentId, subjectId }, subscriptions);
+
+  /**
+   * Admin gives a registered student access to a paid subject without a payment screenshot.
+   * `expiresAt` is an ISO string, or null for lifetime access.
+   */
+  const grantSubscription = ({ student, subjectId, expiresAt }) => {
+    const subject = curriculumSubjects.find((s) => s.id === subjectId);
+    if (!subject || !student?.id) return;
+    const now = new Date();
+    const period = computeDefaultPeriod({ id: '__grant__', studentId: student.id, subjectId }, subscriptions, now);
+    const stamp = now.toISOString().replace('T', ' ').slice(0, 16);
+    const record = {
+      id: `sub-grant-${now.getTime()}`,
+      studentId: student.id,
+      studentName: student.name,
+      studentAvatar: student.avatar || '',
+      studentPhone: student.phone || '',
+      studentRollNo: student.rollNo || '',
+      subjectId,
+      subjectName: subject.name,
+      amount: 0,
+      grantedByAdmin: true,
+      screenshot: '',
+      transactionId: '',
+      validityDays: Number(period.days) || 0,
+      accessUntil: endOfDate(period.accessUntil) ? period.accessUntil : null,
+      status: 'approved',
+      startsAt: period.startsAt.toISOString(),
+      expiresAt,
+      customEnd: true,
+      requestedAt: stamp,
+      reviewedAt: stamp
+    };
+    setSubscriptions((prev) => [record, ...prev]);
+    showToast(
+      `${student.name} can now open ${subject.name}${expiresAt ? ` until ${formatDate(expiresAt)}` : ' (lifetime)'}.`,
+      'success'
+    );
+  };
+
   const rejectSubscription = (requestId) => {
     setSubscriptions((prev) =>
       prev.map((s) =>
@@ -2567,6 +2786,11 @@ export const AppProvider = ({ children }) => {
         deleteSubject,
         addModule,
         updateModule,
+        addSectionDay,
+        removeSectionDay,
+        updateDayQuizSettings,
+        moveCurriculumQuestion,
+        moveNote,
         deleteModule,
         addSection,
         updateSection,
@@ -2584,6 +2808,8 @@ export const AppProvider = ({ children }) => {
         approveSubscription,
         getDefaultAccessPeriod,
         updateSubscriptionEnd,
+        grantSubscription,
+        getGrantDefaultPeriod,
         rejectSubscription,
         checkEnrollmentStatus,
         getSubjectSubscription,
@@ -2603,6 +2829,10 @@ export const AppProvider = ({ children }) => {
         revokeRetest,
         pendingRetestCount,
         doubts,
+        savedQuestions,
+        isQuestionSaved,
+        toggleSaveQuestion,
+        removeSavedQuestion,
         raiseDoubt,
         replyToDoubt,
         setDoubtStatus,

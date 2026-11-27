@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { SaveQuestionButton } from '../saved/SaveQuestionButton';
+import { DoubtQuestionButton } from '../doubts/DoubtQuestionButton';
 import { ArrowLeft, CheckCircle2, XCircle, MinusCircle, Clock, RotateCcw, Trophy } from 'lucide-react';
 import { formatClock } from '../../utils/mockTests';
 import { primaryBtn, secondaryBtn } from './MockTestUi';
@@ -153,6 +155,21 @@ export const MockTestResult = ({
                   <span className="text-[#087F8C] dark:text-teal-300 mr-1.5">Q{num}.</span>
                   {a.questionText}
                 </p>
+                {!showStudent && (
+                  <span className="inline-flex items-center gap-1.5 shrink-0">
+                    <SaveQuestionButton compact source="mock" sourceId={attempt.testId} sourceTitle={attempt.testTitle} question={a} questionIndex={num - 1} />
+                    <DoubtQuestionButton
+                      compact
+                      kind="mock"
+                      sourceId={attempt.testId}
+                      sourceTitle={attempt.testTitle}
+                      question={a}
+                      questionIndex={num - 1}
+                      selectedOption={a.selectedOption ?? null}
+                      correctAnswer={a.correctAnswer}
+                    />
+                  </span>
+                )}
                 {a.selectedOption === null ? (
                   <span className="shrink-0 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Skipped</span>
                 ) : a.isCorrect ? (

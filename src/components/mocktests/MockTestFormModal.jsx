@@ -14,6 +14,8 @@ export const MockTestFormModal = ({ open, onClose, onSave, test, existingDays = 
   const [hours, setHours] = useState(1);
   const [minutes, setMinutes] = useState(0);
   const [allowRetest, setAllowRetest] = useState(false);
+  const [shuffleQuestions, setShuffleQuestions] = useState(false);
+  const [shuffleOptions, setShuffleOptions] = useState(false);
   const [access, setAccess] = useState('public');
   const [batchIds, setBatchIds] = useState([]);
   const [error, setError] = useState('');
@@ -31,6 +33,8 @@ export const MockTestFormModal = ({ open, onClose, onSave, test, existingDays = 
     setHours(Math.floor(total / 60));
     setMinutes(total % 60);
     setAllowRetest(!!test?.allowRetest);
+    setShuffleQuestions(!!test?.shuffleQuestions);
+    setShuffleOptions(!!test?.shuffleOptions);
     setAccess(test?.access === 'private' ? 'private' : 'public');
     setBatchIds(test?.batchSubjectIds || []);
     setError('');
@@ -56,6 +60,8 @@ export const MockTestFormModal = ({ open, onClose, onSave, test, existingDays = 
       description: description.trim(),
       durationMinutes: totalMinutes,
       allowRetest,
+      shuffleQuestions,
+      shuffleOptions,
       access,
       batchSubjectIds: access === 'private' ? chosen : []
     });
@@ -277,12 +283,24 @@ export const MockTestFormModal = ({ open, onClose, onSave, test, existingDays = 
           />
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
           <Toggle
             checked={allowRetest}
             onChange={setAllowRetest}
             label="Allow retest"
             hint="When on, students can take this mock test again after submitting."
+          />
+          <Toggle
+            checked={shuffleQuestions}
+            onChange={setShuffleQuestions}
+            label="Shuffle questions"
+            hint="Each student gets the questions in a different order."
+          />
+          <Toggle
+            checked={shuffleOptions}
+            onChange={setShuffleOptions}
+            label="Shuffle answers"
+            hint="The A / B / C / D options appear in a different order. Marking is not affected."
           />
         </div>
 

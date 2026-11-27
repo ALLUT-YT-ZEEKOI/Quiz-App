@@ -31,7 +31,9 @@ export const COLLECTIONS = {
   // Mock test attempts go through POST /api/mock-tests/:id/submit (server-scored)
   mockAttempts: { mongo: 'mock_attempts', key: byId, own: true },
   // App-wide settings set by the admin (e.g. which modules students can use). Students read only.
-  settings: { mongo: 'app_settings', key: byId }
+  settings: { mongo: 'app_settings', key: byId },
+  // Questions a student saved to revise later (the admin sees everyone's). Students may un-save their own.
+  savedQuestions: { mongo: 'saved_questions', key: byId, own: true, studentDeletable: true }
 };
 
 /**
@@ -172,6 +174,29 @@ export const checkStudentWrite = async (name, user, existing, incoming) => {
       if (existing) return { action: 'ignore' };
       if (!own(incoming)) return { action: 'reject', reason: 'Not your attempt' };
       const subject = await getDb().collection('curriculum_subjects').findOne({ _id: incoming.subjectId, _deleted: { $ne: true } });
+      // Retest can be off per Section · Day (section.daySettings), else fall back to module.allowRetest
+      const module = (subject?.modules || []).find((m) => m.id === incoming.moduleId);
+      const dayNum = incoming.sectionId ? Number(incoming.day) || 1 : null;
+      const section = incoming.sectionId
+        ? (module?.sections || []).find((s) => s.id === incoming.sectionId)
+        : null;
+      const dayStored = section?.daySettings?.[String(dayNum)];
+      const retestAllowed = dayStored
+        ? dayStored.allowRetest !== false
+        : module?.allowRetest !== false;
+      if (!retestAllowed) {
+        // One attempt per practice test: a section's day (null matches older attempts without one)
+        const taken = await getDb()
+          .collection('curriculum_attempts')
+          .findOne({
+            studentId: me,
+            moduleId: incoming.moduleId,
+            sectionId: incoming.sectionId || null,
+            day: dayNum,
+            _deleted: { $ne: true }
+          });
+        if (taken) return { action: 'reject', reason: 'Retest is turned off for this quiz' };
+      }
       const scored = scoreModuleQuiz(subject, incoming);
       if (!scored) return { action: 'reject', reason: 'Quiz answers could not be verified' };
       return { action: 'accept', item: { ...incoming, ...scored } };
@@ -248,6 +273,35 @@ export const checkStudentWrite = async (name, user, existing, incoming) => {
         if (k in incoming) merged[k] = incoming[k];
       });
       return { action: 'accept', item: merged };
+    }
+
+    case 'savedQuestions': {
+      if (existing) return { action: 'ignore' }; // saved once; un-saving is a delete
+      if (!own(incoming)) return { action: 'reject', reason: 'Not your saved question' };
+      if (!['quiz', 'mock', 'exam'].includes(incoming.source) || !incoming.sourceId) {
+        return { action: 'reject', reason: 'Invalid saved question' };
+      }
+      // Only the question as shown to the student: never answers, and nothing oversized
+      const clip = (v, n) => String(v ?? '').slice(0, n);
+      return {
+        action: 'accept',
+        item: {
+          id: incoming.id,
+          studentId: me,
+          studentName: clip(incoming.studentName, 120),
+          rollNo: clip(incoming.rollNo, 40),
+          source: incoming.source,
+          sourceId: clip(incoming.sourceId, 120),
+          sourceTitle: clip(incoming.sourceTitle, 200),
+          subjectId: clip(incoming.subjectId, 120),
+          subjectName: clip(incoming.subjectName, 200),
+          questionId: clip(incoming.questionId, 120),
+          questionText: clip(incoming.questionText, 4000),
+          options: (Array.isArray(incoming.options) ? incoming.options : []).slice(0, 10).map((o) => clip(o, 1000)),
+          questionIndex: Number.isInteger(incoming.questionIndex) ? incoming.questionIndex : null,
+          savedAt: clip(incoming.savedAt, 40) || new Date().toISOString()
+        }
+      };
     }
 
     // Exam attempts go through POST /api/exams/:id/submit (server-scored)

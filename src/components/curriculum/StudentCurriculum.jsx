@@ -2,6 +2,21 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { compressImageFile } from '../../utils/imageCompress';
 import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
+import { takeOpenRequest, OPEN_CURRICULUM } from '../../utils/openRequest';
+import { ModuleResults } from './ModuleResults';
+import { ModuleNotesBoard } from './ModuleNotesBoard';
+import { StudentQuizPicker } from './StudentQuizPicker';
+import {
+  questionsForTest,
+  testKeyOf,
+  testLabelOf,
+  dayQuizSettings,
+  groupQuestionsBySection,
+  groupVideosBySection
+} from '../../utils/curriculumSections';
+import { orderQuestions, orderOptions } from '../../utils/shuffle';
+import { SaveQuestionButton } from '../saved/SaveQuestionButton';
+import { DoubtQuestionButton } from '../doubts/DoubtQuestionButton';
 import { PageHeader } from '../common/PageHeader';
 import {
   BookOpen,
@@ -41,13 +56,12 @@ import {
   isEmbeddableVideoUrl,
   extractYouTubeVideoId
 } from '../../utils/videoUtils';
-import { groupVideosBySection } from '../../utils/curriculumSections';
 import { NotesList, NotePreviewModal } from './ModuleNotes';
 import { ProtectedVideoPlayer } from './ProtectedVideoPlayer';
 import { formatDate, formatDaysLeft, formatAccess, isLifetimeAccess, hasFixedEndDate, endOfDate } from '../../utils/subscriptionUtils';
 import { applyContentAccess } from '../../utils/studentModules';
 
-const ALL_CONTENT = { videos: true, notes: true, questions: true };
+const ALL_CONTENT = { videos: true, notes: true, questions: true, results: true };
 
 export const StudentCurriculum = () => {
   const {
@@ -76,6 +90,19 @@ export const StudentCurriculum = () => {
   // Navigation hierarchy: null = Subjects list; object = selected subject
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
+
+  // Search (and other pages) can ask to open one subject / module
+  useEffect(() => {
+    const apply = () => {
+      const req = takeOpenRequest(OPEN_CURRICULUM);
+      if (!req?.subjectId) return;
+      setSelectedSubject({ id: req.subjectId });
+      setSelectedModule(req.moduleId ? { id: req.moduleId } : null);
+    };
+    apply();
+    window.addEventListener(OPEN_CURRICULUM, apply);
+    return () => window.removeEventListener(OPEN_CURRICULUM, apply);
+  }, []);
   const [moduleMode, setModuleMode] = useState('videos'); // 'videos', 'notes' or 'quiz'
   const [viewingNote, setViewingNote] = useState(null);
 
@@ -83,13 +110,17 @@ export const StudentCurriculum = () => {
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
 
   // Quiz state
-  const [quizDifficulty, setQuizDifficulty] = useState('All'); // 'All', 'Easy', 'Medium', 'Hard'
+  const [quizDifficulty, setQuizDifficulty] = useState('All'); // 'All' or a level (Basic, Medium, Advanced)
+  // Which practice test is open: { sectionId, day } (a section's day) or { general: true } (unsorted questions)
+  const [quizTarget, setQuizTarget] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({}); // { [questionId]: optionIndex }
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quizResult, setQuizResult] = useState(null);
   // When the current quiz attempt began (ms), to record the real time taken
   const [quizStartedAt, setQuizStartedAt] = useState(null);
+  // Fixes the shuffled order for one attempt (a new attempt gets a new order)
+  const [quizSeed, setQuizSeed] = useState(() => Date.now());
 
   // Subscription & Payment Modal state
   const [payModalSubject, setPayModalSubject] = useState(null);
@@ -176,7 +207,10 @@ export const StudentCurriculum = () => {
 
   // Which tabs this course shows (the admin can hide videos, notes or Q&A)
   const moduleAccess = currentModule?.contentAccess || ALL_CONTENT;
-  const modeAllowed = (mode) => (mode === 'quiz' ? moduleAccess.questions : moduleAccess[mode]);
+  // My Results needs the quiz and the admin's Results switch
+  const resultsAllowed = moduleAccess.questions && moduleAccess.results !== false;
+  const modeAllowed = (mode) =>
+    mode === 'quiz' ? moduleAccess.questions : mode === 'results' ? resultsAllowed : moduleAccess[mode];
   const allowedModes = ['videos', 'notes', 'quiz'].filter(modeAllowed);
   const firstAllowedMode = allowedModes[0] || null;
 
@@ -187,27 +221,67 @@ export const StudentCurriculum = () => {
     }
   }, [currentModule, moduleMode, firstAllowedMode]);
 
-  // Filter questions for quiz based on selected difficulty mode
-  const quizQuestions = (currentModule?.questions || []).filter((q) => {
-    if (quizDifficulty === 'All') return true;
-    return matchesDifficulty(q.difficulty, quizDifficulty);
-  });
+  // Filter questions for quiz based on selected difficulty mode.
+  // Shuffle / retest come from this Section · Day (or general practice module settings).
+  const quizSettings = quizTarget
+    ? dayQuizSettings(
+        currentModule,
+        quizTarget.general ? null : quizTarget.sectionId,
+        quizTarget.general ? null : quizTarget.day
+      )
+    : dayQuizSettings(currentModule, null, null);
+  const shuffleSeed = `${currentUser?.id || ''}:${currentModule?.id || ''}:${quizSeed}`;
+  const quizQuestions = orderQuestions(
+    questionsForTest(currentModule, quizTarget).filter((q) => {
+      if (quizDifficulty === 'All') return true;
+      return matchesDifficulty(q.difficulty, quizDifficulty);
+    }),
+    !!quizSettings.shuffleQuestions,
+    shuffleSeed
+  );
+  const quizTestKey = quizTarget ? (quizTarget.general ? 'general' : testKeyOf(quizTarget.sectionId, quizTarget.day)) : null;
+  const quizTestLabel = quizTarget ? testLabelOf(currentModule, quizTarget.general ? null : quizTarget.sectionId, quizTarget.day) : '';
+
+  // Retest off for this day: once submitted, it can't be taken again
+  const dayRetestAllowed = quizSettings.allowRetest;
+  const myModuleAttempts = currentModule
+    ? (curriculumAttempts || []).filter((a) => a.moduleId === currentModule.id && a.studentId === (currentUser?.id || 'STU001'))
+    : [];
+  // Attempts of the open day (one attempt per day when retest is off)
+  const myModuleAttemptCount = quizTarget
+    ? myModuleAttempts.filter((a) => (a.sectionId ? testKeyOf(a.sectionId, a.day) : 'general') === quizTestKey).length
+    : 0;
+  const quizLocked = !!quizTarget && !dayRetestAllowed && myModuleAttemptCount > 0 && !quizCompleted;
 
   // Start / Retake Quiz handler
-  const handleStartQuiz = (difficulty = 'All') => {
+  const handleStartQuiz = (difficulty = 'All', target) => {
+    if (target !== undefined) setQuizTarget(target);
     setQuizDifficulty(difficulty);
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
     setQuizCompleted(false);
     setQuizResult(null);
     setQuizStartedAt(Date.now());
+    setQuizSeed(Date.now());
     setModuleMode('quiz');
   };
 
   // Opening the quiz tab directly (not via Start/Retake) also starts the clock
   useEffect(() => {
-    if (moduleMode === 'quiz' && !quizCompleted && !quizStartedAt) setQuizStartedAt(Date.now());
-  }, [moduleMode, quizCompleted, quizStartedAt]);
+    if (moduleMode === 'quiz' && quizTarget && !quizCompleted && !quizStartedAt) setQuizStartedAt(Date.now());
+  }, [moduleMode, quizTarget, quizCompleted, quizStartedAt]);
+
+  // Opening the quiz tab shows the list of days; a new module starts without a chosen day
+  const openDayPicker = () => {
+    setQuizTarget(null);
+    setQuizCompleted(false);
+    setQuizResult(null);
+    setQuizStartedAt(null);
+    setModuleMode('quiz');
+  };
+  useEffect(() => {
+    setQuizTarget(null);
+  }, [selectedModule?.id]);
 
   // Leaving a course drops any unfinished quiz timing
   useEffect(() => {
@@ -250,6 +324,10 @@ export const StudentCurriculum = () => {
       subjectName: currentSubject.name,
       moduleId: currentModule.id,
       moduleTitle: currentModule.title,
+      // Which practice test: a section's day (none for general practice)
+      ...(quizTarget && !quizTarget.general
+        ? { sectionId: quizTarget.sectionId, day: Number(quizTarget.day) || 1, testLabel: quizTestLabel }
+        : { testLabel: 'General practice' }),
       difficultyMode:
         quizDifficulty === 'All' ? 'All Questions' : `${getDifficultyLabel(quizDifficulty)} Mode`,
       totalQuestions: quizQuestions.length,
@@ -355,7 +433,10 @@ export const StudentCurriculum = () => {
         {firstAllowedMode && (
         <div
           className={`grid gap-1 p-1 bg-slate-100 dark:bg-slate-900/90 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-2xs ${
-            allowedModes.length === 3 ? 'grid-cols-3' : allowedModes.length === 2 ? 'grid-cols-2' : 'grid-cols-1'
+            // The quiz brings a "My Results" tab with it
+            ({ 4: 'grid-cols-2 sm:grid-cols-4', 3: 'grid-cols-3', 2: 'grid-cols-2', 1: 'grid-cols-1' })[
+              allowedModes.length + (resultsAllowed ? 1 : 0)
+            ]
           }`}
         >
           {moduleAccess.videos && (
@@ -397,7 +478,9 @@ export const StudentCurriculum = () => {
           {moduleAccess.questions && (
           <button
             type="button"
-            onClick={() => setModuleMode('quiz')}
+            onClick={() => {
+              if (moduleMode !== 'quiz') openDayPicker();
+            }}
             className={`min-h-[2.75rem] py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-black flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               moduleMode === 'quiz'
                 ? 'bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 shadow-xs border border-slate-200/70 dark:border-slate-700'
@@ -411,7 +494,30 @@ export const StudentCurriculum = () => {
             </span>
           </button>
           )}
+
+          {resultsAllowed && (
+          <button
+            type="button"
+            onClick={() => setModuleMode('results')}
+            className={`min-h-[2.75rem] py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-black flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
+              moduleMode === 'results'
+                ? 'bg-white dark:bg-slate-800 text-teal-900 dark:text-teal-200 shadow-xs border border-slate-200/70 dark:border-slate-700'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent'
+            }`}
+          >
+            <Award className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${moduleMode === 'results' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'}`} />
+            <span className="truncate">
+              My Results (
+              {(curriculumAttempts || []).filter((a) => a.moduleId === currentModule.id && a.studentId === (currentUser?.id || 'STU001')).length})
+            </span>
+          </button>
+          )}
         </div>
+        )}
+
+        {/* My Results: every practice attempt of this module with each answer */}
+        {moduleMode === 'results' && resultsAllowed && (
+          <ModuleResults module={currentModule} perspective="student" onPractice={openDayPicker} />
         )}
 
         {/* ================================================================= */}
@@ -623,23 +729,7 @@ export const StudentCurriculum = () => {
         {/* SUB-VIEW: STUDY NOTES SHARED BY THE TEACHER                       */}
         {/* ================================================================= */}
         {moduleMode === 'notes' && moduleAccess.notes && (
-          <div className="space-y-4">
-            <NotesList
-              notes={currentModule.notes || []}
-              onOpen={setViewingNote}
-              emptyState={
-                <div className="p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
-                  <NotebookText className="w-12 h-12 text-slate-300 mx-auto" />
-                  <h3 className="font-bold text-slate-700 dark:text-slate-300 text-base">
-                    No Notes in This Module
-                  </h3>
-                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                    Your instructor hasn't shared study notes for this module yet. Check back later!
-                  </p>
-                </div>
-              }
-            />
-          </div>
+          <ModuleNotesBoard subject={currentSubject} module={currentModule} onOpen={setViewingNote} />
         )}
 
         {viewingNote && <NotePreviewModal note={viewingNote} onClose={() => setViewingNote(null)} />}
@@ -647,9 +737,55 @@ export const StudentCurriculum = () => {
         {/* ================================================================= */}
         {/* SUB-VIEW B: ATTEND QUIZ (WITH EASY / MEDIUM / HARD DIFFICULTY)     */}
         {/* ================================================================= */}
-        {moduleMode === 'quiz' && moduleAccess.questions && (
+        {moduleMode === 'quiz' && moduleAccess.questions && !quizTarget && (
+          <StudentQuizPicker
+            module={currentModule}
+            myAttempts={myModuleAttempts}
+            onStart={(target, level) => handleStartQuiz(level, target)}
+            onViewResults={resultsAllowed ? () => setModuleMode('results') : undefined}
+          />
+        )}
+
+        {moduleMode === 'quiz' && moduleAccess.questions && quizTarget && (
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={openDayPicker}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#087F8C] px-2 py-1 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <ArrowLeft className="w-4 h-4" /> All days
+            </button>
+            <span className="px-2.5 py-1 rounded-lg bg-[#E6F4F6] dark:bg-[#0E353E] text-[#0C4E5B] dark:text-cyan-300 text-xs font-extrabold">
+              {quizTestLabel}
+            </span>
+          </div>
+        )}
+
+        {moduleMode === 'quiz' && moduleAccess.questions && quizLocked && (
+          <div className="p-8 sm:p-12 text-center bg-white dark:bg-surface-darkCard rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-base">You&apos;ve already taken this quiz</h3>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+              {resultsAllowed ? 'This quiz allows one attempt only. You can still review your score and every answer.' : 'This quiz allows one attempt only.'}
+            </p>
+            {resultsAllowed && (
+            <button
+              type="button"
+              onClick={() => setModuleMode('results')}
+              className="px-5 py-2.5 rounded-xl bg-[#087F8C] hover:bg-[#0C4E5B] text-white font-bold text-xs inline-flex items-center gap-1.5"
+            >
+              <Award className="w-4 h-4" /> View my result
+            </button>
+            )}
+          </div>
+        )}
+
+        {moduleMode === 'quiz' && moduleAccess.questions && quizTarget && !quizLocked && (
           <div className="space-y-5">
-            {/* Difficulty Selector Bar */}
+            {/* Difficulty Selector Bar (hidden once a one-attempt quiz has been taken) */}
+            {(dayRetestAllowed || myModuleAttemptCount === 0) && (
             <div className="bg-white dark:bg-surface-darkCard p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-slate-500 font-semibold">Practice Mode</span>
@@ -690,6 +826,7 @@ export const StudentCurriculum = () => {
                 })}
               </div>
             </div>
+            )}
 
             {/* QUIZ COMPLETED: SCORECARD & ANSWER REVIEW */}
             {quizCompleted && quizResult ? (
@@ -726,6 +863,7 @@ export const StudentCurriculum = () => {
                   </p>
 
                   <div className="flex justify-center gap-3 mt-6">
+                    {dayRetestAllowed && (
                     <button
                       onClick={() => handleStartQuiz(quizDifficulty)}
                       className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all"
@@ -733,6 +871,16 @@ export const StudentCurriculum = () => {
                       <RotateCcw className="w-4 h-4" />
                       <span>Retake Quiz</span>
                     </button>
+                    )}
+                    {resultsAllowed && (
+                    <button
+                      onClick={() => setModuleMode('results')}
+                      className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-all"
+                    >
+                      <Award className="w-4 h-4 text-violet-600" />
+                      <span>All My Results</span>
+                    </button>
+                    )}
                     {moduleAccess.videos && (
                     <button
                       onClick={() => setModuleMode('videos')}
@@ -765,8 +913,28 @@ export const StudentCurriculum = () => {
                         }`}
                       >
                         <div className="flex items-center justify-between text-xs mb-2">
-                          <span className="font-bold text-slate-600 dark:text-slate-300">
+                          <span className="font-bold text-slate-600 dark:text-slate-300 inline-flex items-center gap-2">
                             Question {idx + 1} ({getDifficultyLabel(q.difficulty)} Mode)
+                            <SaveQuestionButton
+                              compact
+                              source="quiz"
+                              sourceId={currentModule.id}
+                              sourceTitle={currentModule.title}
+                              subjectId={currentSubject.id}
+                              subjectName={currentSubject.name}
+                              question={q}
+                            />
+                            <DoubtQuestionButton
+                              kind="quiz"
+                              sourceId={currentModule.id}
+                              sourceTitle={currentModule.title}
+                              subjectId={currentSubject.id}
+                              subjectName={currentSubject.name}
+                              question={q}
+                              questionIndex={idx}
+                              selectedOption={studentChoice ?? null}
+                              correctAnswer={q.correctAnswer}
+                            />
                           </span>
                           <span
                             className={`font-bold flex items-center gap-1 ${
@@ -853,11 +1021,33 @@ export const StudentCurriculum = () => {
                       {getDifficultyLabel(quizQuestions[currentQuestionIndex].difficulty)} Mode
                     </span>
                   </div>
-                  <span className="text-slate-400">
-                    Answered:{' '}
-                    <strong>{Object.keys(selectedAnswers).length}</strong>/
-                    {quizQuestions.length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">
+                      Answered:{' '}
+                      <strong>{Object.keys(selectedAnswers).length}</strong>/
+                      {quizQuestions.length}
+                    </span>
+                    <SaveQuestionButton
+                      source="quiz"
+                      sourceId={currentModule.id}
+                      sourceTitle={currentModule.title}
+                      subjectId={currentSubject.id}
+                      subjectName={currentSubject.name}
+                      question={quizQuestions[currentQuestionIndex]}
+                    />
+                    <DoubtQuestionButton
+                      kind="quiz"
+                      duringTest
+                      sourceId={currentModule.id}
+                      sourceTitle={currentModule.title}
+                      subjectId={currentSubject.id}
+                      subjectName={currentSubject.name}
+                      question={quizQuestions[currentQuestionIndex]}
+                      questionIndex={currentQuestionIndex}
+                      selectedOption={selectedAnswers[quizQuestions[currentQuestionIndex].id] ?? null}
+                      correctAnswer={quizQuestions[currentQuestionIndex].correctAnswer}
+                    />
+                  </div>
                 </div>
 
                 {/* Progress Bar */}
@@ -881,7 +1071,8 @@ export const StudentCurriculum = () => {
 
                 {/* Options List */}
                 <div className="space-y-2.5">
-                  {quizQuestions[currentQuestionIndex].options.map((option, optIdx) => {
+                  {orderOptions(quizQuestions[currentQuestionIndex], !!quizSettings.shuffleOptions, shuffleSeed).map(({ index: optIdx, text: option }, displayIdx) => {
+                    // optIdx is the option's original number (what gets recorded); displayIdx its position on screen
                     const isSelected =
                       selectedAnswers[quizQuestions[currentQuestionIndex].id] === optIdx;
 
@@ -909,7 +1100,7 @@ export const StudentCurriculum = () => {
                                 : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                             }`}
                           >
-                            {String.fromCharCode(65 + optIdx)}
+                            {String.fromCharCode(65 + displayIdx)}
                           </span>
                           <span className="text-xs sm:text-sm">{option}</span>
                         </div>
@@ -1363,167 +1554,194 @@ export const StudentCurriculum = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
               {(currentSubject.modules || []).map((mod, idx) => {
                 const totalVideos = mod.videos?.length || 0;
                 const totalQuestions = mod.questions?.length || 0;
                 const totalNotes = mod.notes?.length || 0;
                 const access = mod.contentAccess || ALL_CONTENT;
 
-                // Check if student has already attended this module's quiz
-                const pastAttempt = (curriculumAttempts || []).find(
-                  (a) => a.moduleId === mod.id && a.studentId === (currentUser?.id || 'STU001')
-                );
+                // The student's most recent practice attempt of this module, if any
+                const pastAttempt = (curriculumAttempts || [])
+                  .filter((a) => a.moduleId === mod.id && a.studentId === (currentUser?.id || 'STU001'))
+                  .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0];
+                const passedLast = pastAttempt && Number(pastAttempt.scorePct) >= 60;
+                // Show "One attempt" when every practice day (and general, if any) disallows retest
+                const { groups: modGroups, unsorted: modUnsorted } = groupQuestionsBySection(mod);
+                const practiceTargets = [
+                  ...modGroups.flatMap((g) =>
+                    g.days.filter((d) => d.questions.length > 0).map((d) => ({ sectionId: g.section.id, day: d.day }))
+                  ),
+                  ...(modUnsorted.length > 0 ? [{ general: true }] : [])
+                ];
+                const oneAttempt =
+                  practiceTargets.length > 0 &&
+                  practiceTargets.every(
+                    (t) => !dayQuizSettings(mod, t.general ? null : t.sectionId, t.general ? null : t.day).allowRetest
+                  );
+
+                // What this module offers (only what the admin lets students see)
+                const stats = [
+                  access.videos && { key: 'videos', Icon: Video, value: totalVideos, label: totalVideos === 1 ? 'Video' : 'Videos', tone: 'text-blue-600 dark:text-blue-400' },
+                  access.notes && { key: 'notes', Icon: NotebookText, value: totalNotes, label: totalNotes === 1 ? 'Note' : 'Notes', tone: 'text-amber-600 dark:text-amber-400' },
+                  access.questions && { key: 'questions', Icon: HelpCircle, value: totalQuestions, label: totalQuestions === 1 ? 'Question' : 'Questions', tone: 'text-teal-600 dark:text-teal-400' }
+                ].filter(Boolean);
+
+                // Questions per difficulty, for the bar
+                const levels =
+                  access.questions && totalQuestions > 0
+                    ? difficultyLevels
+                        .map((lvl) => ({
+                          ...lvl,
+                          count: (mod.questions || []).filter((q) => matchesDifficulty(q.difficulty, lvl.id)).length,
+                          bar: lvl.id === 'easy' ? 'bg-emerald-500' : lvl.id === 'hard' ? 'bg-rose-500' : 'bg-amber-500'
+                        }))
+                        .filter((lvl) => lvl.count > 0)
+                    : [];
+
+                const canView = access.videos || access.notes || access.questions;
+                // Opens the module on its first tab (lessons first; the quiz only starts from Practice)
+                const openModule = () => {
+                  setSelectedModule(mod);
+                  setActiveVideoIndex(0);
+                  setModuleMode(access.videos ? 'videos' : access.notes ? 'notes' : 'results');
+                };
+                const canQuiz = access.questions && totalQuestions > 0;
 
                 return (
-                  <div
+                  <article
                     key={mod.id || idx}
-                    className="relative bg-white dark:bg-surface-darkCard rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 p-3 sm:p-5 shadow-xs hover:shadow-md hover:border-teal-500/40 transition-all flex flex-col justify-between group overflow-hidden"
+                    className="group relative bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs hover:shadow-lg hover:shadow-teal-900/5 hover:border-teal-500/40 hover:-translate-y-0.5 transition-all duration-200 flex flex-col"
                   >
-                    {/* Subtle Top Accent Glow */}
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 opacity-90" />
-
-                    <div>
-                      {/* Card Header: Module Number & Duration / Score */}
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-7 h-7 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/60 text-xs font-black flex items-center justify-center shrink-0">
-                            {String(idx + 1).padStart(2, '0')}
+                    {/* Header: number tile, title, last score */}
+                    <header className="flex items-start gap-3">
+                      <span
+                        className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#0C4E5B] to-[#14B8A6] text-white text-sm font-black flex items-center justify-center shrink-0 shadow-sm shadow-teal-900/20"
+                        aria-hidden="true"
+                      >
+                        {String(idx + 1).padStart(2, '0')}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                          <span className="whitespace-nowrap">Module {idx + 1}</span>
+                          <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                          <span className="inline-flex items-center gap-1 normal-case tracking-normal font-bold whitespace-nowrap">
+                            <Clock className="w-3 h-3" />
+                            {mod.duration || '45 mins'}
                           </span>
-                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                            Module {idx + 1}
-                          </span>
-                        </div>
-
-                        {pastAttempt ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span>{pastAttempt.scorePct}% Score</span>
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{mod.duration || '45 mins'}</span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Title */}
-                      <h4 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white leading-snug group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-                        {mod.title}
-                      </h4>
-
-                      {/* Description */}
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                        {mod.description || 'Comprehensive video lectures and question pool aligned with course syllabus.'}
-                      </p>
-
-                      {/* Learning Resources Chips */}
-                      <div className="flex items-center gap-2 mt-3.5 flex-wrap">
-                        {access.videos && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/40 text-xs font-bold">
-                          <Video className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                          <span>{totalVideos} {totalVideos === 1 ? 'Video' : 'Videos'}</span>
-                        </div>
-                        )}
-
-                        {totalNotes > 0 && (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/40 text-xs font-bold">
-                            <NotebookText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                            <span>{totalNotes} {totalNotes === 1 ? 'Note' : 'Notes'}</span>
-                          </div>
-                        )}
-
-                        {access.questions && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-50/80 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border border-teal-200/50 dark:border-teal-800/40 text-xs font-bold">
-                          <HelpCircle className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                          <span>{totalQuestions} {totalQuestions === 1 ? 'Question' : 'Questions'}</span>
-                        </div>
-                        )}
-                      </div>
-
-                      {/* Difficulty Breakdown Tags */}
-                      {totalQuestions > 0 && (
-                        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">
-                            Modes:
-                          </span>
-                          {difficultyLevels.map((lvl) => {
-                            const count = (mod.questions || []).filter((q) =>
-                              matchesDifficulty(q.difficulty, lvl.id)
-                            ).length;
-                            if (count === 0) return null;
-                            const dotColor =
-                              lvl.id === 'easy' ? 'bg-emerald-500' : lvl.id === 'hard' ? 'bg-rose-500' : 'bg-amber-500';
-                            return (
-                              <span
-                                key={lvl.id}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700"
-                              >
-                                <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                                <span>{count} {lvl.label}</span>
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Buttons Footer */}
-                    <div
-                      className={`grid gap-2.5 mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 ${
-                        access.videos && access.questions ? 'grid-cols-2' : 'grid-cols-1'
-                      }`}
-                    >
-                      {!access.videos && !access.questions && (
-                        <button
-                          onClick={() => {
-                            setSelectedModule(mod);
-                            setModuleMode('notes');
-                          }}
-                          disabled={!access.notes}
-                          className="py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/80 dark:border-slate-700 shadow-2xs active:scale-95 transition-all cursor-pointer"
-                        >
-                          {access.notes ? (
+                          {oneAttempt && access.questions && (
                             <>
-                              <NotebookText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                              <span>Study Notes</span>
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                              <span>Not available yet</span>
+                              <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                              <span className="normal-case tracking-normal font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">One attempt</span>
                             </>
                           )}
-                        </button>
+                        </p>
+                        <h4 className="mt-0.5 font-extrabold text-base sm:text-lg text-slate-900 dark:text-white leading-snug line-clamp-2 group-hover:text-[#0C6D7C] dark:group-hover:text-teal-300 transition-colors">
+                          {mod.title}
+                        </h4>
+                      </div>
+                      {pastAttempt && (
+                        <span
+                          className={`shrink-0 px-2 py-1 rounded-lg text-[11px] font-extrabold border inline-flex items-center gap-1 ${
+                            passedLast
+                              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+                              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
+                          }`}
+                          title="Your last practice score"
+                        >
+                          {passedLast ? <CheckCircle2 className="w-3.5 h-3.5" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                          {Number(pastAttempt.scorePct) || 0}%
+                        </span>
                       )}
-                      {access.videos && (
-                      <button
-                        onClick={() => {
-                          setSelectedModule(mod);
-                          setActiveVideoIndex(0);
-                          setModuleMode('videos');
-                        }}
-                        className="py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/80 dark:border-slate-700 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                    </header>
+
+                    {mod.description && (
+                      <p className="text-xs sm:text-[13px] text-slate-500 dark:text-slate-400 mt-2.5 line-clamp-2 leading-relaxed">
+                        {mod.description}
+                      </p>
+                    )}
+
+                    {/* What's inside */}
+                    {stats.length > 0 && (
+                      <dl
+                        className={`mt-4 grid divide-x divide-slate-200/80 dark:divide-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 ${
+                          stats.length === 3 ? 'grid-cols-3' : stats.length === 2 ? 'grid-cols-2' : 'grid-cols-1'
+                        }`}
                       >
-                        <Video className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                        <span>Watch Videos</span>
-                      </button>
-                      )}
-                      {access.questions && (
-                      <button
-                        onClick={() => {
-                          setSelectedModule(mod);
-                          handleStartQuiz('All');
-                        }}
-                        className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm hover:shadow-teal-500/20 active:scale-95 transition-all cursor-pointer"
-                      >
-                        <HelpCircle className="w-3.5 h-3.5 text-cyan-200 shrink-0" />
-                        <span>Practice Quiz</span>
-                      </button>
-                      )}
+                        {stats.map(({ key, Icon, value, label, tone }) => (
+                          <div key={key} className="px-2 py-2.5 flex flex-col-reverse items-center text-center">
+                            <dt className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</dt>
+                            <dd className="flex items-center gap-1.5 text-base font-black text-slate-900 dark:text-white leading-none">
+                              <Icon className={`w-4 h-4 ${tone}`} aria-hidden="true" />
+                              {value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+
+                    {/* Difficulty mix */}
+                    {levels.length > 0 && (
+                      <div className="mt-3.5">
+                        <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800" aria-hidden="true">
+                          {levels.map((lvl) => (
+                            <span key={lvl.id} className={lvl.bar} style={{ width: `${(lvl.count / totalQuestions) * 100}%` }} />
+                          ))}
+                        </div>
+                        <p className="mt-1.5 flex items-center gap-3 flex-wrap text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          {levels.map((lvl) => (
+                            <span key={lvl.id} className="inline-flex items-center gap-1">
+                              <span className={`w-1.5 h-1.5 rounded-full ${lvl.bar}`} />
+                              {lvl.count} {lvl.label}
+                            </span>
+                          ))}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Actions: practise, or view the module (videos, notes, quiz, my results) */}
+                    <div className="mt-auto pt-4">
+                      <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                        {access.questions && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedModule(mod);
+                              setActiveVideoIndex(0);
+                              setQuizCompleted(false);
+                              setQuizResult(null);
+                              setQuizStartedAt(null);
+                              setModuleMode('quiz'); // the module opens on its list of days
+                            }}
+                            disabled={!canQuiz}
+                            className="flex-1 min-w-0 h-10 px-4 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] disabled:from-slate-300 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-700 disabled:cursor-not-allowed text-white font-extrabold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap shadow-sm shadow-teal-900/20 active:scale-[0.98] transition-all"
+                          >
+                            {pastAttempt ? <RotateCcw className="w-4 h-4 shrink-0" /> : <PlayCircle className="w-4 h-4 shrink-0" />}
+                            <span className="truncate">{!canQuiz ? 'No questions yet' : pastAttempt ? 'Practice again' : 'Start practice'}</span>
+                          </button>
+                        )}
+                        {canView ? (
+                          <button
+                            type="button"
+                            onClick={openModule}
+                            aria-label={`View ${mod.title}`}
+                            className={
+                              access.questions
+                                ? 'h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-teal-500/50 hover:bg-teal-50/60 dark:hover:bg-teal-950/30 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors active:scale-[0.97]'
+                                : 'flex-1 h-10 px-4 rounded-xl bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6] hover:from-[#0E7A8A] hover:to-[#2DD4BF] text-white font-extrabold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap shadow-sm shadow-teal-900/20 active:scale-[0.98] transition-all'
+                            }
+                          >
+                            <Eye className={`w-4 h-4 shrink-0 ${access.questions ? 'text-[#087F8C] dark:text-teal-300' : ''}`} />
+                            <span>View</span>
+                          </button>
+                        ) : (
+                          <span className="flex-1 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold inline-flex items-center justify-center gap-1.5">
+                            <Lock className="w-3.5 h-3.5" /> Not available yet
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>

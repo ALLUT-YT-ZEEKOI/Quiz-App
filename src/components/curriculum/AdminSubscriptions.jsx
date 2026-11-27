@@ -253,7 +253,7 @@ export const AdminSubscriptions = () => {
                         {req.studentName}
                       </h4>
                       <span className="px-1 sm:px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
-                        ₹{req.amount}
+                        {req.grantedByAdmin ? 'Given by admin' : `₹${req.amount}`}
                         {(req.validityDays !== undefined || hasFixedEndDate(req)) && (
                           <span className="font-bold opacity-75"> / {formatAccess(req)}</span>
                         )}

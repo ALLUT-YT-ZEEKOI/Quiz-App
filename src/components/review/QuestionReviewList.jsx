@@ -17,8 +17,9 @@ const statusOf = (a) => (a.selectedOption === null ? 'skipped' : a.isCorrect ? '
  * perspective: 'student' ("Your answer") | 'admin' ("Student's answer")
  * onAskDoubt(answer): optional, shows an "Ask doubt" button per question
  * doubtedIndexes: Set of question indexes the student already asked about
+ * renderActions(answer): optional extra buttons per question (e.g. Save)
  */
-export const QuestionReviewList = ({ answers = [], perspective = 'student', onAskDoubt, doubtedIndexes }) => {
+export const QuestionReviewList = ({ answers = [], perspective = 'student', onAskDoubt, doubtedIndexes, renderActions }) => {
   const [filter, setFilter] = useState('all');
 
   const counts = useMemo(() => {
@@ -104,6 +105,7 @@ export const QuestionReviewList = ({ answers = [], perspective = 'student', onAs
                     {a.questionText || `Question ${a.questionIndex + 1}`}
                   </p>
                 </div>
+                {renderActions && renderActions(a)}
               </div>
 
               {/* Options */}

@@ -36,8 +36,13 @@ export const ExamDashboard = ({
     curriculumSubjects,
     subjects,
     currentUser,
-    currentRole
+    currentRole,
+    retests
   } = useApp();
+  // Retest requests waiting for the admin, per exam (approved on each exam's results page)
+  const pendingRetestsByExam = (retests || [])
+    .filter((r) => r.status === 'requested')
+    .reduce((map, r) => map.set(r.examId, (map.get(r.examId) || 0) + 1), new Map());
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All');
@@ -120,6 +125,25 @@ export const ExamDashboard = ({
           )}
         </div>
       </div>
+
+      {pendingRetestsByExam.size > 0 && (
+        <div className="p-3.5 sm:p-4 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/20 space-y-2">
+          <p className="text-sm font-extrabold text-amber-900 dark:text-amber-200">Students asked for a retest</p>
+          <div className="flex flex-wrap gap-2">
+            {[...pendingRetestsByExam.entries()].map(([id, count]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onViewAnalytics(id)}
+                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 text-xs font-bold text-slate-800 dark:text-slate-100 hover:border-amber-400"
+              >
+                {examinations.find((e) => e.id === id)?.title || 'Exam'}{' '}
+                <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters + search */}
       <div className="flex flex-col gap-3 sm:gap-3.5 p-3 sm:p-3.5 md:p-4 bg-white dark:bg-slate-900 rounded-2xl border border-[#087F8C]/15 dark:border-slate-800 shadow-premium">

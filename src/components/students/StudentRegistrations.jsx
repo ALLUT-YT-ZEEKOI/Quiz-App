@@ -33,6 +33,8 @@ import {
   initialsAvatar
 } from '../../utils/studentRegistration';
 import { generateTempPassword } from '../../utils/passwordHash';
+import { pickLatestApproved } from '../../utils/subscriptionUtils';
+import { StudentAccessSection } from './StudentAccessSection';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -68,11 +70,11 @@ const levelTone = {
   'Excellent knowledge': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
 };
 
-const exportCsv = (accounts) => {
-  const headers = ['Registration ID', 'Name', 'Email', 'WhatsApp', 'Qualification', 'Civil Level', 'Preparation', 'District', 'Registered On', 'Last Login', 'Total Logins'];
+const exportCsv = (accounts, accessOf) => {
+  const headers = ['Roll No.', 'Name', 'Email', 'WhatsApp', 'Qualification', 'Civil Level', 'Preparation', 'Access', 'District', 'Registered On', 'Last Login', 'Total Logins'];
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const rows = accounts.map((a) =>
-    [a.registrationId, a.name, a.email, formatPhone(a.phone), a.qualification, a.civilLevel, a.preparation, a.district, fmtDateTime(a.registeredAt), fmtDateTime(a.lastLoginAt), a.loginCount || 0]
+    [a.registrationId, a.name, a.email, formatPhone(a.phone), a.qualification, a.civilLevel, a.preparation, accessOf(a.studentId).join(', '), a.district, fmtDateTime(a.registeredAt), fmtDateTime(a.lastLoginAt), a.loginCount || 0]
       .map(esc)
       .join(',')
   );
@@ -89,12 +91,23 @@ const exportCsv = (accounts) => {
 };
 
 export const StudentRegistrations = () => {
-  const { studentAccounts, showToast } = useApp();
+  const { studentAccounts, showToast, subscriptions, curriculumSubjects } = useApp();
+  // Paid batches/subjects each student can open right now
+  const activeAccessIds = (studentId) =>
+    [...new Set((subscriptions || []).filter((s) => s.studentId === studentId).map((s) => s.subjectId))].filter((id) => {
+      const latest = pickLatestApproved((subscriptions || []).filter((s) => s.studentId === studentId && s.subjectId === id));
+      return latest && latest.timing.state !== 'expired';
+    });
+  const subjectNameOf = (id) => (curriculumSubjects || []).find((c) => c.id === id)?.name;
+  const activeAccess = (studentId) => activeAccessIds(studentId).map(subjectNameOf).filter(Boolean);
+  // Free batches/subjects are open to everyone, so only paid ones can be filtered on
+  const paidSubjects = (curriculumSubjects || []).filter((c) => Number(c.price) > 0);
   const [search, setSearch] = useState('');
   const [qualification, setQualification] = useState('All');
   const [level, setLevel] = useState('All');
   const [preparation, setPreparation] = useState('All');
   const [district, setDistrict] = useState('All');
+  const [subject, setSubject] = useState('All'); // 'All' | 'none' (no paid access) | subject id
   const [selectedId, setSelectedId] = useState(null);
   const [openDelete, setOpenDelete] = useState(false);
   const openStudent = (id, withDelete = false) => {
@@ -116,11 +129,13 @@ export const StudentRegistrations = () => {
       (level === 'All' || a.civilLevel === level) &&
       (preparation === 'All' || a.preparation === preparation) &&
       (district === 'All' || a.district === district) &&
+      (subject === 'All' ||
+        (subject === 'none' ? activeAccessIds(a.studentId).length === 0 : activeAccessIds(a.studentId).includes(subject))) &&
       (!term ||
         a.name.toLowerCase().includes(term) ||
         a.email.includes(term) ||
         a.phone.includes(term.replace(/\D/g, '') || '~') ||
-        a.registrationId.toLowerCase().includes(term))
+        a.registrationId.toLowerCase().includes(term.replace(/\s+/g, '')))
   );
 
   const stats = {
@@ -129,8 +144,7 @@ export const StudentRegistrations = () => {
     activeToday: accounts.filter((a) => a.lastLoginAt && now - new Date(a.lastLoginAt).getTime() < DAY).length,
     pendingReset: accounts.filter((a) => a.mustChangePassword).length
   };
-  const byQualification = QUALIFICATIONS.map((q) => ({ q, count: accounts.filter((a) => a.qualification === q).length }));
-  const filtersActive = qualification !== 'All' || level !== 'All' || preparation !== 'All' || district !== 'All' || term;
+  const filtersActive = qualification !== 'All' || level !== 'All' || preparation !== 'All' || district !== 'All' || subject !== 'All' || term;
   const selected = accounts.find((a) => a.id === selectedId);
 
   return (
@@ -149,7 +163,7 @@ export const StudentRegistrations = () => {
           type="button"
           disabled={filtered.length === 0}
           onClick={() => {
-            exportCsv(filtered);
+            exportCsv(filtered, activeAccess);
             showToast(`Exported ${filtered.length} students to CSV`, 'success');
           }}
           className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-darkCard text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
@@ -178,27 +192,6 @@ export const StudentRegistrations = () => {
         ))}
       </div>
 
-      {/* Qualification breakdown (tap to filter) */}
-      {accounts.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
-          {byQualification.map(({ q, count }) => (
-            <button
-              key={q}
-              type="button"
-              onClick={() => setQualification(qualification === q ? 'All' : q)}
-              aria-pressed={qualification === q}
-              className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
-                qualification === q
-                  ? 'bg-[#087F8C] border-[#087F8C] text-white'
-                  : 'bg-white dark:bg-surface-darkCard border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-[#20B8C7]/60'
-              }`}
-            >
-              {q} <span className="opacity-70">{count}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Filters */}
       <div className="p-3 bg-white dark:bg-surface-darkCard rounded-2xl border border-[#087F8C]/15 dark:border-slate-800 shadow-premium space-y-2">
         <div className="relative">
@@ -207,11 +200,25 @@ export const StudentRegistrations = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, email, WhatsApp or registration ID..."
+            placeholder="Search name, email, WhatsApp or roll no..."
             className="w-full pl-10 pr-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#087F8C]/20"
           />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2">
+          <select
+            aria-label="Subject or batch"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className={`${selectCls} col-span-2 md:col-span-1`}
+          >
+            <option value="All">All subjects &amp; batches</option>
+            {paidSubjects.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({accounts.filter((a) => activeAccessIds(a.studentId).includes(c.id)).length})
+              </option>
+            ))}
+            <option value="none">No paid access ({accounts.filter((a) => activeAccessIds(a.studentId).length === 0).length})</option>
+          </select>
           <select aria-label="Qualification" value={qualification} onChange={(e) => setQualification(e.target.value)} className={selectCls}>
             <option value="All">All qualifications</option>
             {QUALIFICATIONS.map((q) => <option key={q}>{q}</option>)}
@@ -248,7 +255,7 @@ export const StudentRegistrations = () => {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/60 text-[10px] uppercase tracking-wider text-slate-500 text-left">
-                  {['Student', 'Contact', 'Qualification', 'Civil level', 'Preparation', 'District', 'Registered', 'Last login'].map((h) => (
+                  {['Student', 'Contact', 'Qualification', 'Civil level', 'Access', 'District', 'Registered', 'Last login'].map((h) => (
                     <th key={h} scope="col" className="font-bold px-3 py-2.5 whitespace-nowrap">{h}</th>
                   ))}
                   <th scope="col" className="px-3 py-2.5"><span className="sr-only">Actions</span></th>
@@ -274,7 +281,9 @@ export const StudentRegistrations = () => {
                     <td className="px-3 py-2.5">
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap ${levelTone[a.civilLevel] || ''}`}>{a.civilLevel}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">{a.preparation}</td>
+                    <td className="px-3 py-2.5">
+                      <AccessCell names={activeAccess(a.studentId)} />
+                    </td>
                     <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">{a.district}</td>
                     <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{fmtDate(a.registeredAt)}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
@@ -323,6 +332,7 @@ export const StudentRegistrations = () => {
                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${levelTone[a.civilLevel] || ''}`}>{a.civilLevel}</span>
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{a.district}</span>
                 </div>
+                <AccessCell names={activeAccess(a.studentId)} />
                 <div className="flex items-center justify-between text-[11px] text-slate-500">
                   <span className="font-mono">{formatPhone(a.phone)}</span>
                   <span>Last login: <strong className="text-slate-700 dark:text-slate-300">{ago(a.lastLoginAt)}</strong></span>
@@ -338,6 +348,21 @@ export const StudentRegistrations = () => {
   );
 };
 
+/** Which paid batches/subjects a student can open now (in the list). */
+const AccessCell = ({ names }) =>
+  names.length === 0 ? (
+    <span className="text-[11px] text-slate-400">No access</span>
+  ) : (
+    <span className="flex flex-wrap gap-1 max-w-[220px]" title={names.join(', ')}>
+      {names.slice(0, 2).map((n) => (
+        <span key={n} className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 truncate max-w-[140px]">
+          {n}
+        </span>
+      ))}
+      {names.length > 2 && <span className="text-[10px] font-bold text-slate-500">+{names.length - 2}</span>}
+    </span>
+  );
+
 const StudentDetailModal = ({ account: a, onClose, startWithDelete = false }) => {
   const { adminResetStudentPassword, adminDeleteStudentAccount, showToast } = useApp();
   const [resetStep, setResetStep] = useState('idle'); // 'idle' | 'confirm' | 'done'
@@ -345,7 +370,8 @@ const StudentDetailModal = ({ account: a, onClose, startWithDelete = false }) =>
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    // Escape closes this window, unless the access-date dialog is open on top of it (it closes first)
+    const onKey = (e) => e.key === 'Escape' && !document.getElementById('access-period-title') && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
@@ -381,7 +407,7 @@ const StudentDetailModal = ({ account: a, onClose, startWithDelete = false }) =>
           <img src={initialsAvatar(a.name)} alt="" className="w-14 h-14 rounded-2xl shrink-0" />
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-black text-slate-900 dark:text-white truncate">{a.name}</h2>
-            <p className="text-xs font-mono text-slate-500">Registration ID: <strong className="text-slate-800 dark:text-slate-200">{a.registrationId}</strong></p>
+            <p className="text-xs font-mono text-slate-500">Roll No.: <strong className="text-slate-800 dark:text-slate-200">{a.registrationId}</strong></p>
             <p className="text-[11px] text-slate-400">Registered {fmtDateTime(a.registeredAt)}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close">
@@ -435,6 +461,9 @@ const StudentDetailModal = ({ account: a, onClose, startWithDelete = false }) =>
               </ul>
             )}
           </section>
+
+          {/* Batches / subjects this student can open */}
+          <StudentAccessSection account={a} />
 
           {/* Password */}
           <section className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">

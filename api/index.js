@@ -2,7 +2,7 @@
 // Routes all /api/* requests to the Express app with MongoDB connection caching.
 import { createApp } from '../backend/src/app.js';
 import { connectDb } from '../backend/src/db.js';
-import { ensureAdmin, ensureCollectionIndexes } from '../backend/src/setup.js';
+import { ensureAdmin, ensureCollectionIndexes, ensureRollNumbers } from '../backend/src/setup.js';
 
 const app = createApp();
 let ready = null;
@@ -13,6 +13,7 @@ const init = () => {
       await connectDb();
       await ensureCollectionIndexes();
       await ensureAdmin();
+      await ensureRollNumbers();
     })().catch((err) => {
       ready = null; // retry on next request
       throw err;

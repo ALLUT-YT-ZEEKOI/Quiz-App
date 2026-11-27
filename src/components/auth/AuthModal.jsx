@@ -391,7 +391,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
                   Welcome Back, Student 👋
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  Sign in with your email, WhatsApp number, or Registration ID.
+                  Sign in with your email, WhatsApp number, or roll number.
                 </p>
               </div>
 
@@ -427,7 +427,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
                 {/* Username / Email / Phone / ID */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Email, WhatsApp Number or Registration ID
+                    Email, WhatsApp Number or Roll Number
                   </label>
                   <div className="relative">
                     <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -440,7 +440,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
                       }}
                       required
                       autoComplete="username"
-                      placeholder="e.g. adithyan@gmail.com or 98471 22334"
+                      placeholder="e.g. adithyan@gmail.com, 98471 22334 or CN101"
                       className="w-full pl-10 pr-4 py-3 rounded-xl text-sm bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all font-medium placeholder:text-slate-400"
                     />
                   </div>
