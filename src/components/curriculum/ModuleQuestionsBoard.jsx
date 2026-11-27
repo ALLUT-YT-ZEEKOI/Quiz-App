@@ -3,6 +3,7 @@ import {
   Plus,
   FileText,
   Trash2,
+  Pencil,
   Check,
   CalendarDays,
   Inbox,
@@ -264,9 +265,10 @@ const QuizSettingChips = ({ settings, onChange }) => {
  * with older questions under "Unsorted" until they are moved into a section and day.
  * levelFilter: 'All' or a level label, from the filter above.
  * onAdd(target) / onBulk(target): open the add / bulk-upload window for { sectionId, day }.
+ * onEdit(question): open the question window to edit that question.
  * search: a word to look for (question, options, explanation); only matching questions are shown.
  */
-export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', search = '', onAdd, onBulk }) => {
+export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', search = '', onAdd, onBulk, onEdit }) => {
   const {
     difficultyLevels,
     getDifficultyMeta,
@@ -310,23 +312,36 @@ export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', sea
               {meta.label}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={async () => {
-              const ok = await confirmDialog({
-                title: 'Delete this question?',
-                message: q.question,
-                confirmLabel: 'Delete',
-                tone: 'danger'
-              });
-              if (ok) deleteCurriculumQuestion(subject.id, module.id, q.id);
-            }}
-            className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-            title="Delete question"
-            aria-label="Delete question"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-0.5 shrink-0">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(q)}
+                className="p-1 rounded-lg text-slate-400 hover:text-[#087F8C] hover:bg-[#E8F3F4] dark:hover:bg-slate-800 transition-colors"
+                title="Edit question & answers"
+                aria-label={`Edit question ${number}`}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={async () => {
+                const ok = await confirmDialog({
+                  title: 'Delete this question?',
+                  message: q.question,
+                  confirmLabel: 'Delete',
+                  tone: 'danger'
+                });
+                if (ok) deleteCurriculumQuestion(subject.id, module.id, q.id);
+              }}
+              className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              title="Delete question"
+              aria-label="Delete question"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
         <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug line-clamp-3 mb-2.5" title={q.question}>
           <Highlight text={q.question} term={search} />

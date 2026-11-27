@@ -1,11 +1,97 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, CalendarDays, Clock, ListChecks, Pencil, Trash2, BarChart3, ClipboardList, Eye, EyeOff, RotateCcw, Globe, Lock } from 'lucide-react';
+import { Plus, CalendarDays, Clock, ListChecks, Pencil, Trash2, BarChart3, ClipboardList, Eye, EyeOff, RotateCcw, Globe, Lock, Shuffle, ListOrdered, MinusCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { confirmDialog } from '../common/ConfirmDialog';
 import { QuestionSearchBox, SearchResultCard, questionMatches } from '../common/QuestionSearch';
 import { MockTestFormModal } from './MockTestFormModal';
 import { PageHero, Toggle, primaryBtn, secondaryBtn } from './MockTestUi';
 import { formatDuration, groupByDay, isPrivateMockTest } from '../../utils/mockTests';
+
+const NEGATIVE_PRESETS = [0, 0.25, 0.33, 0.5, 1];
+
+/**
+ * One-tap test settings (same style as a subject Day row): Retest, Shuffle questions,
+ * Shuffle answers, and Minus marks (opens a small picker).
+ */
+const MockSettingChips = ({ test, onChange }) => {
+  const [negOpen, setNegOpen] = useState(false);
+  const neg = Number(test.negativeMark) || 0;
+  const off = 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-slate-300 hover:text-slate-600';
+  const chip = 'h-8 px-2.5 rounded-lg text-[11px] font-extrabold border inline-flex items-center gap-1 transition-all active:scale-[0.97] whitespace-nowrap';
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Test settings">
+      <button
+        type="button"
+        aria-pressed={!!test.allowRetest}
+        onClick={() => onChange({ allowRetest: !test.allowRetest })}
+        title={test.allowRetest ? 'Retest allowed — tap for one attempt only' : 'One attempt only — tap to allow retest'}
+        className={`${chip} ${test.allowRetest ? 'bg-amber-500 border-amber-500 text-white shadow-xs' : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300'}`}
+      >
+        <RotateCcw className="w-3.5 h-3.5" /> {test.allowRetest ? 'Retest on' : 'One try'}
+      </button>
+      <button
+        type="button"
+        aria-pressed={!!test.shuffleQuestions}
+        onClick={() => onChange({ shuffleQuestions: !test.shuffleQuestions })}
+        title={test.shuffleQuestions ? 'Questions are shuffled — tap to turn off' : 'Fixed question order — tap to shuffle'}
+        className={`${chip} ${test.shuffleQuestions ? 'bg-[#087F8C] border-[#087F8C] text-white shadow-xs' : off}`}
+      >
+        <Shuffle className="w-3.5 h-3.5" /> Shuffle Q
+      </button>
+      <button
+        type="button"
+        aria-pressed={!!test.shuffleOptions}
+        onClick={() => onChange({ shuffleOptions: !test.shuffleOptions })}
+        title={test.shuffleOptions ? 'Answer options are shuffled — tap to turn off' : 'Fixed answer order — tap to shuffle'}
+        className={`${chip} ${test.shuffleOptions ? 'bg-[#087F8C] border-[#087F8C] text-white shadow-xs' : off}`}
+      >
+        <ListOrdered className="w-3.5 h-3.5" /> Shuffle A
+      </button>
+      <div className="relative">
+        <button
+          type="button"
+          aria-expanded={negOpen}
+          onClick={() => setNegOpen((v) => !v)}
+          title={neg ? `Each wrong answer takes off ${neg} mark — tap to change` : 'No negative marking — tap to set minus marks'}
+          className={`${chip} ${neg ? 'bg-rose-600 border-rose-600 text-white shadow-xs' : off}`}
+        >
+          <MinusCircle className="w-3.5 h-3.5" /> {neg ? `−${neg} / wrong` : '− Marks'}
+        </button>
+        {negOpen && (
+          <>
+            <div className="fixed inset-0 z-30" onClick={() => setNegOpen(false)} aria-hidden="true" />
+            <div className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-1.5 z-40 w-60 p-3 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-700 shadow-xl space-y-2">
+              <p className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200">Minus marks for each wrong answer</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {NEGATIVE_PRESETS.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => {
+                      onChange({ negativeMark: v });
+                      setNegOpen(false);
+                    }}
+                    aria-pressed={neg === v}
+                    className={`py-1.5 rounded-lg text-[11px] font-bold border ${
+                      neg === v
+                        ? v
+                          ? 'bg-rose-600 border-rose-600 text-white'
+                          : 'bg-slate-900 border-slate-900 text-white dark:bg-slate-700'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-rose-400'
+                    }`}
+                  >
+                    {v ? `−${v}` : 'Off'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400">Correct = +1. Wrong = minus this. Skipped = 0.</p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
   const { mockTests, mockAttempts, createMockTest, updateMockTest, deleteMockTest, showToast, curriculumSubjects } = useApp();
@@ -257,115 +343,123 @@ export const AdminMockTests = ({ onOpenQuestions, onOpenResults }) => {
               return (
                 <article
                   key={test.id}
-                  className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border shadow-subtle space-y-4 ${
+                  className={`relative overflow-hidden rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border shadow-subtle hover:shadow-lg hover:shadow-teal-900/5 transition-shadow flex flex-col ${
                     test.enabled ? 'border-[#087F8C]/30 dark:border-teal-800/60' : 'border-slate-200 dark:border-slate-800'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
-                          test.enabled
-                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                        {test.enabled ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                        {test.enabled ? 'Visible' : 'Hidden'}
-                      </span>
-                      <span
-                        className={`ml-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
-                          isPrivateMockTest(test)
-                            ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800'
-                            : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800'
-                        }`}
-                      >
-                        {isPrivateMockTest(test) ? <Lock className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
-                        {isPrivateMockTest(test) ? 'Private' : 'Public'}
-                      </span>
-                      <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1.5 leading-snug break-words">{test.title}</h3>
-                      {test.description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{test.description}</p>}
+                  {/* Status stripe: teal when students can see it */}
+                  <div className={`h-1 w-full ${test.enabled ? 'bg-gradient-to-r from-[#0C6D7C] to-[#14B8A6]' : 'bg-slate-200 dark:bg-slate-700'}`} aria-hidden="true" />
+
+                  <div className="p-4 sm:p-5 space-y-4 flex-1 flex flex-col">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                              test.enabled
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            {test.enabled ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                            {test.enabled ? 'Visible' : 'Hidden'}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                              isPrivateMockTest(test)
+                                ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800'
+                                : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800'
+                            }`}
+                          >
+                            {isPrivateMockTest(test) ? <Lock className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
+                            {isPrivateMockTest(test) ? 'Private' : 'Public'}
+                          </span>
+                        </div>
+                        <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-1.5 leading-snug break-words">{test.title}</h3>
+                        {test.description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{test.description}</p>}
+                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-1">
+                          {isPrivateMockTest(test) ? (
+                            <>
+                              <Lock className="w-3 h-3 mt-0.5 text-violet-500 shrink-0" />
+                              <span>
+                                Only for <strong className="text-slate-700 dark:text-slate-200">{(test.batchSubjectIds || []).map(batchName).join(', ') || 'no batch chosen'}</strong>
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Globe className="w-3 h-3 mt-0.5 text-sky-500 shrink-0" />
+                              <span>Open to every student who signs in</span>
+                            </>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex gap-0.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditing(test);
+                            setFormOpen(true);
+                          }}
+                          aria-label={`Edit ${test.title}`}
+                          title="Edit test"
+                          className="p-2 rounded-lg text-slate-400 hover:text-[#087F8C] hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(test)}
+                          aria-label={`Delete ${test.title}`}
+                          title="Delete test"
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditing(test);
-                          setFormOpen(true);
-                        }}
-                        aria-label={`Edit ${test.title}`}
-                        className="p-2 rounded-lg text-slate-400 hover:text-[#087F8C] hover:bg-slate-100 dark:hover:bg-slate-800"
-                      >
-                        <Pencil className="w-4 h-4" />
+
+                    {/* At a glance */}
+                    <dl className="grid grid-cols-3 divide-x divide-slate-200/80 dark:divide-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                      {[
+                        { label: qCount === 1 ? 'Question' : 'Questions', value: qCount, Icon: ListChecks },
+                        { label: 'Duration', value: formatDuration(test.durationMinutes), Icon: Clock },
+                        { label: attempts === 1 ? 'Attempt' : 'Attempts', value: attempts, Icon: BarChart3 }
+                      ].map(({ label, value, Icon }) => (
+                        <div key={label} className="px-2 py-2.5 flex flex-col-reverse items-center text-center">
+                          <dt className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</dt>
+                          <dd className="flex items-center gap-1.5 text-sm sm:text-base font-black text-slate-900 dark:text-white leading-none">
+                            <Icon className="w-3.5 h-3.5 text-[#087F8C] dark:text-teal-300" aria-hidden="true" />
+                            {value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+
+                    {/* Visible switch + one-tap settings */}
+                    <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                      <div className="px-3 py-2.5">
+                        <Toggle
+                          checked={!!test.enabled}
+                          onChange={(v) => toggleEnabled(test, v)}
+                          label="Visible to students"
+                          hint={!qCount ? 'Add questions first' : test.enabled ? 'Students can see and take it' : 'Hidden from students'}
+                        />
+                      </div>
+                      <div className="px-3 py-2.5">
+                        <MockSettingChips test={test} onChange={(fields) => updateMockTest(test.id, fields)} />
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="mt-auto flex gap-2">
+                      <button type="button" onClick={() => onOpenQuestions(test.id)} className={`${primaryBtn} flex-1`}>
+                        <ListChecks className="w-4 h-4" /> Questions
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(test)}
-                        aria-label={`Delete ${test.title}`}
-                        className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                      >
-                        <Trash2 className="w-4 h-4" />
+                      <button type="button" onClick={() => onOpenResults(test.id)} className={`${secondaryBtn} flex-1`}>
+                        <BarChart3 className="w-4 h-4" /> Results ({attempts})
                       </button>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center gap-1"><ListChecks className="w-3.5 h-3.5 text-slate-400" />{qCount} question{qCount === 1 ? '' : 's'}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" />{formatDuration(test.durationMinutes)}</span>
-                    <span className="flex items-center gap-1"><RotateCcw className="w-3.5 h-3.5 text-slate-400" />{test.allowRetest ? 'Retest allowed' : 'One attempt'}</span>
-                  </div>
-
-                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
-                    {isPrivateMockTest(test) ? (
-                      <>
-                        <Lock className="w-3.5 h-3.5 mt-px text-violet-500 shrink-0" />
-                        <span>
-                          Only for:{' '}
-                          <strong className="text-slate-700 dark:text-slate-200">
-                            {(test.batchSubjectIds || []).map(batchName).join(', ') || 'no batch chosen'}
-                          </strong>
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Globe className="w-3.5 h-3.5 mt-px text-sky-500 shrink-0" />
-                        <span>Open to every student who signs in</span>
-                      </>
-                    )}
-                  </p>
-
-                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-3">
-                    <Toggle
-                      checked={!!test.enabled}
-                      onChange={(v) => toggleEnabled(test, v)}
-                      label="Visible to students"
-                      hint={!qCount ? 'Add questions first' : undefined}
-                    />
-                    <Toggle
-                      checked={!!test.allowRetest}
-                      onChange={(v) => updateMockTest(test.id, { allowRetest: v })}
-                      label="Allow retest"
-                      tone="amber"
-                    />
-                    <Toggle
-                      checked={!!test.shuffleQuestions}
-                      onChange={(v) => updateMockTest(test.id, { shuffleQuestions: v })}
-                      label="Shuffle questions"
-                    />
-                    <Toggle
-                      checked={!!test.shuffleOptions}
-                      onChange={(v) => updateMockTest(test.id, { shuffleOptions: v })}
-                      label="Shuffle answers"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => onOpenQuestions(test.id)} className={`${primaryBtn} flex-1`}>
-                      <ListChecks className="w-4 h-4" /> Questions
-                    </button>
-                    <button type="button" onClick={() => onOpenResults(test.id)} className={`${secondaryBtn} flex-1`}>
-                      <BarChart3 className="w-4 h-4" /> Results ({attempts})
-                    </button>
                   </div>
                 </article>
               );

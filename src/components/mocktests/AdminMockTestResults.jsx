@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Search, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Search, BarChart3, Users } from 'lucide-react';
+import { QuestionAnalysisList } from '../review/QuestionAnalysis';
+import { normalizeMockAttempt } from '../../utils/assessmentRecords';
 import { useApp } from '../../context/AppContext';
 import { MockTestResult } from './MockTestResult';
 import { secondaryBtn, inputCls } from './MockTestUi';
@@ -11,6 +13,7 @@ export const AdminMockTestResults = ({ testId, onBack }) => {
   const test = mockTests.find((t) => t.id === testId);
   const [query, setQuery] = useState('');
   const [viewing, setViewing] = useState(null);
+  const [view, setView] = useState('students'); // 'students' | 'questions'
 
   const attempts = useMemo(
     () =>
@@ -59,7 +62,30 @@ export const AdminMockTestResults = ({ testId, onBack }) => {
         </div>
       </div>
 
-      {attempts.length === 0 ? (
+      {attempts.length > 0 && (
+        <div role="group" aria-label="Show" className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
+          {[
+            { id: 'students', label: 'Students', Icon: Users },
+            { id: 'questions', label: 'Questions', Icon: BarChart3 }
+          ].map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setView(id)}
+              aria-pressed={view === id}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 ${
+                view === id ? 'bg-white dark:bg-slate-800 text-[#087F8C] dark:text-teal-300 shadow-sm' : 'text-slate-500'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" /> {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {attempts.length > 0 && view === 'questions' ? (
+        <QuestionAnalysisList records={attempts.map((a) => normalizeMockAttempt(a, test))} />
+      ) : attempts.length === 0 ? (
         <div className="p-8 sm:p-12 rounded-2xl sm:rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center space-y-2">
           <BarChart3 className="w-10 h-10 text-slate-300 mx-auto" />
           <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No attempts yet</p>

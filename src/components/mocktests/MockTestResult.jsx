@@ -74,6 +74,11 @@ export const MockTestResult = ({
               <Trophy className="w-6 h-6 text-amber-500" />
               {attempt.score}<span className="text-base text-slate-400">/{attempt.totalMarks}</span>
             </div>
+            {Number(attempt.negativeMark) > 0 && (
+              <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/30 border border-rose-200/70 dark:border-rose-900/50 rounded-lg px-2 py-1">
+                {attempt.correctCount} correct · {attempt.incorrectCount} wrong × −{attempt.negativeMark} = −{attempt.negativeTotal}
+              </p>
+            )}
             {onRetake && (
               <button type="button" onClick={onRetake} className={primaryBtn}>
                 <RotateCcw className="w-4 h-4" /> Retake Test

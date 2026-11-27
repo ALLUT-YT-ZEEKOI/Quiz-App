@@ -90,6 +90,7 @@ export const TeacherCurriculum = () => {
     deleteVideo,
     addCurriculumQuestion,
     addCurriculumQuestionsBulk,
+    updateCurriculumQuestion,
     deleteCurriculumQuestion,
     showToast,
     difficultyLevels,
@@ -179,15 +180,41 @@ export const TeacherCurriculum = () => {
   const [noteTarget, setNoteTarget] = useState(null);
   const [editingNote, setEditingNote] = useState(null); // the study note being edited
   const [questionTarget, setQuestionTarget] = useState(null);
+  const [editingQuestionId, setEditingQuestionId] = useState(null); // question being edited (null = adding)
 
   // New Question form state
-  const [newQuestion, setNewQuestion] = useState({
+  const emptyQuestion = () => ({
     question: '',
     difficulty: 'Medium',
     options: ['', '', '', ''],
     correctAnswer: 0,
     explanation: ''
   });
+  const [newQuestion, setNewQuestion] = useState(emptyQuestion);
+
+  /** Opens the question window empty, for adding to { sectionId, day }. */
+  const openAddQuestion = (target) => {
+    setEditingQuestionId(null);
+    setNewQuestion(emptyQuestion());
+    setQuestionTarget(target);
+    setQuestionModalOpen(true);
+  };
+
+  /** Opens the question window filled in with an existing question, for editing. */
+  const openEditQuestion = (q) => {
+    const options = [...(q.options || [])];
+    while (options.length < 4) options.push('');
+    setEditingQuestionId(q.id);
+    setNewQuestion({
+      question: q.question || '',
+      difficulty: q.difficulty || 'Medium',
+      options,
+      correctAnswer: Number.isInteger(q.correctAnswer) ? q.correctAnswer : 0,
+      explanation: q.explanation || ''
+    });
+    setQuestionTarget(q.sectionId ? { sectionId: q.sectionId, day: Number(q.day) || 1 } : null);
+    setQuestionModalOpen(true);
+  };
 
   // Keep selected subject and module in sync with updated context state
   const currentSubject = selectedSubject
@@ -376,7 +403,26 @@ export const TeacherCurriculum = () => {
       return;
     }
     if (newQuestion.options.some((opt) => !opt.trim())) {
-      showToast('All 4 options must be filled', 'warning');
+      showToast(`All ${newQuestion.options.length} options must be filled`, 'warning');
+      return;
+    }
+    if (editingQuestionId) {
+      updateCurriculumQuestion(
+        currentSubject.id,
+        currentModule.id,
+        editingQuestionId,
+        {
+          question: newQuestion.question.trim(),
+          difficulty: newQuestion.difficulty,
+          options: newQuestion.options.map((o) => o.trim()),
+          correctAnswer: newQuestion.correctAnswer,
+          explanation: newQuestion.explanation.trim()
+        },
+        questionTarget?.sectionId ? questionTarget : null
+      );
+      setQuestionModalOpen(false);
+      setEditingQuestionId(null);
+      setNewQuestion(emptyQuestion());
       return;
     }
     addCurriculumQuestion(
@@ -500,10 +546,7 @@ export const TeacherCurriculum = () => {
                   <span className="sm:hidden">Bulk</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setQuestionTarget({ sectionId: currentModule.sections?.[0]?.id, day: 1 });
-                    setQuestionModalOpen(true);
-                  }}
+                  onClick={() => openAddQuestion({ sectionId: currentModule.sections?.[0]?.id, day: 1 })}
                   className="flex-1 sm:flex-none justify-center px-3.5 sm:px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-[#0C4E5B] to-[#125B69] hover:from-[#0E5866] hover:to-[#156776] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_4px_16px_rgba(20,184,166,0.25)] border border-[#20B8C7]/40 active:scale-95 transition-all"
                 >
                   <Plus className="w-4 h-4" />
@@ -974,10 +1017,8 @@ export const TeacherCurriculum = () => {
               module={currentModule}
               levelFilter={questionDifficultyFilter}
               search={questionSearch}
-              onAdd={(target) => {
-                setQuestionTarget(target);
-                setQuestionModalOpen(true);
-              }}
+              onAdd={openAddQuestion}
+              onEdit={openEditQuestion}
               onBulk={(target) => {
                 setQuestionTarget(target);
                 setBulkModalOpen(true);
@@ -1337,7 +1378,7 @@ export const TeacherCurriculum = () => {
                   </div>
                   <div>
                     <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                      Add Assessment Question
+                      {editingQuestionId ? 'Edit Question' : 'Add Assessment Question'}
                     </h3>
                     <p className="text-xs text-slate-400">
                       Module: {currentModule.title}
@@ -1353,6 +1394,11 @@ export const TeacherCurriculum = () => {
               </div>
 
               {/* Shortcut to Bulk A4 Upload */}
+              {editingQuestionId ? (
+                <p className="mb-4 p-2.5 rounded-2xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-800 text-xs text-sky-900 dark:text-sky-200">
+                  Change the question, answers, correct option or solution, then save. Students see the new version straight away; past results are not re-marked.
+                </p>
+              ) : (
               <div className="mb-4 p-2.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800 flex items-center justify-between text-xs">
                 <span className="text-emerald-900 dark:text-emerald-200 font-medium">
                   Have multiple questions in an A4 paper or Word file?
@@ -1369,6 +1415,7 @@ export const TeacherCurriculum = () => {
                   <span>Bulk Upload (A4) ↗</span>
                 </button>
               </div>
+              )}
 
               <form onSubmit={handleCreateQuestion} className="space-y-3.5">
                 {/* Section & day */}
@@ -1456,7 +1503,7 @@ export const TeacherCurriculum = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Four Multiple Choice Options (Select the correct radio) *
+                    Multiple Choice Options (Select the correct radio) *
                   </label>
                   <div className="space-y-2">
                     {newQuestion.options.map((opt, oIdx) => (
@@ -1520,7 +1567,7 @@ export const TeacherCurriculum = () => {
                     type="submit"
                     className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-md shadow-emerald-500/20"
                   >
-                    Save Question
+                    {editingQuestionId ? 'Save Changes' : 'Save Question'}
                   </button>
                 </div>
               </form>

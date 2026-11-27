@@ -122,6 +122,9 @@ export const StudentMockTests = ({ onStart, onViewResult }) => {
                           <CheckCircle2 className="w-3 h-3" /> Completed
                         </span>
                       )}
+                      {Number(test.negativeMark) > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300">−{test.negativeMark} per wrong</span>
+                      )}
                       {test.allowRetest && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#E8F3F4] dark:bg-slate-800 text-[#087F8C] dark:text-teal-300">Retest allowed</span>
                       )}
@@ -213,6 +216,11 @@ export const StudentMockTests = ({ onStart, onViewResult }) => {
               <li>It keeps running even if you leave the page. You can come back and resume.</li>
               <li>When time runs out, your answers are submitted automatically.</li>
               <li>{confirming.allowRetest ? 'You can retake this test after submitting.' : 'You can take this test only once.'}</li>
+              {Number(confirming.negativeMark) > 0 && (
+                <li className="text-rose-700 dark:text-rose-300 font-semibold">
+                  Negative marking: −{confirming.negativeMark} for each wrong answer. Skipping a question costs nothing.
+                </li>
+              )}
             </ul>
             {!confirming.allowRetest && (
               <p className="flex items-start gap-2 text-xs font-semibold text-amber-700 dark:text-amber-300 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30">

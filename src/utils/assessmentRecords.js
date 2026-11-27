@@ -185,6 +185,8 @@ export const normalizeMockAttempt = (attempt, test) => {
     time: toTime(attempt.submittedAt),
     score: attempt.score,
     maxScore: attempt.totalMarks,
+    negativeMark: Number(attempt.negativeMark) || 0,
+    negativeTotal: Number(attempt.negativeTotal) || 0,
     pct: Number(attempt.percentage) || 0,
     passed: Number(attempt.percentage) >= 60,
     total: attempt.totalQuestions || answers.length,

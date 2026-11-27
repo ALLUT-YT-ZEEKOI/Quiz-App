@@ -784,6 +784,8 @@ export const AppProvider = ({ children }) => {
       // Shuffle the question order / the answer options for each student
       shuffleQuestions: !!data.shuffleQuestions,
       shuffleOptions: !!data.shuffleOptions,
+      // Marks taken off per wrong answer (0 = no negative marking)
+      negativeMark: Math.max(0, Math.min(4, Number(data.negativeMark) || 0)),
       // Public: every student. Private: only students of the chosen batches (courses).
       access: data.access === 'private' ? 'private' : 'public',
       batchSubjectIds: data.access === 'private' ? [...new Set(data.batchSubjectIds || [])] : [],
@@ -2018,6 +2020,23 @@ export const AppProvider = ({ children }) => {
     showToast(`Bulk imported ${formattedQuestions.length} questions successfully!`, 'success');
   };
 
+  /**
+   * Admin edits a question: text, options, correct answer, explanation, level, and its section & day
+   * (target { sectionId, day }, or null for unsorted). The question keeps its id.
+   */
+  const updateCurriculumQuestion = (subjectId, moduleId, questionId, fields, target) => {
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      questions: (m.questions || []).map((q) => {
+        if (q.id !== questionId) return q;
+        const { sectionId, day, ...rest } = q;
+        const next = { ...rest, ...fields, id: q.id, updatedAt: new Date().toISOString() };
+        return target?.sectionId ? { ...next, sectionId: target.sectionId, day: Number(target.day) || 1 } : next;
+      })
+    }));
+    showToast('Question updated', 'success');
+  };
+
   const deleteCurriculumQuestion = (subjectId, moduleId, questionId) => {
     setCurriculumSubjects((prev) =>
       prev.map((s) =>
@@ -2846,6 +2865,7 @@ export const AppProvider = ({ children }) => {
         deleteVideo,
         addCurriculumQuestion,
         addCurriculumQuestionsBulk,
+        updateCurriculumQuestion,
         deleteCurriculumQuestion,
         recordCurriculumAttempt,
         subscriptions,

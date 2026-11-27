@@ -138,6 +138,11 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
         {/* Question */}
         <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+          {Number(test.negativeMark) > 0 && (
+            <p className="px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+              Negative marking: <strong>−{test.negativeMark}</strong> for each wrong answer. Skipping a question costs nothing.
+            </p>
+          )}
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-bold text-slate-500">Question {index + 1} of {total}</p>
             <div className="flex items-center gap-1.5">

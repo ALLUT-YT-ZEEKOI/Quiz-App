@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ClipboardList, Globe, Lock, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Modal, Toggle, primaryBtn, secondaryBtn, inputCls, labelCls } from './MockTestUi';
+import { NegativeMarkPicker } from '../common/NegativeMarkPicker';
 import { formatDuration } from '../../utils/mockTests';
 
 const DURATION_PRESETS = [30, 60, 90, 120, 180];
@@ -16,6 +17,7 @@ export const MockTestFormModal = ({ open, onClose, onSave, test, existingDays = 
   const [allowRetest, setAllowRetest] = useState(false);
   const [shuffleQuestions, setShuffleQuestions] = useState(false);
   const [shuffleOptions, setShuffleOptions] = useState(false);
+  const [negativeMark, setNegativeMark] = useState(0);
   const [access, setAccess] = useState('public');
   const [batchIds, setBatchIds] = useState([]);
   const [error, setError] = useState('');
@@ -35,6 +37,7 @@ export const MockTestFormModal = ({ open, onClose, onSave, test, existingDays = 
     setAllowRetest(!!test?.allowRetest);
     setShuffleQuestions(!!test?.shuffleQuestions);
     setShuffleOptions(!!test?.shuffleOptions);
+    setNegativeMark(Math.max(0, Number(test?.negativeMark) || 0));
     setAccess(test?.access === 'private' ? 'private' : 'public');
     setBatchIds(test?.batchSubjectIds || []);
     setError('');
@@ -62,6 +65,7 @@ export const MockTestFormModal = ({ open, onClose, onSave, test, existingDays = 
       allowRetest,
       shuffleQuestions,
       shuffleOptions,
+      negativeMark,
       access,
       batchSubjectIds: access === 'private' ? chosen : []
     });
@@ -296,6 +300,13 @@ export const MockTestFormModal = ({ open, onClose, onSave, test, existingDays = 
             label="Shuffle questions"
             hint="Each student gets the questions in a different order."
           />
+          <div className="pt-3 border-t border-slate-200/70 dark:border-slate-700">
+            <NegativeMarkPicker
+              value={negativeMark}
+              onChange={setNegativeMark}
+              hint="Correct = +1, wrong = minus this, skipped = 0. Students are told before they start."
+            />
+          </div>
           <Toggle
             checked={shuffleOptions}
             onChange={setShuffleOptions}

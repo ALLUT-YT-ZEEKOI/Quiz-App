@@ -8,10 +8,19 @@ import { Modal, Toggle, primaryBtn, secondaryBtn, inputCls, labelCls } from './M
 import { formatDuration } from '../../utils/mockTests';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
+const levelTone = (color) =>
+  color === 'emerald'
+    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+    : color === 'red'
+    ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border-red-200 dark:border-red-800/60'
+    : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800/60';
+
 const newQuestionId = () => `MQ-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
 /** Add or edit one question. */
 const QuestionFormModal = ({ open, onClose, onSave, question }) => {
+  const { difficultyLevels, getDifficultyMeta } = useApp();
+  const [level, setLevel] = useState('Medium');
   const [text, setText] = useState('');
   const [options, setOptions] = useState(['', '', '', '']);
   const [correct, setCorrect] = useState(0);
@@ -24,7 +33,9 @@ const QuestionFormModal = ({ open, onClose, onSave, question }) => {
     setOptions(question?.options?.length === 4 ? [...question.options] : ['', '', '', '']);
     setCorrect(Number.isInteger(question?.correctAnswer) ? question.correctAnswer : 0);
     setExplanation(question?.explanation || '');
+    setLevel(getDifficultyMeta(question?.difficulty || 'Medium').label);
     setError('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, question]);
 
   const save = (addAnother) => {
@@ -37,7 +48,7 @@ const QuestionFormModal = ({ open, onClose, onSave, question }) => {
         options: options.map((o) => o.trim()),
         correctAnswer: correct,
         explanation: explanation.trim(),
-        difficulty: question?.difficulty || 'Medium'
+        difficulty: level
       },
       addAnother
     );
@@ -70,6 +81,27 @@ const QuestionFormModal = ({ open, onClose, onSave, question }) => {
       }
     >
       <div className="space-y-4">
+        <div>
+          <span className={labelCls}>Level</span>
+          <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Question level">
+            {difficultyLevels.map((lvl) => {
+              const active = getDifficultyMeta(level).id === lvl.id;
+              return (
+                <button
+                  key={lvl.id}
+                  type="button"
+                  onClick={() => setLevel(lvl.label)}
+                  aria-pressed={active}
+                  className={`py-2 rounded-xl text-xs font-bold border transition-colors ${
+                    active ? levelTone(lvl.color) + ' ring-2 ring-offset-1 ring-current/20' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {lvl.dot} {lvl.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div>
           <label className={labelCls} htmlFor="mq-text">Question</label>
           <textarea id="mq-text" rows={3} className={inputCls} value={text} onChange={(e) => setText(e.target.value)} autoFocus />
@@ -113,7 +145,8 @@ const QuestionFormModal = ({ open, onClose, onSave, question }) => {
 
 /** Admin page for one mock test's questions. */
 export const MockTestQuestions = ({ testId, onBack }) => {
-  const { mockTests, updateMockTest, showToast } = useApp();
+  const { mockTests, updateMockTest, showToast, difficultyLevels, getDifficultyMeta, matchesDifficulty } = useApp();
+  const [levelFilter, setLevelFilter] = useState('All'); // 'All' or a level id
   const test = mockTests.find((t) => t.id === testId);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -190,6 +223,9 @@ export const MockTestQuestions = ({ testId, onBack }) => {
               <span><strong>{questions.length}</strong> questions</span>
               <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{formatDuration(test.durationMinutes)}</span>
               <span>{test.allowRetest ? 'Retest allowed' : 'One attempt only'}</span>
+              {Number(test.negativeMark) > 0 && (
+                <span className="px-1.5 rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold">−{test.negativeMark} per wrong</span>
+              )}
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -233,15 +269,36 @@ export const MockTestQuestions = ({ testId, onBack }) => {
           count={search.trim() ? questions.filter((q) => questionMatches(q, search)).length : undefined}
           placeholder="Search this test's questions, e.g. standard"
         />
+        {/* Level filter: All / Basic / Medium / Advanced, with counts */}
+        <div role="group" aria-label="Question level" className="flex flex-wrap gap-1.5">
+          {[{ id: 'All', label: 'All', count: questions.length }, ...difficultyLevels.map((lvl) => ({ ...lvl, count: questions.filter((q) => matchesDifficulty(q.difficulty, lvl.id)).length }))].map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => setLevelFilter(l.id)}
+              aria-pressed={levelFilter === l.id}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                levelFilter === l.id
+                  ? 'bg-[#087F8C] border-[#087F8C] text-white'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-[#087F8C]/50'
+              }`}
+            >
+              {l.dot ? `${l.dot} ` : ''}{l.label} <span className="opacity-70">({l.count})</span>
+            </button>
+          ))}
+        </div>
         {search.trim() && !questions.some((q) => questionMatches(q, search)) && (
           <p className="p-6 text-center text-xs text-slate-400">No question in this test contains &ldquo;{search.trim()}&rdquo;.</p>
         )}
         <ol className="space-y-3">
-          {questions.map((q, idx) => !questionMatches(q, search) ? null : (
+          {questions.map((q, idx) => !questionMatches(q, search) || (levelFilter !== 'All' && !matchesDifficulty(q.difficulty, levelFilter)) ? null : (
             <li key={q.id} className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
                   <span className="text-[#087F8C] dark:text-teal-300 mr-1.5">Q{idx + 1}.</span>
+                  <span className={`mr-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider align-middle ${levelTone(getDifficultyMeta(q.difficulty).color)}`}>
+                    {getDifficultyMeta(q.difficulty).label}
+                  </span>
                   <Highlight text={q.questionText} term={search} />
                 </p>
                 <div className="flex gap-1 shrink-0">

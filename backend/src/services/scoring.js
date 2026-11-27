@@ -126,11 +126,16 @@ export const scoreMockTest = (test, answers) => {
       options: q.options || [],
       correctAnswer: q.correctAnswer,
       explanation: q.explanation || '',
+      difficulty: q.difficulty || '',
       selectedOption,
       isCorrect
     };
   });
 
+  // +1 per correct answer, minus the test's negative mark per wrong answer (skipped = 0)
+  const negativeMark = Math.max(0, Number(test?.negativeMark) || 0);
+  const negativeTotal = Math.round(incorrectCount * negativeMark * 100) / 100;
+  const score = Math.round((correctCount - negativeTotal) * 100) / 100;
   const totalMarks = questions.length;
   return {
     totalQuestions: questions.length,
@@ -138,8 +143,10 @@ export const scoreMockTest = (test, answers) => {
     correctCount,
     incorrectCount,
     unattemptedCount,
-    score: correctCount,
-    percentage: totalMarks ? Math.round((correctCount / totalMarks) * 100) : 0,
+    negativeMark,
+    negativeTotal,
+    score,
+    percentage: totalMarks ? Math.round((Math.max(0, score) / totalMarks) * 100) : 0,
     answers: detailed
   };
 };
