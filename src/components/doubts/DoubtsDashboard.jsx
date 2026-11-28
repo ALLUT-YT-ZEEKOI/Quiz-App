@@ -157,7 +157,7 @@ export const DoubtsDashboard = () => {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={isAdmin ? 'Search student, subject or text…' : 'Search your doubts…'}
+                placeholder={isAdmin ? 'Search student, topic or message…' : 'Search your doubts…'}
                 className="w-full pl-9 pr-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
               />
             </div>
@@ -288,8 +288,8 @@ const DoubtThread = ({ doubt, isAdmin, onBack, onReply, onStatus }) => {
           <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-black shrink-0">{(doubt.studentName || '?').charAt(0)}</div>
         ))}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-extrabold text-slate-900 dark:text-white truncate">{isAdmin ? doubt.studentName : doubt.subjectName}</p>
-          <p className="text-[11px] text-slate-500 truncate">
+          <p className="text-sm font-extrabold text-slate-900 dark:text-white break-words">{isAdmin ? doubt.studentName : doubt.subjectName}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 break-words">
             {isAdmin ? `${doubt.subjectName} • ` : ''}Asked {timeAgo(doubt.createdAt)}
           </p>
         </div>

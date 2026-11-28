@@ -15,6 +15,7 @@ import {
 } from '../sync/collections.js';
 import { toAccount } from '../services/students.js';
 import { externalizeScreenshot } from '../services/screenshots.js';
+import { deleteCurriculumSubject, saveCurriculumSubject, subjectDeletions } from '../services/curriculumSubjects.js';
 
 export const syncRouter = Router();
 syncRouter.use(requireAuth);
@@ -93,6 +94,11 @@ syncRouter.get('/changes', async (req, res, next) => {
       })
     );
 
+    const removedSubjects = await subjectDeletions().find({ _updatedAt: { $gt: since } }, { projection: { _id: 1 } }).toArray();
+    if (removedSubjects.length) {
+      const curriculum = changes.curriculum ||= { docs: [], deleted: [] };
+      curriculum.deleted = [...new Set([...curriculum.deleted, ...removedSubjects.map((doc) => doc._id)])];
+    }
     if (user.role === 'admin') {
       const accounts = await readAccounts({ _updatedAt: { $gt: since } });
       if (accounts.length) changes.accounts = { docs: accounts, deleted: [] };
@@ -162,7 +168,14 @@ syncRouter.post('/:name', async (req, res, next) => {
 
       if (name === 'subscriptions') item = await externalizeScreenshot(key, item);
       const doc = { _id: key, ...cleanIncoming(item), _updatedAt: now };
-      await coll.replaceOne({ _id: key }, doc, { upsert: true });
+      if (name === 'curriculum') {
+        if (!await saveCurriculumSubject(doc)) {
+          rejected.push({ key, reason: 'This subject was deleted' });
+          continue;
+        }
+      } else {
+        await coll.replaceOne({ _id: key }, doc, { upsert: true });
+      }
       saved.push(key);
     }
 
@@ -176,7 +189,8 @@ syncRouter.post('/:name', async (req, res, next) => {
           continue;
         }
       }
-      await coll.updateOne({ _id: key }, { $set: { _deleted: true, _updatedAt: now } });
+      if (name === 'curriculum') await deleteCurriculumSubject(key);
+      else await coll.updateOne({ _id: key }, { $set: { _deleted: true, _updatedAt: now } });
     }
 
     // Send back what is now stored (as this user sees it)

@@ -5,11 +5,21 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { hashPassword } from '../services/passwords.js';
 import { normalizePhone, buildStudentRecord } from '../services/students.js';
 import { COLLECTIONS, cleanIncoming } from '../sync/collections.js';
+import { deleteCurriculumSubject, saveCurriculumSubject } from '../services/curriculumSubjects.js';
 import { externalizeScreenshot } from '../services/screenshots.js';
 import { formatRollNumber, rollSeq, isLegacyRegistrationId } from '../services/rollNumbers.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireAdmin);
+
+adminRouter.delete('/subjects/:id', async (req, res, next) => {
+  try {
+    await deleteCurriculumSubject(req.params.id);
+    res.sendStatus(204);
+  } catch (err) {
+    next(err);
+  }
+});
 
 /** Reset a student's password to a temporary one they must change at next sign-in. */
 adminRouter.post('/students/:accountId/reset-password', async (req, res, next) => {
@@ -96,15 +106,20 @@ adminRouter.post('/import', json({ limit: '60mb' }), async (req, res, next) => {
       const def = COLLECTIONS[name];
       if (!def || !Array.isArray(items)) continue;
       const ops = [];
+      let importedSubjects = 0;
       for (const raw of items) {
         let item = cleanIncoming(raw);
         const key = def.key(item);
         if (typeof key !== 'string') continue;
+        if (name === 'curriculum') {
+          if (await saveCurriculumSubject({ _id: key, ...item, _updatedAt: now })) importedSubjects++;
+          continue;
+        }
         if (name === 'subscriptions') item = await externalizeScreenshot(key, item);
         ops.push({ replaceOne: { filter: { _id: key }, replacement: { _id: key, ...item, _updatedAt: now }, upsert: true } });
       }
       if (ops.length) await db.collection(def.mongo).bulkWrite(ops, { ordered: false });
-      summary[name] = ops.length;
+      summary[name] = ops.length + importedSubjects;
     }
 
     // Students who registered in the browser keep their passwords (verified + upgraded at first login)

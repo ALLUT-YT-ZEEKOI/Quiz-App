@@ -71,7 +71,7 @@ authRouter.post('/register', authLimiter, async (req, res, next) => {
       email,
       phone,
       name: body.name.trim(),
-      qualification: body.qualification,
+      qualification: [...new Set([].concat(body.qualification))],
       civilLevel: body.civilLevel,
       preparation: body.preparation,
       district: String(body.district).trim(),

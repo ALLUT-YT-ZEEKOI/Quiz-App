@@ -17,6 +17,7 @@ import { hashPassword, verifyPassword } from '../utils/passwordHash';
 import { buildStudentFromRegistration, normalizePhone } from '../utils/studentRegistration';
 import { formatRollNumber, normalizeRollInput, rollSeq } from '../utils/rollNumbers';
 import { buildSavedQuestion, savedIdFor } from '../utils/savedQuestions';
+import { testPinId } from '../../backend/src/services/testPins';
 import { api, backendEnabled, getToken, setToken, clearToken, setUnauthorizedHandler } from '../api/client';
 import { SyncManager } from '../api/syncManager';
 import {
@@ -427,6 +428,23 @@ export const AppProvider = ({ children }) => {
   }, [savedQuestions]);
 
   const [activeExamForAttempt, setActiveExamForAttempt] = useState(null);
+  const [pinnedTests, setPinnedTests] = useState(() => {
+    if (backendEnabled || needsDataReset) return [];
+    try {
+      const saved = JSON.parse(localStorage.getItem('cohesion_pinned_tests') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => { persistLocal('cohesion_pinned_tests', pinnedTests); }, [pinnedTests]);
+
+  const toggleTestPin = (target) => {
+    const id = testPinId(currentUserId, target);
+    setPinnedTests((prev) => prev.some((p) => p.id === id)
+      ? prev.filter((p) => p.id !== id)
+      : [{ ...target, id, studentId: currentUserId }, ...prev]);
+  };
   const [lastExamResult, setLastExamResult] = useState(null);
   const [selectedExamForMonitoring, setSelectedExamForMonitoring] = useState('EXAM-2026-001');
   const [selectedExamForAnalytics, setSelectedExamForAnalytics] = useState('EXAM-2026-006');
@@ -968,27 +986,36 @@ export const AppProvider = ({ children }) => {
     showToast('Exported examination results to CSV', 'success');
   };
 
-  // Helper to resolve question difficulty label & meta
+  // Helper to resolve question difficulty label & meta.
+  // Prefer stable ids (easy/medium/hard). Custom labels (e.g. NIMI) match next.
+  // Classic English aliases (Basic→easy, Advanced→hard) only apply when they are
+  // NOT themselves a current custom label — so renaming Medium→Basic stays correct.
   const getDifficultyMeta = (difficultyValue) => {
     // Never look up in an empty list (that returned nothing and crashed the page)
-    const levels = Array.isArray(difficultyLevels) && difficultyLevels.length >= 3 ? difficultyLevels : DEFAULT_DIFFICULTY_LEVELS;
+    const levels =
+      Array.isArray(difficultyLevels) && difficultyLevels.length >= 3
+        ? difficultyLevels
+        : DEFAULT_DIFFICULTY_LEVELS;
     const fallback = levels[1] || DEFAULT_DIFFICULTY_LEVELS[1];
     if (!difficultyValue) return fallback;
     const val = String(difficultyValue).trim().toLowerCase();
 
-    for (const lvl of levels) {
-      if (lvl?.id === val || String(lvl?.label || '').toLowerCase() === val) {
-        return lvl;
-      }
-    }
+    // 1) Exact id
+    const byId = levels.find((lvl) => lvl?.id === val);
+    if (byId) return byId;
 
-    if (['easy', 'simple', 'beginner', 'basic', 'level 1'].includes(val)) {
+    // 2) Exact custom / current label (NIMI, Basic, …)
+    const byLabel = levels.find((lvl) => String(lvl?.label || '').toLowerCase() === val);
+    if (byLabel) return byLabel;
+
+    // 3) Classic aliases → tier (skip words that are already a live label — handled above)
+    if (['easy', 'simple', 'beginner', 'basic', 'level 1', 'level1'].includes(val)) {
       return levels.find((l) => l.id === 'easy') || levels[0] || fallback;
     }
-    if (['medium', 'moderate', 'intermediate', 'normal', 'average', 'level 2'].includes(val)) {
+    if (['medium', 'moderate', 'intermediate', 'normal', 'average', 'level 2', 'level2'].includes(val)) {
       return levels.find((l) => l.id === 'medium') || fallback;
     }
-    if (['hard', 'tough', 'advanced', 'difficult', 'expert', 'level 3'].includes(val)) {
+    if (['hard', 'tough', 'advanced', 'difficult', 'expert', 'level 3', 'level3'].includes(val)) {
       return levels.find((l) => l.id === 'hard') || levels[2] || fallback;
     }
 
@@ -998,6 +1025,9 @@ export const AppProvider = ({ children }) => {
   const getDifficultyLabel = (difficultyValue) => {
     return getDifficultyMeta(difficultyValue).label;
   };
+
+  /** Canonical id (easy | medium | hard) for storage — keeps filters correct after label renames. */
+  const normalizeDifficulty = (difficultyValue) => getDifficultyMeta(difficultyValue).id;
 
   const matchesDifficulty = (questionDifficulty, filterValue) => {
     if (!filterValue || filterValue === 'All') return true;
@@ -1072,6 +1102,7 @@ export const AppProvider = ({ children }) => {
     m.register('retests', setRetests);
     m.register('doubts', setDoubts);
     m.register('savedQuestions', setSavedQuestions);
+    m.register('pinnedTests', setPinnedTests);
     m.register('notifications', setNotifications);
     m.register('students', setStudents);
     m.register('questions', setQuestions);
@@ -1103,6 +1134,7 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { syncRef.current?.track('retests', retests); }, [retests]);
   useEffect(() => { syncRef.current?.track('doubts', doubts); }, [doubts]);
   useEffect(() => { syncRef.current?.track('savedQuestions', savedQuestions); }, [savedQuestions]);
+  useEffect(() => { syncRef.current?.track('pinnedTests', pinnedTests); }, [pinnedTests]);
   useEffect(() => { syncRef.current?.track('notifications', notifications); }, [notifications]);
   useEffect(() => { syncRef.current?.track('students', students); }, [students]);
   useEffect(() => { syncRef.current?.track('questions', questions); }, [questions]);
@@ -1558,6 +1590,7 @@ export const AppProvider = ({ children }) => {
       drop('retests', retests);
       drop('doubts', doubts);
       drop('savedQuestions', savedQuestions);
+      drop('pinnedTests', pinnedTests);
       drop('attempts', attempts);
       drop('mockAttempts', mockAttempts);
       setStudentAccounts((prev) => prev.filter((a) => a.id !== accountId));
@@ -1571,6 +1604,7 @@ export const AppProvider = ({ children }) => {
       setRetests(keep);
       setDoubts(keep);
       setSavedQuestions(keep);
+      setPinnedTests(keep);
       setAttempts(keep);
       setMockAttempts(keep);
       setStudentAccounts((prev) => prev.filter((a) => a.id !== accountId));
@@ -1628,11 +1662,22 @@ export const AppProvider = ({ children }) => {
     showToast('Subject updated', 'success');
   };
 
-  const deleteSubject = (id) => {
+  const deleteSubject = async (id) => {
     const subject = curriculumSubjects.find((s) => s.id === id);
-    deleteNoteFiles(collectFileNoteIds(subject?.modules));
-    setCurriculumSubjects((prev) => prev.filter((s) => s.id !== id));
-    showToast('Subject removed', 'info');
+    if (!subject) return;
+    if (backendEnabled) {
+      try {
+        await api(`/admin/subjects/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        syncRef.current.applyDocs('curriculum', [], [id]);
+      } catch (err) {
+        showToast(`Could not confirm deletion of “${subject.name}”. ${err.message}`, 'warning');
+        return;
+      }
+    } else {
+      await deleteNoteFiles(collectFileNoteIds(subject.modules));
+      setCurriculumSubjects((prev) => prev.filter((s) => s.id !== id));
+    }
+    showToast(`“${subject.name}” deleted`, 'success');
   };
 
   // Module CRUD
@@ -1791,6 +1836,26 @@ export const AppProvider = ({ children }) => {
     }));
   };
 
+  /**
+   * Admin names a day of a section (e.g. "Day 1" -> "Orientation"). An empty name goes back to "Day N".
+   * Students see the new name on their day cards and results.
+   */
+  const renameSectionDay = (subjectId, moduleId, sectionId, day, label) => {
+    const dayKey = String(Number(day) || 1);
+    const clean = String(label || '').trim().slice(0, 60);
+    mapModule(subjectId, moduleId, (m) => ({
+      ...m,
+      sections: (m.sections || []).map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        const dayLabels = { ...(sec.dayLabels || {}) };
+        if (clean && clean !== `Day ${dayKey}`) dayLabels[dayKey] = clean;
+        else delete dayLabels[dayKey];
+        return { ...sec, dayLabels };
+      })
+    }));
+    showToast(clean && clean !== `Day ${dayKey}` ? `Day ${dayKey} renamed to "${clean}"` : `Day ${dayKey} name reset`, 'success');
+  };
+
   /** Removes one day of a section: its questions become unsorted, later days move up by one. */
   const removeSectionDay = (subjectId, moduleId, sectionId, day) => {
     mapModule(subjectId, moduleId, (m) => {
@@ -1808,7 +1873,15 @@ export const AppProvider = ({ children }) => {
             if (d > day) nextSettings[String(d - 1)] = oldSettings[k];
             else nextSettings[k] = oldSettings[k];
           });
-          return { ...sec, days: count - 1, daySettings: nextSettings };
+          // Day names move up with their days too
+          const oldLabels = sec.dayLabels || {};
+          const nextLabels = {};
+          Object.keys(oldLabels).forEach((k) => {
+            const d = Number(k);
+            if (d === day) return;
+            nextLabels[String(d > day ? d - 1 : d)] = oldLabels[k];
+          });
+          return { ...sec, days: count - 1, daySettings: nextSettings, dayLabels: nextLabels };
         }),
         questions: (m.questions || []).map((q) => {
           if (q.sectionId !== sectionId) return q;
@@ -1974,6 +2047,7 @@ export const AppProvider = ({ children }) => {
   const addCurriculumQuestion = (subjectId, moduleId, questionData) => {
     const newQuestion = {
       ...questionData,
+      difficulty: normalizeDifficulty(questionData?.difficulty),
       id: `q-${Date.now()}`
     };
     setCurriculumSubjects((prev) =>
@@ -1990,13 +2064,14 @@ export const AppProvider = ({ children }) => {
           : s
       )
     );
-    showToast(`Added Question (${newQuestion.difficulty} Mode)`, 'success');
+    showToast(`Added Question (${getDifficultyLabel(newQuestion.difficulty)} Mode)`, 'success');
   };
 
   const addCurriculumQuestionsBulk = (subjectId, moduleId, questionsArray) => {
     if (!questionsArray || questionsArray.length === 0) return;
     const formattedQuestions = questionsArray.map((q, idx) => ({
       ...q,
+      difficulty: normalizeDifficulty(q.difficulty),
       id: q.id || `q-${Date.now()}-${idx}`
     }));
 
@@ -2030,7 +2105,15 @@ export const AppProvider = ({ children }) => {
       questions: (m.questions || []).map((q) => {
         if (q.id !== questionId) return q;
         const { sectionId, day, ...rest } = q;
-        const next = { ...rest, ...fields, id: q.id, updatedAt: new Date().toISOString() };
+        const next = {
+          ...rest,
+          ...fields,
+          id: q.id,
+          updatedAt: new Date().toISOString(),
+          ...(fields?.difficulty !== undefined
+            ? { difficulty: normalizeDifficulty(fields.difficulty) }
+            : {})
+        };
         return target?.sectionId ? { ...next, sectionId: target.sectionId, day: Number(target.day) || 1 } : next;
       })
     }));
@@ -2858,6 +2941,7 @@ export const AppProvider = ({ children }) => {
         deleteModule,
         addSection,
         updateSection,
+        renameSectionDay,
         deleteSection,
         addNote,
         deleteNote,
@@ -2896,6 +2980,8 @@ export const AppProvider = ({ children }) => {
         pendingRetestCount,
         doubts,
         savedQuestions,
+        pinnedTests,
+        toggleTestPin,
         isQuestionSaved,
         toggleSaveQuestion,
         removeSavedQuestion,
@@ -2910,6 +2996,7 @@ export const AppProvider = ({ children }) => {
         resetDifficultyLevels,
         getDifficultyMeta,
         getDifficultyLabel,
+        normalizeDifficulty,
         matchesDifficulty,
         examinations,
         setExaminations,

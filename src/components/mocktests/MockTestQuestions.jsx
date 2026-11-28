@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { confirmDialog } from '../common/ConfirmDialog';
 import { QuestionSearchBox, Highlight, questionMatches } from '../common/QuestionSearch';
 import { BulkQuestionUploadModal } from '../curriculum/BulkQuestionUploadModal';
-import { Modal, Toggle, primaryBtn, secondaryBtn, inputCls, labelCls } from './MockTestUi';
+import { Modal, Toggle, QuestionLevelFilter, primaryBtn, secondaryBtn, inputCls, labelCls } from './MockTestUi';
 import { formatDuration } from '../../utils/mockTests';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -19,8 +19,8 @@ const newQuestionId = () => `MQ-${Date.now().toString(36)}-${Math.random().toStr
 
 /** Add or edit one question. */
 const QuestionFormModal = ({ open, onClose, onSave, question }) => {
-  const { difficultyLevels, getDifficultyMeta } = useApp();
-  const [level, setLevel] = useState('Medium');
+  const { difficultyLevels, getDifficultyMeta, normalizeDifficulty } = useApp();
+  const [level, setLevel] = useState('medium');
   const [text, setText] = useState('');
   const [options, setOptions] = useState(['', '', '', '']);
   const [correct, setCorrect] = useState(0);
@@ -33,7 +33,7 @@ const QuestionFormModal = ({ open, onClose, onSave, question }) => {
     setOptions(question?.options?.length === 4 ? [...question.options] : ['', '', '', '']);
     setCorrect(Number.isInteger(question?.correctAnswer) ? question.correctAnswer : 0);
     setExplanation(question?.explanation || '');
-    setLevel(getDifficultyMeta(question?.difficulty || 'Medium').label);
+    setLevel(getDifficultyMeta(question?.difficulty || 'medium').id);
     setError('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, question]);
@@ -48,7 +48,7 @@ const QuestionFormModal = ({ open, onClose, onSave, question }) => {
         options: options.map((o) => o.trim()),
         correctAnswer: correct,
         explanation: explanation.trim(),
-        difficulty: level
+        difficulty: normalizeDifficulty(level)
       },
       addAnother
     );
@@ -90,7 +90,7 @@ const QuestionFormModal = ({ open, onClose, onSave, question }) => {
                 <button
                   key={lvl.id}
                   type="button"
-                  onClick={() => setLevel(lvl.label)}
+                  onClick={() => setLevel(lvl.id)}
                   aria-pressed={active}
                   className={`py-2 rounded-xl text-xs font-bold border transition-colors ${
                     active ? levelTone(lvl.color) + ' ring-2 ring-offset-1 ring-current/20' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
@@ -145,7 +145,14 @@ const QuestionFormModal = ({ open, onClose, onSave, question }) => {
 
 /** Admin page for one mock test's questions. */
 export const MockTestQuestions = ({ testId, onBack }) => {
-  const { mockTests, updateMockTest, showToast, difficultyLevels, getDifficultyMeta, matchesDifficulty } = useApp();
+  const {
+    mockTests,
+    updateMockTest,
+    showToast,
+    getDifficultyMeta,
+    matchesDifficulty,
+    normalizeDifficulty
+  } = useApp();
   const [levelFilter, setLevelFilter] = useState('All'); // 'All' or a level id
   const test = mockTests.find((t) => t.id === testId);
   const [formOpen, setFormOpen] = useState(false);
@@ -202,7 +209,7 @@ export const MockTestQuestions = ({ testId, onBack }) => {
       options: it.options,
       correctAnswer: it.correctAnswer,
       explanation: it.explanation || '',
-      difficulty: it.difficulty || 'Medium'
+      difficulty: normalizeDifficulty(it.difficulty)
     }));
     setQuestions([...questions, ...added]);
     showToast(`${added.length} question${added.length === 1 ? '' : 's'} added to "${test.title}"`, 'success');
@@ -270,23 +277,7 @@ export const MockTestQuestions = ({ testId, onBack }) => {
           placeholder="Search this test's questions, e.g. standard"
         />
         {/* Level filter: All / Basic / Medium / Advanced, with counts */}
-        <div role="group" aria-label="Question level" className="flex flex-wrap gap-1.5">
-          {[{ id: 'All', label: 'All', count: questions.length }, ...difficultyLevels.map((lvl) => ({ ...lvl, count: questions.filter((q) => matchesDifficulty(q.difficulty, lvl.id)).length }))].map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              onClick={() => setLevelFilter(l.id)}
-              aria-pressed={levelFilter === l.id}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-                levelFilter === l.id
-                  ? 'bg-[#087F8C] border-[#087F8C] text-white'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-[#087F8C]/50'
-              }`}
-            >
-              {l.dot ? `${l.dot} ` : ''}{l.label} <span className="opacity-70">({l.count})</span>
-            </button>
-          ))}
-        </div>
+        <QuestionLevelFilter questions={questions} value={levelFilter} onChange={setLevelFilter} />
         {search.trim() && !questions.some((q) => questionMatches(q, search)) && (
           <p className="p-6 text-center text-xs text-slate-400">No question in this test contains &ldquo;{search.trim()}&rdquo;.</p>
         )}

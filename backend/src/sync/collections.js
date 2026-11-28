@@ -5,6 +5,7 @@
 
 import { getDb } from '../db.js';
 import { scoreModuleQuiz } from '../services/scoring.js';
+import { testPinId } from '../services/testPins.js';
 import { applyContentAccess, CONTENT_ACCESS_SETTING_ID } from '../services/contentAccess.js';
 
 const byId = (item) => item?.id;
@@ -32,6 +33,7 @@ export const COLLECTIONS = {
   mockAttempts: { mongo: 'mock_attempts', key: byId, own: true },
   // App-wide settings set by the admin (e.g. which modules students can use). Students read only.
   settings: { mongo: 'app_settings', key: byId },
+  pinnedTests: { mongo: 'pinned_tests', key: byId, own: true, studentDeletable: true },
   // Questions a student saved to revise later (the admin sees everyone's). Students may un-save their own.
   savedQuestions: { mongo: 'saved_questions', key: byId, own: true, studentDeletable: true }
 };
@@ -167,6 +169,17 @@ export const checkStudentWrite = async (name, user, existing, incoming) => {
   const own = (item) => item?.studentId === me;
 
   switch (name) {
+    case 'pinnedTests': {
+      const { id, kind, testId, subjectId, moduleId, sectionId } = incoming;
+      const validId = (v) => typeof v === 'string' && v.length > 0;
+      const validTarget = kind === 'mock' ? validId(testId)
+        : kind === 'practice' && validId(subjectId) && validId(moduleId) && typeof sectionId === 'string';
+      if (!validTarget || !own(incoming) || (existing && !own(existing)) || id !== testPinId(me, incoming)) {
+        return { action: 'reject', reason: 'Invalid test pin' };
+      }
+      const target = kind === 'mock' ? { testId } : { subjectId, moduleId, sectionId };
+      return { action: 'accept', item: { id, studentId: me, kind, ...target } };
+    }
     case 'examMonitoring':
       return own(incoming) ? { action: 'accept', item: incoming } : { action: 'reject', reason: 'Not your session' };
 

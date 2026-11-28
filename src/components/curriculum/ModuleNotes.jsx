@@ -262,7 +262,7 @@ export const NotesList = ({ notes, onOpen, onDelete, onEdit, emptyState }) => {
 // Note viewer (PDF / image inline, other files download, written notes as text)
 // =========================================================================
 
-export const NotePreviewModal = ({ note, onClose }) => {
+export const NotePreviewModal = ({ note, onClose, studentView = false }) => {
   const { url, loading, error } = useNoteFileUrl(note);
   const [isTouch] = useState(
     () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
@@ -277,6 +277,7 @@ export const NotePreviewModal = ({ note, onClose }) => {
   if (!note) return null;
   const { label, Icon, tone } = getNoteKind(note);
   const drive = note.type === 'link' ? parseDriveLink(note.url) : null;
+  const restrictDrivePreview = studentView && drive && drive.kind !== 'folder';
   // Mobile browsers generally can't render PDFs inside an iframe, so offer Open/Download there
   const showPdfInline = note.type === 'file' && isPdf(note) && !isTouch;
   const showImageInline = note.type === 'file' && isImage(note);
@@ -292,11 +293,13 @@ export const NotePreviewModal = ({ note, onClose }) => {
       aria-label={note.title}
     >
       <div
-        className="w-full max-w-4xl max-h-[92vh] bg-white dark:bg-surface-darkCard rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95"
+        className={`w-full max-w-4xl bg-white dark:bg-surface-darkCard rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col ${
+          drive ? 'h-[92vh] max-h-full supports-[height:100dvh]:h-[92dvh]' : 'max-h-[92vh] animate-in zoom-in-95'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 shrink-0">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
             <Icon className="w-5 h-5" />
           </div>
@@ -326,23 +329,32 @@ export const NotePreviewModal = ({ note, onClose }) => {
         </div>
 
         {/* Body */}
-        <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50 dark:bg-slate-950/40">
+        <div className={`flex-1 min-h-0 bg-slate-50 dark:bg-slate-950/40 ${drive ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'}`}>
           {drive ? (
-            <div className="flex flex-col">
+            <>
               {note.description && (
-                <p className="px-4 pt-3 text-xs text-slate-500 dark:text-slate-400">{note.description}</p>
+                <p className="max-h-[25%] shrink-0 overflow-y-auto break-words px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{note.description}</p>
               )}
-              <iframe
-                src={drive.previewUrl}
-                title={note.title}
-                className="w-full h-[75vh] border-0 bg-white"
-                allow="autoplay"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-              <p className="px-4 py-2 text-[11px] text-slate-400 border-t border-slate-200 dark:border-slate-800">
-                Not loading? Ask your instructor to share it as &ldquo;Anyone with the link&rdquo;.
-              </p>
-            </div>
+              <div className="relative min-h-0 flex-1">
+                <iframe
+                  src={drive.previewUrl}
+                  title={note.title}
+                  className="block h-full w-full border-0 bg-white"
+                  allow="autoplay"
+                  sandbox={restrictDrivePreview ? 'allow-scripts allow-same-origin' : undefined}
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+                {/* Drive renders the pop-out control inside its cross-origin file preview. */}
+                {restrictDrivePreview && drive.kind === 'file' && (
+                  <div className="absolute right-0 top-0 z-10 size-16 bg-[#202124]" aria-hidden="true" />
+                )}
+              </div>
+              {!studentView && (
+                <p className="shrink-0 px-4 py-2 text-[11px] text-slate-400 border-t border-slate-200 dark:border-slate-800">
+                  Not loading? Ask your instructor to share it as &ldquo;Anyone with the link&rdquo;.
+                </p>
+              )}
+            </>
           ) : note.type === 'text' ? (
             <div className="p-5 sm:p-6 space-y-3">
               {note.description && (
@@ -505,7 +517,7 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast, initialN
   };
 
   const inputClass =
-    'w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+    'w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/60';
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-xs overflow-y-auto">
@@ -520,7 +532,7 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast, initialN
               <p className="text-xs text-slate-400 truncate">Module: {moduleTitle}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-600" aria-label="Close">
+          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -548,7 +560,7 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast, initialN
           )}
 
           {isFile && (
-            <p className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 flex items-start gap-2">
+            <p className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
               <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>This is an uploaded file. You can change its title, description and section. To replace the file, add new notes.</span>
             </p>
@@ -567,7 +579,7 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast, initialN
                 className={`py-2 rounded-lg text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
                   type === id
                     ? 'bg-white dark:bg-slate-800 text-[#0C4E5B] dark:text-cyan-300 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -668,7 +680,7 @@ export const AddNoteModal = ({ moduleTitle, onClose, onSave, showToast, initialN
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               Cancel
             </button>

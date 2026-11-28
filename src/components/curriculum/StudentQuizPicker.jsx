@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Lock, Award, CalendarDays, Layers, PlayCircle, RotateCcw, CheckCircle2, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { groupQuestionsBySection, testKeyOf, dayQuizSettings, testLabelOf, isSortedQuestion } from '../../utils/curriculumSections';
+import { TestPinButton } from '../student/PinnedTests';
+import { groupQuestionsBySection, testKeyOf, dayQuizSettings, testLabelOf, dayLabelOf, isSortedQuestion } from '../../utils/curriculumSections';
 import { QuestionSearchBox, SearchResultCard, questionMatches } from '../common/QuestionSearch';
 
 // Colours per level (by the level's colour, so renamed levels keep theirs)
@@ -36,7 +37,7 @@ const ScoreRing = ({ pct }) => {
  * Advanced). Shows each day's last score; when retest is off for that day, a taken day shows its result.
  * onStart(target, level), onViewResults(target) (left out when the admin hides Results)
  */
-export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResults }) => {
+export const StudentQuizPicker = ({ subjectId, module, myAttempts = [], onStart, onViewResults }) => {
   const { difficultyLevels, matchesDifficulty, getDifficultyLabel } = useApp();
   const { groups, unsorted } = groupQuestionsBySection(module);
   // Search the module's practice questions by a word (answers stay hidden until "Show answer")
@@ -236,8 +237,8 @@ export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResu
         const done = days.filter((d) => attemptsFor(testKeyOf(g.section.id, d.day)).length > 0).length;
         const totalQ = days.reduce((n, d) => n + d.questions.length, 0);
         return (
-          <section key={g.section.id} className="space-y-3">
-            <header className="flex items-center gap-3">
+          <section key={g.section.id} id={`practice-section-${g.section.id}`} tabIndex={-1} aria-label={g.section.title} className="space-y-3 scroll-mt-4">
+            <header className="flex flex-wrap items-center gap-3">
               <span className="w-10 h-10 rounded-xl bg-[#087F8C] text-white flex flex-col items-center justify-center leading-none shrink-0">
                 <span className="text-[7px] font-bold uppercase opacity-80">Sec</span>
                 <span className="text-sm font-black">{g.sectionIndex + 1}</span>
@@ -248,6 +249,7 @@ export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResu
                   {days.length} {days.length === 1 ? 'day' : 'days'} · {totalQ} {totalQ === 1 ? 'question' : 'questions'}
                 </p>
               </div>
+              <TestPinButton title={g.section.title} target={{ kind: 'practice', subjectId, moduleId: module.id, sectionId: g.section.id }} />
               <div className="shrink-0 text-right">
                 <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 inline-flex items-center gap-1">
                   <CheckCircle2 className={`w-3.5 h-3.5 ${done === days.length ? 'text-emerald-500' : 'text-slate-300'}`} />
@@ -263,7 +265,7 @@ export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResu
                 <TestCard
                   key={d.day}
                   badge={dayBadge(d.day)}
-                  title={`Day ${d.day}`}
+                  title={dayLabelOf(module, g.section.id, d.day)}
                   target={{ sectionId: g.section.id, day: d.day }}
                   questions={d.questions}
                 />
@@ -274,12 +276,13 @@ export const StudentQuizPicker = ({ module, myAttempts = [], onStart, onViewResu
       })}
 
       {!term && unsorted.length > 0 && (
-        <section className="space-y-3">
+        <section id="practice-section-" tabIndex={-1} aria-label="General practice" className="space-y-3 scroll-mt-4">
           <header className="flex items-center gap-3">
             <span className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">
               <Layers className="w-5 h-5" />
             </span>
             <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">More practice</h3>
+            <TestPinButton title="General practice" target={{ kind: 'practice', subjectId, moduleId: module.id, sectionId: '' }} />
           </header>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             <TestCard badge={<Layers className="w-5 h-5" />} title="General practice" target={{ general: true }} questions={unsorted} />

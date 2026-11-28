@@ -4,13 +4,14 @@ import { useApp } from '../../context/AppContext';
 import { confirmDialog } from '../common/ConfirmDialog';
 import { groupNotesBySection } from '../../utils/curriculumSections';
 import { NotesList } from './ModuleNotes';
+import { CurriculumSection } from './CurriculumSection';
 
 /**
  * A module's study notes grouped by the module's sections (the same sections as its videos and
  * questions). Older notes without a section are listed as "Unsorted" (admin) / "More notes" (students).
  * Admin (editable): add notes to a section, delete, and move unsorted notes into a section.
  */
-export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onOpen, onDelete, onEdit }) => {
+export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onOpen, onDelete, onEdit, onEditSection }) => {
   const { moveNote } = useApp();
   const { groups, unsorted } = groupNotesBySection(module);
   const total = (module.notes || []).length;
@@ -30,21 +31,21 @@ export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onO
   return (
     <div className="space-y-4">
       {shownGroups.map((g) => (
-        <section key={g.section.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 overflow-hidden">
-          <header className="px-3.5 sm:px-4 py-3 bg-white dark:bg-surface-darkCard border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-9 h-9 rounded-xl bg-amber-500 text-white flex flex-col items-center justify-center leading-none shrink-0">
-                <span className="text-[7px] font-bold uppercase opacity-80">Sec</span>
-                <span className="text-sm font-black">{g.sectionIndex + 1}</span>
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white truncate">{g.section.title}</h3>
-                <p className="text-[11px] text-slate-500">
-                  {g.notes.length} {g.notes.length === 1 ? 'note' : 'notes'}
-                </p>
-              </div>
-            </div>
-            {editable && (
+        <CurriculumSection
+          key={g.section.id}
+          className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 overflow-hidden"
+          headerClassName="bg-white dark:bg-surface-darkCard"
+          title={g.section.title}
+          summary={`${g.notes.length} ${g.notes.length === 1 ? 'note' : 'notes'}`}
+          collapsible={editable}
+          badge={
+            <span aria-hidden="true" className="w-9 h-9 rounded-xl bg-amber-500 text-white flex flex-col items-center justify-center leading-none shrink-0">
+              <span className="text-[7px] font-bold uppercase opacity-80">Sec</span>
+              <span className="text-sm font-black">{g.sectionIndex + 1}</span>
+            </span>
+          }
+          actions={editable && (
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={() => onAdd(g.section.id)}
@@ -52,8 +53,20 @@ export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onO
               >
                 <Plus className="w-3.5 h-3.5" /> Add Notes
               </button>
-            )}
-          </header>
+              {onEditSection && (
+                <button
+                  type="button"
+                  onClick={() => onEditSection(g.section)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-slate-800"
+                  title="Rename section"
+                  aria-label={`Rename ${g.section.title}`}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+        >
           <div className="p-3 sm:p-4">
             {g.notes.length > 0 ? (
               <NotesList notes={g.notes} onOpen={onOpen} onDelete={editable ? onDelete : undefined} onEdit={editable ? onEdit : undefined} emptyState={null} />
@@ -67,26 +80,21 @@ export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onO
               </button>
             )}
           </div>
-        </section>
+        </CurriculumSection>
       ))}
 
       {unsorted.length > 0 && (
-        <section
+        <CurriculumSection
           className={`rounded-2xl border overflow-hidden ${
             editable
               ? 'border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/10'
               : 'border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30'
           }`}
-        >
-          <header className="px-3.5 sm:px-4 py-3 border-b border-slate-200/70 dark:border-slate-800 flex items-center gap-2.5">
-            <Inbox className="w-5 h-5 text-amber-600 shrink-0" />
-            <div className="min-w-0">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                {editable ? `Unsorted notes (${unsorted.length})` : 'More notes'}
-              </h3>
-              {editable && <p className="text-[11px] text-slate-500">Added before sections. Put them all in one section here, or choose a section for each one.</p>}
-            </div>
-            {editable && groups.length > 0 && (
+          title={editable ? `Unsorted notes (${unsorted.length})` : 'More notes'}
+          summary={editable && 'Added before sections. Put them all in one section here, or choose a section for each one.'}
+          collapsible={editable}
+          badge={<Inbox aria-hidden="true" className="w-5 h-5 text-amber-600 shrink-0" />}
+          actions={editable && groups.length > 0 && (
               <select
                 aria-label="Put all unsorted notes in"
                 value=""
@@ -111,8 +119,8 @@ export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onO
                   </option>
                 ))}
               </select>
-            )}
-          </header>
+          )}
+        >
           <div className="p-3 sm:p-4">
             {editable ? (
               <ul className="space-y-2">
@@ -160,7 +168,7 @@ export const ModuleNotesBoard = ({ subject, module, editable = false, onAdd, onO
               <NotesList notes={unsorted} onOpen={onOpen} emptyState={null} />
             )}
           </div>
-        </section>
+        </CurriculumSection>
       )}
     </div>
   );

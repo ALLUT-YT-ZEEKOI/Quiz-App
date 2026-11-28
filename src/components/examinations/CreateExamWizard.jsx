@@ -69,7 +69,8 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
     curriculumSubjects,
     createExamination,
     showToast,
-    currentUser
+    currentUser,
+    normalizeDifficulty
   } = useApp();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -328,7 +329,7 @@ export const CreateExamWizard = ({ onCancel, onExamCreated }) => {
       questionText: q.question,
       options: q.options,
       correctAnswer: q.correctAnswer,
-      difficulty: q.difficulty || 'Medium',
+      difficulty: normalizeDifficulty(q.difficulty),
       explanation: q.explanation || 'Bulk imported question.',
       subjectName: currentSubject?.name || 'Structural Analysis',
       marks: Number(marksPerQuestion || 1),

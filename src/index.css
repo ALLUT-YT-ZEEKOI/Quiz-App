@@ -11,9 +11,14 @@
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   body {
-    @apply bg-[#F8FAFC] text-slate-800 font-sans antialiased;
+    @apply bg-[#F8FAFC] text-slate-800 dark:bg-surface-darkBg dark:text-slate-100 font-sans antialiased;
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     overflow-x: hidden;
+  }
+  @media screen {
+    html.dark {
+      color-scheme: dark;
+    }
   }
 }
 

@@ -26,6 +26,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import {
   QUALIFICATIONS,
+  qualificationList,
   CIVIL_LEVELS,
   PREPARATION_TYPES,
   formatPhone,
@@ -74,7 +75,7 @@ const exportCsv = (accounts, accessOf) => {
   const headers = ['Roll No.', 'Name', 'Email', 'WhatsApp', 'Qualification', 'Civil Level', 'Preparation', 'Access', 'District', 'Registered On', 'Last Login', 'Total Logins'];
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const rows = accounts.map((a) =>
-    [a.registrationId, a.name, a.email, formatPhone(a.phone), a.qualification, a.civilLevel, a.preparation, accessOf(a.studentId).join(', '), a.district, fmtDateTime(a.registeredAt), fmtDateTime(a.lastLoginAt), a.loginCount || 0]
+    [a.registrationId, a.name, a.email, formatPhone(a.phone), qualificationList(a.qualification).join(', '), a.civilLevel, a.preparation, accessOf(a.studentId).join(', '), a.district, fmtDateTime(a.registeredAt), fmtDateTime(a.lastLoginAt), a.loginCount || 0]
       .map(esc)
       .join(',')
   );
@@ -125,7 +126,7 @@ export const StudentRegistrations = () => {
   const term = search.trim().toLowerCase();
   const filtered = accounts.filter(
     (a) =>
-      (qualification === 'All' || a.qualification === qualification) &&
+      (qualification === 'All' || qualificationList(a.qualification).includes(qualification)) &&
       (level === 'All' || a.civilLevel === level) &&
       (preparation === 'All' || a.preparation === preparation) &&
       (district === 'All' || a.district === district) &&
@@ -277,7 +278,7 @@ export const StudentRegistrations = () => {
                       <span className="block text-slate-700 dark:text-slate-300 truncate max-w-[200px]">{a.email}</span>
                       <span className="block text-[11px] font-mono text-slate-500">{formatPhone(a.phone)}</span>
                     </td>
-                    <td className="px-3 py-2.5 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">{a.qualification}</td>
+                    <td className="px-3 py-2.5 font-semibold text-slate-700 dark:text-slate-300">{qualificationList(a.qualification).join(', ')}</td>
                     <td className="px-3 py-2.5">
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap ${levelTone[a.civilLevel] || ''}`}>{a.civilLevel}</span>
                     </td>
@@ -328,7 +329,9 @@ export const StudentRegistrations = () => {
                   {a.mustChangePassword && <KeyRound className="w-4 h-4 text-amber-500 shrink-0" aria-label="Password reset pending" />}
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300">{a.qualification}</span>
+                  {qualificationList(a.qualification).map((item) => (
+                    <span key={item} className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#E6F4F6] text-[#0C4E5B] dark:bg-[#0E353E] dark:text-cyan-300">{item}</span>
+                  ))}
                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${levelTone[a.civilLevel] || ''}`}>{a.civilLevel}</span>
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{a.district}</span>
                 </div>
@@ -389,7 +392,7 @@ const StudentDetailModal = ({ account: a, onClose, startWithDelete = false }) =>
   const details = [
     { label: 'Email', value: a.email, Icon: Mail, href: `mailto:${a.email}` },
     { label: 'WhatsApp', value: formatPhone(a.phone), Icon: Phone, href: whatsappLink(a.phone) },
-    { label: 'Qualification', value: a.qualification, Icon: GraduationCap },
+    { label: 'Qualifications', value: qualificationList(a.qualification).join(', '), Icon: GraduationCap },
     { label: 'Level on Civil topics', value: a.civilLevel, Icon: Gauge },
     { label: 'Preparation', value: a.preparation, Icon: BookOpenCheck },
     { label: 'District', value: a.district, Icon: MapPin }

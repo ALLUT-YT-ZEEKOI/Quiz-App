@@ -1,6 +1,8 @@
 // Student self-registration: form options and helpers
 
 export const QUALIFICATIONS = ['ITI (Civil)', 'ITI (Survey)', 'Diploma', 'B-tech', 'M-tech'];
+// Older student accounts have a single qualification stored as a string.
+export const qualificationList = (value) => Array.isArray(value) ? value : value ? [value] : [];
 
 export const CIVIL_LEVELS = ['Beginner', 'Average', 'Above average', 'Excellent knowledge'];
 

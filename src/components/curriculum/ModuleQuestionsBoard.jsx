@@ -18,7 +18,8 @@ import {
 import { useApp } from '../../context/AppContext';
 import { confirmDialog } from '../common/ConfirmDialog';
 import { Highlight, questionMatches } from '../common/QuestionSearch';
-import { groupQuestionsBySection, sectionDays, dayQuizSettings } from '../../utils/curriculumSections';
+import { groupQuestionsBySection, sectionDays, dayQuizSettings, dayLabelOf } from '../../utils/curriculumSections';
+import { CurriculumSection } from './CurriculumSection';
 
 const levelTone = (color) =>
   color === 'emerald'
@@ -199,6 +200,75 @@ const NegativeMarkChip = ({ value = 0, onChange }) => {
   );
 };
 
+
+/**
+ * The dark "Day 1" pill of a day. Click the pencil to give the day a name (e.g. "Orientation");
+ * clear it to go back to "Day 1". Students see the same name.
+ */
+const DayNameChip = ({ day, label, onRename }) => {
+  const [editing, setEditing] = React.useState(false);
+  const [text, setText] = React.useState(label);
+  const custom = label !== `Day ${day}`;
+  const start = () => {
+    setText(label);
+    setEditing(true);
+  };
+  const save = () => {
+    setEditing(false);
+    if (text.trim() !== label) onRename(text.trim());
+  };
+  if (editing) {
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+        className="flex items-center gap-1"
+      >
+        <input
+          autoFocus
+          value={text}
+          maxLength={60}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setEditing(false);
+            }
+          }}
+          placeholder={`Day ${day}`}
+          aria-label={`Name for Day ${day}`}
+          className="w-40 sm:w-48 px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border-2 border-[#087F8C] text-slate-900 dark:text-white focus:outline-none"
+        />
+        <button
+          type="submit"
+          onMouseDown={(e) => e.preventDefault()}
+          className="p-1 rounded-lg bg-[#087F8C] text-white"
+          title="Save name"
+          aria-label="Save day name"
+        >
+          <Check className="w-3.5 h-3.5" />
+        </button>
+      </form>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={start}
+      title={`Rename ${label}${custom ? ` (Day ${day})` : ''}`}
+      aria-label={`Rename ${label}`}
+      className="group px-2.5 py-1 rounded-lg bg-slate-900 dark:bg-slate-700 text-white text-xs font-black inline-flex items-center gap-1.5 hover:bg-slate-800 transition-colors max-w-[16rem]"
+    >
+      {custom && <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 shrink-0">D{day}</span>}
+      <span className="truncate">{label}</span>
+      <Pencil className="w-3 h-3 text-slate-400 group-hover:text-white shrink-0" />
+    </button>
+  );
+};
+
 const QuizSettingChips = ({ settings, onChange }) => {
   const off =
     'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-slate-300 hover:text-slate-600';
@@ -266,9 +336,10 @@ const QuizSettingChips = ({ settings, onChange }) => {
  * levelFilter: 'All' or a level label, from the filter above.
  * onAdd(target) / onBulk(target): open the add / bulk-upload window for { sectionId, day }.
  * onEdit(question): open the question window to edit that question.
+ * onEditSection(section): open the window to rename a section.
  * search: a word to look for (question, options, explanation); only matching questions are shown.
  */
-export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', search = '', onAdd, onBulk, onEdit }) => {
+export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', search = '', onAdd, onBulk, onEdit, onEditSection }) => {
   const {
     difficultyLevels,
     getDifficultyMeta,
@@ -277,6 +348,7 @@ export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', sea
     moveCurriculumQuestion,
     addSectionDay,
     removeSectionDay,
+    renameSectionDay,
     updateDayQuizSettings,
     updateModule
   } = useApp();
@@ -290,7 +362,7 @@ export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', sea
   const targets = groups.flatMap((g) =>
     sectionDays(module, g.section.id).map((day) => ({
       value: `${g.section.id}|${day}`,
-      label: `${g.section.title} · Day ${day}`
+      label: `${g.section.title} · ${dayLabelOf(module, g.section.id, day)}`
     }))
   );
 
@@ -405,7 +477,7 @@ export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', sea
   const anyQuestions = (module.questions || []).length > 0;
 
   return (
-    <div className="space-y-4">
+    <div key={searching ? 'search-results' : 'sections'} className="space-y-4">
       {searching && !(module.questions || []).some(show) && (
         <p className="p-6 text-center text-xs text-slate-400 bg-white dark:bg-surface-darkCard rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
           No questions contain &ldquo;{search.trim()}&rdquo;.
@@ -416,28 +488,42 @@ export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', sea
         if (searching && !g.days.some((d) => d.questions.some(show))) return null;
         const sectionTotal = g.days.reduce((n, d) => n + d.questions.length, 0);
         return (
-          <section key={g.section.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 overflow-hidden">
-            <header className="px-3.5 sm:px-4 py-3 bg-white dark:bg-surface-darkCard border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-9 h-9 rounded-xl bg-[#087F8C] text-white flex flex-col items-center justify-center leading-none shrink-0">
-                  <span className="text-[7px] font-bold uppercase opacity-80">Sec</span>
-                  <span className="text-sm font-black">{g.sectionIndex + 1}</span>
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white truncate">{g.section.title}</h3>
-                  <p className="text-[11px] text-slate-500">
-                    {g.days.length} {g.days.length === 1 ? 'day' : 'days'} • {sectionTotal} {sectionTotal === 1 ? 'question' : 'questions'}
-                  </p>
-                </div>
+          <CurriculumSection
+            key={g.section.id}
+            className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 overflow-hidden"
+            headerClassName="bg-white dark:bg-surface-darkCard"
+            title={g.section.title}
+            summary={`${g.days.length} ${g.days.length === 1 ? 'day' : 'days'} • ${sectionTotal} ${sectionTotal === 1 ? 'question' : 'questions'}`}
+            defaultOpen={searching}
+            badge={
+              <span aria-hidden="true" className="w-9 h-9 rounded-xl bg-[#087F8C] text-white flex flex-col items-center justify-center leading-none shrink-0">
+                <span className="text-[7px] font-bold uppercase opacity-80">Sec</span>
+                <span className="text-sm font-black">{g.sectionIndex + 1}</span>
+              </span>
+            }
+            actions={
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => addSectionDay(subject.id, module.id, g.section.id)}
+                  className={`${smallBtn} bg-[#E6F4F6] dark:bg-[#0E353E] border-[#087F8C]/20 text-[#0C4E5B] dark:text-cyan-300 hover:bg-[#d4eef1]`}
+                >
+                  <CalendarDays className="w-3.5 h-3.5" /> Add Day {g.days.length + 1}
+                </button>
+                {onEditSection && (
+                  <button
+                    type="button"
+                    onClick={() => onEditSection(g.section)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-[#087F8C] hover:bg-[#E8F3F4] dark:hover:bg-slate-800"
+                    title="Rename section"
+                    aria-label={`Rename ${g.section.title}`}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => addSectionDay(subject.id, module.id, g.section.id)}
-                className={`${smallBtn} bg-[#E6F4F6] dark:bg-[#0E353E] border-[#087F8C]/20 text-[#0C4E5B] dark:text-cyan-300 hover:bg-[#d4eef1]`}
-              >
-                <CalendarDays className="w-3.5 h-3.5" /> Add Day {g.days.length + 1}
-              </button>
-            </header>
+            }
+          >
 
             <div className="p-3 sm:p-4 space-y-4">
               {g.days.map(({ day, questions }) => {
@@ -447,13 +533,16 @@ export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', sea
                 const settings = dayQuizSettings(module, g.section.id, day);
                 const setDay = (fields) =>
                   updateDayQuizSettings(subject.id, module.id, g.section.id, day, fields);
+                const dayName = dayLabelOf(module, g.section.id, day);
                 return (
                   <div key={day} className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-900 dark:bg-slate-700 text-white text-xs font-black">
-                          Day {day}
-                        </span>
+                        <DayNameChip
+                          day={day}
+                          label={dayName}
+                          onRename={(name) => renameSectionDay(subject.id, module.id, g.section.id, day, name)}
+                        />
                         {counts.length === 0 ? (
                           <span className="text-[11px] text-slate-400">No questions yet</span>
                         ) : (
@@ -485,20 +574,20 @@ export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', sea
                             type="button"
                             onClick={async () => {
                               const ok = await confirmDialog({
-                                title: `Remove Day ${day} from ${g.section.title}?`,
+                                title: `Remove ${dayName} from ${g.section.title}?`,
                                 message: questions.length
                                   ? questions.length === 1
                                     ? 'Its question won\'t be deleted: it moves to "Unsorted". Later days move up by one.'
                                     : `Its ${questions.length} questions won't be deleted: they move to "Unsorted". Later days move up by one.`
                                   : 'This day has no questions. Later days move up by one.',
-                                confirmLabel: `Remove Day ${day}`,
+                                confirmLabel: `Remove ${dayName}`,
                                 tone: 'warning'
                               });
                               if (ok) removeSectionDay(subject.id, module.id, g.section.id, day);
                             }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                            title={`Remove Day ${day}`}
-                            aria-label={`Remove Day ${day}`}
+                            title={`Remove ${dayName}`}
+                            aria-label={`Remove ${dayName}`}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -512,46 +601,43 @@ export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', sea
                         ))}
                       </div>
                     ) : questions.length > 0 ? (
-                      <p className="text-[11px] text-slate-400 px-1">No {levelFilter} questions in Day {day}.</p>
+                      <p className="text-[11px] text-slate-400 px-1">No {levelFilter} questions in {dayName}.</p>
                     ) : (
                       <button
                         type="button"
                         onClick={() => onAdd({ sectionId: g.section.id, day })}
                         className="w-full py-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-[11px] font-bold text-slate-400 hover:text-[#087F8C] hover:border-[#087F8C]/50"
                       >
-                        + Add the first question for Day {day}
+                        + Add the first question for {dayName}
                       </button>
                     )}
                   </div>
                 );
               })}
             </div>
-          </section>
+          </CurriculumSection>
         );
       })}
 
       {unsorted.length > 0 && (!searching || unsorted.some(show)) && (
-        <section className="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/10 overflow-hidden">
-          <header className="px-3.5 sm:px-4 py-3 border-b border-amber-200/70 dark:border-amber-900/40 flex flex-col lg:flex-row lg:items-center gap-2.5">
-            <div className="flex items-center gap-2.5 min-w-0 flex-1 flex-wrap">
-              <Inbox className="w-5 h-5 text-amber-600 shrink-0" />
-              <div className="min-w-0">
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Unsorted questions ({unsorted.length})</h3>
-                <p className="text-[11px] text-slate-500">
-                  Students practise these as &quot;General practice&quot;. Tap the chips to set retest / shuffle.
-                </p>
-              </div>
-              <QuizSettingChips
-                settings={{
-                  allowRetest: module.allowRetest !== false,
-                  shuffleQuestions: !!module.shuffleQuestions,
-                  shuffleOptions: !!module.shuffleOptions,
-                  timeLimitMinutes: Math.max(0, Number(module.timeLimitMinutes) || 0),
-                  negativeMark: Math.max(0, Number(module.negativeMark) || 0)
-                }}
-                onChange={(fields) => updateModule(subject.id, module.id, fields)}
-              />
-            </div>
+        <CurriculumSection
+          className="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/10 overflow-hidden"
+          title={`Unsorted questions (${unsorted.length})`}
+          summary="Students practise these as “General practice”."
+          defaultOpen={searching}
+          badge={<Inbox aria-hidden="true" className="w-5 h-5 text-amber-600 shrink-0" />}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2.5 px-3 sm:px-4 pt-3">
+            <QuizSettingChips
+              settings={{
+                allowRetest: module.allowRetest !== false,
+                shuffleQuestions: !!module.shuffleQuestions,
+                shuffleOptions: !!module.shuffleOptions,
+                timeLimitMinutes: Math.max(0, Number(module.timeLimitMinutes) || 0),
+                negativeMark: Math.max(0, Number(module.negativeMark) || 0)
+              }}
+              onChange={(fields) => updateModule(subject.id, module.id, fields)}
+            />
             {targets.length > 0 && (
               <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 shrink-0">
                 <span className="whitespace-nowrap">Put all {unsorted.length} in</span>
@@ -581,13 +667,13 @@ export const ModuleQuestionsBoard = ({ subject, module, levelFilter = 'All', sea
                 </select>
               </label>
             )}
-          </header>
+          </div>
           <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {unsorted.filter(show).map((q, i) => (
               <QuestionCard key={q.id} q={q} number={i + 1} movable />
             ))}
           </div>
-        </section>
+        </CurriculumSection>
       )}
 
       {!anyQuestions && (

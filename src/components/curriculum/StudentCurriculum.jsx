@@ -92,6 +92,7 @@ export const StudentCurriculum = () => {
   // Navigation hierarchy: null = Subjects list; object = selected subject
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
+  const [focusSection, setFocusSection] = useState(null);
 
   // Search (and other pages) can ask to open one subject / module
   useEffect(() => {
@@ -100,6 +101,11 @@ export const StudentCurriculum = () => {
       if (!req?.subjectId) return;
       setSelectedSubject({ id: req.subjectId });
       setSelectedModule(req.moduleId ? { id: req.moduleId } : null);
+      if (typeof req.sectionId === 'string') {
+        setQuizTarget(null);
+        setModuleMode('quiz');
+        setFocusSection(req.sectionId);
+      }
     };
     apply();
     window.addEventListener(OPEN_CURRICULUM, apply);
@@ -200,12 +206,18 @@ export const StudentCurriculum = () => {
   };
 
   const currentSubject = selectedSubject
-    ? visibleSubjects.find((s) => s.id === selectedSubject.id) || selectedSubject
+    ? visibleSubjects.find((s) => s.id === selectedSubject.id)
     : null;
 
-  const currentModule = currentSubject && selectedModule
-    ? currentSubject.modules.find((m) => m.id === selectedModule.id) || selectedModule
+  const currentModule = currentSubject && selectedModule && checkEnrollmentStatus(currentUser?.id, currentSubject.id) === 'active'
+    ? currentSubject.modules?.find((m) => m.id === selectedModule.id)
     : null;
+
+  useEffect(() => {
+    if (focusSection === null) return;
+    document.getElementById(`practice-section-${focusSection}`)?.focus();
+    setFocusSection(null);
+  }, [focusSection]);
 
   // Which tabs this course shows (the admin can hide videos, notes or Q&A)
   const moduleAccess = currentModule?.contentAccess || ALL_CONTENT;
@@ -779,13 +791,14 @@ export const StudentCurriculum = () => {
           <ModuleNotesBoard subject={currentSubject} module={currentModule} onOpen={setViewingNote} />
         )}
 
-        {viewingNote && <NotePreviewModal note={viewingNote} onClose={() => setViewingNote(null)} />}
+        {viewingNote && <NotePreviewModal note={viewingNote} onClose={() => setViewingNote(null)} studentView />}
 
         {/* ================================================================= */}
         {/* SUB-VIEW B: ATTEND QUIZ (WITH EASY / MEDIUM / HARD DIFFICULTY)     */}
         {/* ================================================================= */}
         {moduleMode === 'quiz' && moduleAccess.questions && !quizTarget && (
           <StudentQuizPicker
+            subjectId={currentSubject.id}
             module={currentModule}
             myAttempts={myModuleAttempts}
             onStart={(target, level) => handleStartQuiz(level, target)}

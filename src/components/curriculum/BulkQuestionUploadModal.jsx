@@ -17,13 +17,19 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-const A4_TEMPLATE_TEXT = `1. What is the minimum compressive strength of 53 grade OPC cement at 28 days?
+const buildA4Sample = (labels = ['Basic', 'Medium', 'Advanced']) => {
+  const [easyL, midL, hardL] = [
+    labels[0] || 'Basic',
+    labels[1] || 'Medium',
+    labels[2] || 'Advanced'
+  ];
+  return `1. What is the minimum compressive strength of 53 grade OPC cement at 28 days?
 A) 33 MPa
 B) 43 MPa
 C) 53 MPa
 D) 63 MPa
 Answer: C
-Difficulty: Medium
+Difficulty: ${midL}
 Explanation: As per IS 12269, 53 grade cement has minimum 53 MPa compressive strength at 28 days.
 
 2. Which Indian standard code is used for the design of general steel structures?
@@ -32,7 +38,7 @@ B) IS 456:2000
 C) IS 1893:2016
 D) IRC 6:2017
 Answer: A
-Difficulty: Easy
+Difficulty: ${easyL}
 Explanation: IS 800:2007 is the code of practice for general construction in steel.
 
 3. A slump value of 100 mm in a concrete test indicates what degree of workability?
@@ -41,17 +47,21 @@ B) Low
 C) Medium
 D) High
 Answer: C
-Difficulty: Hard
+Difficulty: ${hardL}
 Explanation: A slump of 50-100 mm corresponds to medium workability as per IS 456 Table 2.
 `;
+};
 
-const A4_BLANK_TEMPLATE = `1. [Enter your question statement here]
+const buildA4Blank = (labels = ['Basic', 'Medium', 'Advanced']) => {
+  const [easyL, midL] = [labels[0] || 'Basic', labels[1] || 'Medium'];
+  const labelList = labels.filter(Boolean).join(', ');
+  return `1. [Enter your question statement here]
 A) [First option]
 B) [Second option]
 C) [Third option]
 D) [Fourth option]
 Answer: A
-Difficulty: Medium
+Difficulty: ${midL}
 Explanation: [Optional explanation or code reference]
 
 2. [Enter your second question here]
@@ -60,9 +70,10 @@ B) [Second option]
 C) [Third option]
 D) [Fourth option]
 Answer: B
-Difficulty: Easy
-Explanation: [Optional explanation]
+Difficulty: ${easyL}
+Explanation: [Optional — use one of: ${labelList}]
 `;
+};
 
 export function parseA4Questions(text) {
   if (!text || !text.trim()) return [];
@@ -109,7 +120,7 @@ export function parseA4Questions(text) {
     let questionLines = [];
     let options = [];
     let correctAnswer = 0;
-    let difficulty = 'Medium';
+    let difficulty = '';
     let explanation = '';
     let readingQuestion = true;
 
@@ -121,7 +132,7 @@ export function parseA4Questions(text) {
         line = line.replace(/^(?:Q(?:uestion)?\s*\d+[\.\:\)]|\d+[\.\)])\s+/i, '').trim();
       }
 
-      // Check difficulty / mode / level (matches Easy, Medium, Hard, Tough, Moderate, etc.)
+      // Check difficulty / mode / level (matches current labels or Easy/Medium/Hard aliases)
       const diffMatch = line.match(/^(?:difficulty|mode|level)\s*[:=\-]\s*([a-zA-Z0-9\s]+)$/i);
       if (diffMatch) {
         difficulty = diffMatch[1].trim();
@@ -191,7 +202,7 @@ export function parseA4Questions(text) {
       question,
       options: paddedOptions.slice(0, 4),
       correctAnswer: correctAnswer >= 0 && correctAnswer < 4 ? correctAnswer : 0,
-      difficulty: difficulty || 'Medium',
+      difficulty: difficulty || '',
       explanation
     };
   });
@@ -205,35 +216,55 @@ export const BulkQuestionUploadModal = ({
   onImport,
   extraSettings = null // optional settings shown above the paste area (e.g. the test's timer)
 }) => {
-  const { difficultyLevels = [], matchesDifficulty = () => false } = useApp();
+  const {
+    difficultyLevels = [],
+    matchesDifficulty = () => false,
+    normalizeDifficulty = (v) => v || 'medium'
+  } = useApp();
   const [inputText, setInputText] = useState('');
   const [activeTab, setActiveTab] = useState('paste'); // 'paste' | 'preview'
   const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [editableQuestions, setEditableQuestions] = useState([]);
   const fileInputRef = useRef(null);
 
+  const levelLabels = (difficultyLevels.length >= 3
+    ? difficultyLevels
+    : [
+        { label: 'Basic' },
+        { label: 'Medium' },
+        { label: 'Advanced' }
+      ]
+  ).map((l) => l.label);
+  const defaultDiffId = difficultyLevels[1]?.id || 'medium';
+
+  const normalizeParsed = (parsed) =>
+    parsed.map((q) => ({
+      ...q,
+      // Store stable id so Live Review + filters stay correct after label renames
+      difficulty: normalizeDifficulty(q.difficulty || defaultDiffId)
+    }));
+
   // When text changes, re-parse and populate editableQuestions
   const handleTextChange = (text) => {
     setInputText(text);
-    const parsed = parseA4Questions(text);
-    setEditableQuestions(parsed);
+    setEditableQuestions(normalizeParsed(parseA4Questions(text)));
   };
 
   // Quick fill sample
   const handleFillSample = () => {
-    handleTextChange(A4_TEMPLATE_TEXT);
+    handleTextChange(buildA4Sample(levelLabels));
   };
 
   // Copy blank template
   const handleCopyTemplate = () => {
-    navigator.clipboard.writeText(A4_BLANK_TEMPLATE);
+    navigator.clipboard.writeText(buildA4Blank(levelLabels));
     setCopiedTemplate(true);
     setTimeout(() => setCopiedTemplate(false), 2000);
   };
 
   // Download template as text file
   const handleDownloadTemplate = () => {
-    const blob = new Blob([A4_BLANK_TEMPLATE], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([buildA4Blank(levelLabels)], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -259,10 +290,11 @@ export const BulkQuestionUploadModal = ({
     e.target.value = '';
   };
 
-  // Editable question modifications in preview
+  // Editable question modifications in preview (always store canonical id)
   const handleUpdateDifficulty = (index, newDiff) => {
+    const id = normalizeDifficulty(newDiff);
     setEditableQuestions((prev) =>
-      prev.map((q, idx) => (idx === index ? { ...q, difficulty: newDiff } : q))
+      prev.map((q, idx) => (idx === index ? { ...q, difficulty: id } : q))
     );
   };
 
@@ -309,7 +341,7 @@ export const BulkQuestionUploadModal = ({
       question: q.question,
       options: q.options,
       correctAnswer: q.correctAnswer,
-      difficulty: q.difficulty,
+      difficulty: normalizeDifficulty(q.difficulty || defaultDiffId),
       explanation: q.explanation || ''
     }));
 
@@ -478,7 +510,12 @@ export const BulkQuestionUploadModal = ({
                     <div>C) Third option</div>
                     <div>D) Fourth option</div>
                     <div className="text-emerald-600 dark:text-emerald-400 font-bold">Answer: B</div>
-                    <div className="text-amber-600 dark:text-amber-400">Difficulty: Medium <span className="text-slate-400 font-normal">(Optional: Basic, Medium or Advanced)</span></div>
+                    <div className="text-amber-600 dark:text-amber-400">
+                      Difficulty: {levelLabels[1] || 'Medium'}{' '}
+                      <span className="text-slate-400 font-normal">
+                        (Optional: {levelLabels.join(', ')})
+                      </span>
+                    </div>
                     <div className="text-slate-400">Explanation: Brief notes <span className="font-normal">(Optional)</span></div>
                   </div>
                 </div>
@@ -498,7 +535,7 @@ export const BulkQuestionUploadModal = ({
                   id="a4-input"
                   value={inputText}
                   onChange={(e) => handleTextChange(e.target.value)}
-                  placeholder={`1. What is the minimum grade of concrete for reinforced concrete as per IS 456:2000?\nA) M15\nB) M20\nC) M25\nD) M30\nAnswer: B\nDifficulty: Easy\nExplanation: Clause 6.1 specifies M20 as minimum for RCC.\n\n2. Next question...`}
+                  placeholder={`1. What is the minimum grade of concrete for reinforced concrete as per IS 456:2000?\nA) M15\nB) M20\nC) M25\nD) M30\nAnswer: B\nDifficulty: ${levelLabels[0] || 'Basic'}\nExplanation: Clause 6.1 specifies M20 as minimum for RCC.\n\n2. Next question...\nDifficulty: ${levelLabels[2] || 'Advanced'}`}
                   rows={13}
                   className="w-full font-mono text-xs p-3.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed placeholder:text-slate-400"
                 />
@@ -594,7 +631,7 @@ export const BulkQuestionUploadModal = ({
                                   <button
                                     key={lvl.id}
                                     type="button"
-                                    onClick={() => handleUpdateDifficulty(qIndex, lvl.label)}
+                                    onClick={() => handleUpdateDifficulty(qIndex, lvl.id)}
                                     className={`px-2 py-0.5 rounded-md transition-all ${
                                       isSelected
                                         ? lvl.color === 'emerald'

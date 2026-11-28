@@ -24,6 +24,12 @@ export const STUDENT_MODULES = [
     views: ['examinations', 'live-exams']
   },
   {
+    id: 'pinned-tests',
+    label: 'Pinned Tests',
+    description: 'Shortcuts to practice sections and mock tests saved by the student.',
+    views: ['pinned-tests']
+  },
+  {
     id: 'saved',
     label: 'Saved Questions',
     description: 'Save questions from quizzes, mock tests and exams to revise later.',

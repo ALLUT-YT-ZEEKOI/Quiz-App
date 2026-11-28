@@ -4,7 +4,7 @@ import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
 import { SaveQuestionButton } from '../saved/SaveQuestionButton';
 import { DoubtQuestionButton } from '../doubts/DoubtQuestionButton';
-import { Modal, primaryBtn, secondaryBtn } from './MockTestUi';
+import { Modal, QuestionLevelFilter, primaryBtn, secondaryBtn } from './MockTestUi';
 import { formatClock, getSavedAnswers, saveAnswers } from '../../utils/mockTests';
 import { orderQuestions, orderOptions } from '../../utils/shuffle';
 
@@ -15,7 +15,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
  * when the student started), so reloading or leaving the page never adds time.
  */
 export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
-  const { currentUserId, submitMockTest, showToast } = useApp();
+  const { currentUserId, submitMockTest, showToast, matchesDifficulty, getDifficultyMeta } = useApp();
   // Shuffled per student and per attempt when the admin turned it on (same order after a reload).
   // Answers keep the option's original number, so the server marks them as usual.
   const shuffleSeed = `${currentUserId}:${test.id}:${session?.startedAt || session?.deadline || ''}`;
@@ -23,7 +23,8 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
   const total = questions.length;
 
   const [answers, setAnswers] = useState(() => getSavedAnswers(test.id, currentUserId));
-  const [index, setIndex] = useState(0);
+  const [levelFilter, setLevelFilter] = useState('All');
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
@@ -83,6 +84,12 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
     }
   }, [timeUp, submit, showToast]);
 
+  const allIndexes = questions.map((_, i) => i);
+  const matchingIndexes = levelFilter === 'All' ? allIndexes : allIndexes.filter((i) => matchesDifficulty(questions[i].difficulty, levelFilter));
+  const visibleIndexes = matchingIndexes.length ? matchingIndexes : allIndexes;
+  const activeLevel = matchingIndexes.length ? levelFilter : 'All';
+  const position = Math.max(0, visibleIndexes.indexOf(selectedIndex));
+  const index = visibleIndexes[position];
   const q = questions[index];
   const answeredCount = questions.filter((x) => Number.isInteger(answers[x.id])).length;
   const critical = secondsLeft <= 300;
@@ -107,6 +114,16 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
     );
   }
 
+  const difficulty = getDifficultyMeta(q.difficulty);
+  const changeLevel = (level) => {
+    setLevelFilter(level);
+    if (!matchesDifficulty(q.difficulty, level)) {
+      setSelectedIndex(questions.findIndex((item) => matchesDifficulty(item.difficulty, level)));
+    } else {
+      setSelectedIndex(index);
+    }
+  };
+
   return (
     <div className="space-y-4 pb-24 sm:pb-12 animate-in fade-in duration-300">
       {/* Top bar: title, progress and timer */}
@@ -129,7 +146,7 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
             <Clock className="w-4 h-4" />
             {formatClock(secondsLeft)}
           </div>
-          <button type="button" onClick={() => setConfirmOpen(true)} disabled={submitting || timeUp} className={primaryBtn}>
+          <button type="button" aria-label="Submit mock test" onClick={() => setConfirmOpen(true)} disabled={submitting || timeUp} className={primaryBtn}>
             <Send className="w-4 h-4" /> <span className="hidden sm:inline">Submit</span>
           </button>
         </div>
@@ -138,13 +155,19 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
         {/* Question */}
         <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+          <QuestionLevelFilter questions={questions} value={activeLevel} onChange={changeLevel} disableEmpty />
           {Number(test.negativeMark) > 0 && (
             <p className="px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-xs font-semibold">
               Negative marking: <strong>−{test.negativeMark}</strong> for each wrong answer. Skipping a question costs nothing.
             </p>
           )}
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-bold text-slate-500">Question {index + 1} of {total}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+              <span className="text-slate-500 dark:text-slate-400">Question {index + 1} of {total}</span>
+              <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                {difficulty.dot && <span aria-hidden="true">{difficulty.dot} </span>}{difficulty.label}
+              </span>
+            </div>
             <div className="flex items-center gap-1.5">
               <SaveQuestionButton source="mock" sourceId={test.id} sourceTitle={test.title} question={q} questionIndex={index} />
               <DoubtQuestionButton
@@ -190,7 +213,7 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
             })}
           </div>
           <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <button type="button" onClick={() => setIndex((i) => Math.max(0, i - 1))} disabled={index === 0} className={secondaryBtn}>
+            <button type="button" onClick={() => setSelectedIndex(visibleIndexes[position - 1])} disabled={position === 0} className={secondaryBtn}>
               <ChevronLeft className="w-4 h-4" /> Previous
             </button>
             <button
@@ -201,10 +224,12 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
             >
               Clear answer
             </button>
-            {index < total - 1 ? (
-              <button type="button" onClick={() => setIndex((i) => Math.min(total - 1, i + 1))} className={primaryBtn}>
+            {position < visibleIndexes.length - 1 ? (
+              <button type="button" onClick={() => setSelectedIndex(visibleIndexes[position + 1])} className={primaryBtn}>
                 Next <ChevronRight className="w-4 h-4" />
               </button>
+            ) : activeLevel !== 'All' ? (
+              <button type="button" onClick={() => changeLevel('All')} className={secondaryBtn}>All questions</button>
             ) : (
               <button type="button" onClick={() => setConfirmOpen(true)} disabled={submitting || timeUp} className={primaryBtn}>
                 <Send className="w-4 h-4" /> Finish
@@ -217,13 +242,14 @@ export const MockTestAttempt = ({ test, session, onExit, onSubmitted }) => {
         <aside className="p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 h-fit">
           <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Questions</p>
           <div className="grid grid-cols-8 lg:grid-cols-5 gap-1.5">
-            {questions.map((x, i) => {
+            {visibleIndexes.map((i) => {
+              const x = questions[i];
               const done = Number.isInteger(answers[x.id]);
               return (
                 <button
                   key={x.id}
                   type="button"
-                  onClick={() => setIndex(i)}
+                  onClick={() => setSelectedIndex(i)}
                   aria-label={`Question ${i + 1}${done ? ', answered' : ''}`}
                   aria-current={i === index ? 'step' : undefined}
                   className={`aspect-square rounded-lg text-xs font-bold border transition-colors ${

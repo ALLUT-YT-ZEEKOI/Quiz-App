@@ -60,6 +60,7 @@ const SOURCES = {
   examMonitoring: ['cohesion_exam_monitoring', () => generateLiveMonitoringData('EXAM-2026-001')],
   retests: ['cohesion_retests', () => []],
   doubts: ['cohesion_doubts', () => INITIAL_DOUBTS],
+  pinnedTests: ['cohesion_pinned_tests', () => []],
   notifications: ['qsap_notifications', () => INITIAL_NOTIFICATIONS],
   students: ['qsap_students', () => STUDENTS],
   questions: ['qsap_questions', () => QUESTIONS_BANK],

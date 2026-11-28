@@ -8,6 +8,7 @@ import { formatRollNumber, rollSeq } from './services/rollNumbers.js';
 /** Indexes for the synced collections (fast "changed since" polling and per-student reads). */
 export const ensureCollectionIndexes = async () => {
   const db = getDb();
+  await db.collection('curriculum_deletions').createIndex({ _updatedAt: 1 });
   await Promise.all(
     Object.values(COLLECTIONS).map(async ({ mongo }) => {
       await db.collection(mongo).createIndex({ _updatedAt: 1 });

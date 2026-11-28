@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Clock, ListChecks, Play, RotateCcw, Eye, CheckCircle2, ClipboardList, Timer, AlertTriangle, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { TestPinButton } from '../student/PinnedTests';
+import { OPEN_MOCK_TEST, takeOpenRequest } from '../../utils/openRequest';
 import { QuestionSearchBox, SearchResultCard, questionMatches } from '../common/QuestionSearch';
 import { PageHero, Modal, primaryBtn, secondaryBtn } from './MockTestUi';
 import { formatDuration, groupByDay, getLocalSession, canStudentSeeMockTest, isPrivateMockTest } from '../../utils/mockTests';
@@ -9,6 +11,11 @@ export const StudentMockTests = ({ onStart, onViewResult }) => {
   const { mockTests, mockAttempts, currentUserId, checkEnrollmentStatus, curriculumSubjects } = useApp();
   const [confirming, setConfirming] = useState(null);
   const [starting, setStarting] = useState(false);
+
+  useEffect(() => {
+    const id = takeOpenRequest(OPEN_MOCK_TEST);
+    if (id) document.getElementById(`mock-test-${id}`)?.focus();
+  }, []);
 
   // Only tests this student may take: enabled, and public or private to a batch they're in.
   // (The server doesn't send the others; this also covers offline mode and subscriptions that just ended.)
@@ -108,6 +115,9 @@ export const StudentMockTests = ({ onStart, onViewResult }) => {
               return (
                 <article
                   key={test.id}
+                  id={`mock-test-${test.id}`}
+                  tabIndex={-1}
+                  aria-label={test.title}
                   className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border shadow-subtle flex flex-col gap-4 ${
                     inProgress ? 'border-amber-300 dark:border-amber-700' : 'border-slate-200 dark:border-slate-800'
                   }`}
@@ -138,7 +148,10 @@ export const StudentMockTests = ({ onStart, onViewResult }) => {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug break-words">{test.title}</h3>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="min-w-0 text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug break-words">{test.title}</h3>
+                      <TestPinButton target={{ kind: 'mock', testId: test.id }} title={test.title} />
+                    </div>
                     {test.description && <p className="text-xs text-slate-500 dark:text-slate-400">{test.description}</p>}
                   </div>
 

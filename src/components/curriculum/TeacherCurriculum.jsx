@@ -5,6 +5,7 @@ const COVER_MAX_BYTES = 1024 * 1024; // subject cover images: 1 MB at most
 import { useApp } from '../../context/AppContext';
 import { takeOpenRequest, OPEN_CURRICULUM } from '../../utils/openRequest';
 import { PageHeader } from '../common/PageHeader';
+import { confirmDialog } from '../common/ConfirmDialog';
 import {
   BookOpen,
   Plus,
@@ -48,6 +49,7 @@ import { ModuleQuestionsBoard } from './ModuleQuestionsBoard';
 import { TestTimerField } from './TestTimerField';
 import { QuestionSearchBox, questionMatches } from '../common/QuestionSearch';
 import { ModuleNotesBoard } from './ModuleNotesBoard';
+import { CurriculumSection } from './CurriculumSection';
 import { sectionDays, testLabelOf } from '../../utils/curriculumSections';
 import { EditDifficultyModal } from './EditDifficultyModal';
 import {
@@ -122,6 +124,7 @@ export const TeacherCurriculum = () => {
   // Modals state
   const [subjectModalOpen, setSubjectModalOpen] = useState(false);
   const [editingSubjectId, setEditingSubjectId] = useState(null);
+  const [deletingSubjectId, setDeletingSubjectId] = useState(null);
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
@@ -185,7 +188,7 @@ export const TeacherCurriculum = () => {
   // New Question form state
   const emptyQuestion = () => ({
     question: '',
-    difficulty: 'Medium',
+    difficulty: difficultyLevels[1]?.id || 'medium',
     options: ['', '', '', ''],
     correctAnswer: 0,
     explanation: ''
@@ -207,7 +210,7 @@ export const TeacherCurriculum = () => {
     setEditingQuestionId(q.id);
     setNewQuestion({
       question: q.question || '',
-      difficulty: q.difficulty || 'Medium',
+      difficulty: getDifficultyMeta(q.difficulty).id,
       options,
       correctAnswer: Number.isInteger(q.correctAnswer) ? q.correctAnswer : 0,
       explanation: q.explanation || ''
@@ -245,6 +248,22 @@ export const TeacherCurriculum = () => {
       thumbnail: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
     });
     setSubjectModalOpen(true);
+  };
+
+  const handleDeleteSubject = async (subject) => {
+    const confirmed = await confirmDialog({
+      title: `Delete “${subject.name}”?`,
+      message: 'This permanently removes the subject and all its modules, lesson videos, study notes, and questions.',
+      confirmLabel: 'Delete subject',
+      tone: 'danger'
+    });
+    if (!confirmed) return;
+    setDeletingSubjectId(subject.id);
+    try {
+      await deleteSubject(subject.id);
+    } finally {
+      setDeletingSubjectId(null);
+    }
   };
 
   const handleOpenEditSubject = (sub) => {
@@ -431,13 +450,7 @@ export const TeacherCurriculum = () => {
       questionTarget?.sectionId ? { ...newQuestion, sectionId: questionTarget.sectionId, day: Number(questionTarget.day) || 1 } : newQuestion
     );
     setQuestionModalOpen(false);
-    setNewQuestion({
-      question: '',
-      difficulty: 'Medium',
-      options: ['', '', '', ''],
-      correctAnswer: 0,
-      explanation: ''
-    });
+    setNewQuestion(emptyQuestion());
   };
 
   const handleSaveInlineDifficulty = (lvlId) => {
@@ -619,36 +632,29 @@ export const TeacherCurriculum = () => {
 
         {/* TAB 1: VIDEOS GROUPED BY SECTION */}
         {activeModuleTab === 'videos' && (
-          <div className="space-y-4">
+          <div key={currentModule.id} className="space-y-4">
             {sectionGroups.map(({ section, sectionIndex, videos: sectionVideos }) => {
               const isConfirmingDelete = confirmDeleteSectionId === section.id;
               return (
-                <section
+                <CurriculumSection
                   key={section.id}
                   className="bg-white dark:bg-surface-darkCard rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden"
-                >
-                  {/* Section Header */}
-                  <div className="px-3 sm:px-4 py-3 bg-[#F4FAFB] dark:bg-slate-900/60 border-b border-slate-200/70 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                    <div className="flex items-start gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-[#087F8C] text-white flex flex-col items-center justify-center shrink-0 shadow-xs leading-none">
-                        <span className="text-[8px] font-bold uppercase tracking-wider opacity-80">Sec</span>
-                        <span className="text-sm font-black">{sectionIndex + 1}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <h3
-                          className="font-extrabold text-sm text-slate-900 dark:text-white truncate"
-                          title={section.title}
-                        >
-                          {section.title}
-                        </h3>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          {sectionVideos.length} {sectionVideos.length === 1 ? 'video' : 'videos'}
-                          {section.description ? ` • ${section.description}` : ''}
-                        </p>
-                      </div>
-                    </div>
-
-                    {isConfirmingDelete ? (
+                  headerClassName="bg-[#F4FAFB] dark:bg-slate-900/60"
+                  title={section.title}
+                  summary={
+                    <span className="block truncate">
+                      {sectionVideos.length} {sectionVideos.length === 1 ? 'video' : 'videos'}
+                      {section.description ? ` • ${section.description}` : ''}
+                    </span>
+                  }
+                  badge={
+                    <span aria-hidden="true" className="w-9 h-9 rounded-xl bg-[#087F8C] text-white flex flex-col items-center justify-center shrink-0 shadow-xs leading-none">
+                      <span className="text-[8px] font-bold uppercase tracking-wider opacity-80">Sec</span>
+                      <span className="text-sm font-black">{sectionIndex + 1}</span>
+                    </span>
+                  }
+                  actions={
+                    isConfirmingDelete ? (
                       <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto animate-in fade-in duration-150">
                         <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">
                           Delete section{sectionVideos.length ? ` & ${sectionVideos.length} video${sectionVideos.length === 1 ? '' : 's'}` : ''}?
@@ -706,8 +712,9 @@ export const TeacherCurriculum = () => {
                           </button>
                         )}
                       </div>
-                    )}
-                  </div>
+                    )
+                  }
+                >
 
                   {/* Section Videos */}
                   <div className="p-3 sm:p-3.5">
@@ -824,7 +831,7 @@ export const TeacherCurriculum = () => {
                       </div>
                     )}
                   </div>
-                </section>
+                </CurriculumSection>
               );
             })}
 
@@ -843,6 +850,7 @@ export const TeacherCurriculum = () => {
         {/* TAB: STUDY NOTES */}
         {activeModuleTab === 'notes' && (
           <ModuleNotesBoard
+            key={currentModule.id}
             editable
             subject={currentSubject}
             module={currentModule}
@@ -853,6 +861,7 @@ export const TeacherCurriculum = () => {
             onOpen={setViewingNote}
             onDelete={(note) => deleteNote(currentSubject.id, currentModule.id, note.id)}
             onEdit={setEditingNote}
+            onEditSection={handleOpenEditSection}
           />
         )}
 
@@ -1013,12 +1022,14 @@ export const TeacherCurriculum = () => {
             </div>
 
             <ModuleQuestionsBoard
+              key={currentModule.id}
               subject={currentSubject}
               module={currentModule}
               levelFilter={questionDifficultyFilter}
               search={questionSearch}
               onAdd={openAddQuestion}
               onEdit={openEditQuestion}
+              onEditSection={handleOpenEditSection}
               onBulk={(target) => {
                 setQuestionTarget(target);
                 setBulkModalOpen(true);
@@ -1435,7 +1446,7 @@ export const TeacherCurriculum = () => {
                     {(currentModule.sections || []).flatMap((sec) =>
                       sectionDays(currentModule, sec.id).map((day) => (
                         <option key={`${sec.id}|${day}`} value={`${sec.id}|${day}`}>
-                          {sec.title} · Day {day}
+                          {testLabelOf(currentModule, sec.id, day)}
                         </option>
                       ))
                     )}
@@ -1468,7 +1479,7 @@ export const TeacherCurriculum = () => {
                         <button
                           type="button"
                           key={lvl.id}
-                          onClick={() => setNewQuestion({ ...newQuestion, difficulty: lvl.label })}
+                          onClick={() => setNewQuestion({ ...newQuestion, difficulty: lvl.id })}
                           className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                             isSelected
                               ? lvl.color === 'emerald'
@@ -2086,7 +2097,10 @@ export const TeacherCurriculum = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => deleteSubject(sub.id)}
+                      onClick={() => handleDeleteSubject(sub)}
+                      disabled={deletingSubjectId !== null}
+                      aria-label={`Delete ${sub.name}`}
+                      aria-busy={deletingSubjectId === sub.id}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                       title="Delete Subject"
                     >

@@ -4,6 +4,7 @@
 
 export const OPEN_CURRICULUM = 'open_curriculum'; // { subjectId, moduleId? }
 export const OPEN_DOUBT = 'open_doubt_id'; // doubt id
+export const OPEN_MOCK_TEST = 'open_mock_test_id';
 
 export const requestOpen = (key, value) => {
   try {

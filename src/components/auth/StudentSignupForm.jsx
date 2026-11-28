@@ -28,7 +28,7 @@ import {
 const EMPTY = {
   email: '',
   name: '',
-  qualification: '',
+  qualification: [],
   phone: '',
   civilLevel: '',
   preparation: '',
@@ -56,7 +56,7 @@ const Field = ({ label, error, htmlFor, children }) => (
 );
 
 // Modern tactile chips for single choice selection
-const ChoiceGroup = ({ label, options, value, onChange, error, columns = 'grid-cols-2', icon: Icon, isLastSpanned = false }) => (
+const ChoiceGroup = ({ label, options, value, onChange, error, columns = 'grid-cols-2', icon: Icon }) => (
   <div className="space-y-1.5">
     <div className="flex items-center justify-between">
       <span id={`${label}-label`} className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
@@ -72,9 +72,8 @@ const ChoiceGroup = ({ label, options, value, onChange, error, columns = 'grid-c
     </div>
 
     <div role="radiogroup" aria-labelledby={`${label}-label`} className={`grid ${columns} gap-2`}>
-      {options.map((opt, idx) => {
+      {options.map((opt) => {
         const selected = value === opt;
-        const isLastOdd = isLastSpanned && idx === options.length - 1 && options.length % 2 !== 0;
 
         return (
           <button
@@ -84,8 +83,6 @@ const ChoiceGroup = ({ label, options, value, onChange, error, columns = 'grid-c
             aria-checked={selected}
             onClick={() => onChange(opt)}
             className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-1.5 text-left border ${
-              isLastOdd ? 'col-span-2 sm:col-span-1' : ''
-            } ${
               selected
                 ? 'bg-[#07242B] text-white border-[#07242B] shadow-sm dark:bg-[#0D4450] dark:border-teal-400/60 ring-2 ring-[#07242B]/15'
                 : error
@@ -140,7 +137,7 @@ export const StudentSignupForm = ({ onSwitchToLogin }) => {
     const e = {};
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = 'Enter a valid email address';
     if (form.name.trim().length < 2) e.name = 'Enter your full name';
-    if (!form.qualification) e.qualification = 'Choose your qualification';
+    if (!form.qualification.length) e.qualification = 'Select at least one qualification';
     if (!/^[6-9]\d{9}$/.test(normalizePhone(form.phone))) e.phone = 'Enter a valid 10-digit WhatsApp number';
     if (!form.civilLevel) e.civilLevel = 'Choose your level';
     if (!form.preparation) e.preparation = 'Choose how you are preparing';
@@ -286,17 +283,30 @@ export const StudentSignupForm = ({ onSwitchToLogin }) => {
 
       {/* SECTION 2: Academic & Civil Background */}
       <SectionCard title="2. Academic & Civil Background" icon={GraduationCap}>
-        <div {...errAttr('qualification')}>
-          <ChoiceGroup
-            label="Qualification"
-            options={QUALIFICATIONS}
-            value={form.qualification}
-            onChange={set('qualification')}
-            error={errors.qualification}
-            columns="grid-cols-2 sm:grid-cols-3"
-            isLastSpanned={true}
-          />
-        </div>
+        <fieldset {...errAttr('qualification')} aria-describedby={errors.qualification ? 'qualification-error' : undefined}>
+          <legend className="mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+            Qualifications <span className="text-red-500">*</span>
+            <span className="ml-1 font-medium">Select all that apply</span>
+          </legend>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {QUALIFICATIONS.map((option) => (
+              <label key={option} className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 has-[:checked]:border-teal-600 has-[:checked]:bg-teal-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:has-[:checked]:bg-teal-950">
+                <input
+                  type="checkbox"
+                  name="qualification"
+                  value={option}
+                  checked={form.qualification.includes(option)}
+                  onChange={(event) => set('qualification')(event.target.checked
+                    ? [...form.qualification, option]
+                    : form.qualification.filter((item) => item !== option))}
+                  className="accent-teal-700"
+                />
+                {option}
+              </label>
+            ))}
+          </div>
+          {errors.qualification && <p id="qualification-error" role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.qualification}</p>}
+        </fieldset>
 
         <div {...errAttr('civilLevel')}>
           <ChoiceGroup

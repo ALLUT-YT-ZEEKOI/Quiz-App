@@ -166,11 +166,21 @@ export const dayQuizSettings = (module, sectionId, day) => {
 /** A practice test inside a module: one section's day, or the unsorted ("general") questions. */
 export const testKeyOf = (sectionId, day) => (sectionId ? `${sectionId}:${Number(day) || 1}` : 'general');
 
-/** "Section 1 · Day 2" (or "General practice") for a section / day of a module. */
+/**
+ * A day's name: the admin's own name for it (section.dayLabels["2"], e.g. "Revision") or "Day 2".
+ */
+export const dayLabelOf = (module, sectionId, day) => {
+  const n = Number(day) || 1;
+  const section = (module?.sections || []).find((s) => s.id === sectionId);
+  const custom = String(section?.dayLabels?.[String(n)] || '').trim();
+  return custom || `Day ${n}`;
+};
+
+/** "Section 1 · Day 2" (or "General practice") for a section / day of a module, using the admin's names. */
 export const testLabelOf = (module, sectionId, day) => {
   if (!sectionId) return 'General practice';
   const section = (module?.sections || []).find((s) => s.id === sectionId);
-  return `${section?.title || 'Section'} · Day ${Number(day) || 1}`;
+  return `${section?.title || 'Section'} · ${dayLabelOf(module, sectionId, day)}`;
 };
 
 /** The questions of one practice test (target = { sectionId, day } or { general: true }). */

@@ -321,17 +321,22 @@ export const AdminSubscriptions = () => {
                     <div className="text-[10px] sm:text-[11px] font-bold text-[#087F8C] dark:text-teal-300 mt-0.5 truncate">
                       {req.subjectName}
                     </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 text-[9px] sm:text-[10px] text-slate-500 mt-1">
-                      <span className="inline-flex items-center gap-1 font-mono font-semibold text-slate-700 dark:text-slate-300 truncate">
-                        <Phone className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#087F8C] shrink-0" />
-                        {req.studentPhone}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-slate-400 truncate">
-                        <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
-                        {req.requestedAt}
-                      </span>
-                    </div>
                   </div>
+                </div>
+
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-start gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    <Phone aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#087F8C] dark:text-teal-300" />
+                    <span className="sr-only">Phone number</span>
+                    <span dir="ltr" className="min-w-0 select-text font-mono [overflow-wrap:anywhere]">{req.studentPhone || 'Not provided'}</span>
+                  </div>
+                  {req.requestedAt && (
+                    <div className="flex items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      <Clock aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0" />
+                      <span className="sr-only">Requested on</span>
+                      <span className="min-w-0 [overflow-wrap:anywhere]">{req.requestedAt}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">

@@ -74,7 +74,10 @@ export const validateRegistration = (body) => {
   const email = String(body.email || '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Enter a valid email address';
   if (String(body.name || '').trim().length < 2) e.name = 'Enter your full name';
-  if (!QUALIFICATIONS.includes(body.qualification)) e.qualification = 'Choose your qualification';
+  const selected = Array.isArray(body.qualification) ? body.qualification : [body.qualification];
+  if (!selected.length || !selected.every((item) => QUALIFICATIONS.includes(item))) {
+    e.qualification = 'Select at least one qualification from the list';
+  }
   if (!/^[6-9]\d{9}$/.test(normalizePhone(body.phone))) e.phone = 'Enter a valid 10-digit WhatsApp number';
   if (!CIVIL_LEVELS.includes(body.civilLevel)) e.civilLevel = 'Choose your level';
   if (!PREPARATION_TYPES.includes(body.preparation)) e.preparation = 'Choose how you are preparing';

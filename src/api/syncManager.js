@@ -24,6 +24,7 @@ export class SyncManager {
     this.latest = new Map(); // name -> latest array from React state
     this.timers = new Map();
     this.inFlight = new Map(); // name -> Promise
+    this.deletedSubjects = new Set();
     this.ready = false;
     this.serverTime = null;
     this.pollTimer = null;
@@ -38,6 +39,7 @@ export class SyncManager {
 
   /** Replaces all collections with the server's data (after sign-in). */
   load({ collections, serverTime }) {
+    this.deletedSubjects.clear();
     this.serverTime = serverTime;
     for (const [name, setState] of this.setters) {
       const docs = collections[name] || [];
@@ -147,14 +149,18 @@ export class SyncManager {
     const snapshot = this.snapshots.get(name) || new Map();
     this.snapshots.set(name, snapshot);
     const incoming = new Map();
+    if (name === 'curriculum') {
+      deletedKeys.forEach((id) => this.deletedSubjects.add(id));
+    }
     docs.forEach((d) => {
       const key = keyOf(name, d);
+      if (name === 'curriculum' && this.deletedSubjects.has(key)) return;
       // Local edits not yet confirmed by the server win; they will be sent on the next flush
       if (!key || (!this.readOnly.has(name) && this.isDirty(name, key))) return;
       snapshot.set(key, JSON.stringify(d));
       incoming.set(key, d);
     });
-    const removed = new Set(deletedKeys.filter((k) => !this.isDirty(name, k) || this.readOnly.has(name)));
+    const removed = new Set(deletedKeys.filter((k) => name === 'curriculum' || !this.isDirty(name, k) || this.readOnly.has(name)));
     removed.forEach((k) => snapshot.delete(k));
     if (!incoming.size && !removed.size) return;
 
@@ -186,9 +192,10 @@ export class SyncManager {
     try {
       const res = await api(`/sync/collection/${name}`);
       const setState = this.setters.get(name);
-      this.snapshots.set(name, new Map(res.docs.map((d) => [keyOf(name, d), JSON.stringify(d)])));
-      this.latest.set(name, res.docs);
-      setState?.(res.docs);
+      const docs = name === 'curriculum' ? res.docs.filter((d) => !this.deletedSubjects.has(d.id)) : res.docs;
+      this.snapshots.set(name, new Map(docs.map((d) => [keyOf(name, d), JSON.stringify(d)])));
+      this.latest.set(name, docs);
+      setState?.(docs);
     } catch (err) {
       this.onError?.(err);
     }

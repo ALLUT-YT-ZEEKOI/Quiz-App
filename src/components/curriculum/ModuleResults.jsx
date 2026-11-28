@@ -88,11 +88,13 @@ export const ModuleResults = ({ module, perspective = 'student', onPractice, onR
     return (curriculumAttempts || [])
       .filter((a) => a.moduleId === module.id && (admin || a.studentId === myId))
       .map((a) => {
-        const r = normalizeQuizAttempt(a);
+        // Use the section / day names as they are now (the admin may have renamed them)
+        const r = normalizeQuizAttempt(a.sectionId ? { ...a, testLabel: testLabelOf(module, a.sectionId, a.day) } : a);
         return { ...r, rollNo: rollOf.get(a.studentId) || '', testKey: testKeyOf(r.sectionId, r.day) };
       })
       .sort((a, b) => b.time - a.time);
-  }, [curriculumAttempts, module.id, admin, myId, students]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curriculumAttempts, module.id, module.sections, admin, myId, students]);
 
   // The practice tests that have results: Section 1 · Day 1, Day 2 ... (in section order), then general
   const sectionOrder = new Map((module.sections || []).map((sec, i) => [sec.id, i]));

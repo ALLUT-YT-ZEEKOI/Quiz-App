@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Bookmark,
+  Pin,
   BookOpen,
   Users,
   Radio,
@@ -164,6 +165,7 @@ export const Sidebar = ({ mobileOpen, setMobileOpen, collapsed, setCollapsed }) 
       targetView: 'mock-tests',
       badge: visibleMockTests || undefined
     },
+    { id: 'pinned-tests', label: 'Pinned Tests', icon: Pin, targetView: 'pinned-tests' },
     {
       id: 'examinations',
       label: 'Live Examinations',

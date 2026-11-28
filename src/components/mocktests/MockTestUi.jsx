@@ -1,5 +1,35 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+
+export const QuestionLevelFilter = ({ questions, value, onChange, disableEmpty = false }) => {
+  const { difficultyLevels, matchesDifficulty } = useApp();
+  const filters = [
+    { id: 'All', label: 'All', count: questions.length },
+    ...difficultyLevels.map((level) => ({
+      ...level,
+      count: questions.filter((q) => matchesDifficulty(q.difficulty, level.id)).length
+    }))
+  ];
+  return (
+    <div role="group" aria-label="Question difficulty" className="flex flex-wrap gap-1.5">
+      {filters.map((level) => (
+        <button
+          key={level.id}
+          type="button"
+          onClick={() => onChange(level.id)}
+          aria-pressed={value === level.id}
+          disabled={disableEmpty && level.count === 0}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors disabled:opacity-50 ${value === level.id
+            ? 'bg-[#087F8C] border-[#087F8C] text-white'
+            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-[#087F8C]/50'}`}
+        >
+          {level.dot && <span aria-hidden="true">{level.dot} </span>}{level.label} <span className="opacity-70">({level.count})</span>
+        </button>
+      ))}
+    </div>
+  );
+};
 
 /** On/off switch with a label. */
 export const Toggle = ({ checked, onChange, label, hint, disabled = false, tone = 'teal' }) => {

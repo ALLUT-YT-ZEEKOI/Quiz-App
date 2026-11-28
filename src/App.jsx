@@ -30,6 +30,7 @@ import { ProfileManagement } from './components/profile/ProfileManagement';
 import { DoubtsDashboard } from './components/doubts/DoubtsDashboard';
 import { StudentRegistrations } from './components/students/StudentRegistrations';
 import { StudentSavedQuestions } from './components/saved/StudentSavedQuestions';
+import { PinnedTests } from './components/student/PinnedTests';
 import { AdminSavedQuestions } from './components/saved/AdminSavedQuestions';
 import { DataImportBanner, ServerLoadingScreen } from './components/admin/DataImportBanner';
 import { StudentPermissions } from './components/admin/StudentPermissions';
@@ -138,6 +139,8 @@ const AppContent = () => {
     if (activeView === 'rankings') {
       return <RankingsDashboard />;
     }
+
+    if (isStudent && activeView === 'pinned-tests') return <PinnedTests />;
 
     // Saved questions: students revise their own; the admin sees who saved what
     if (activeView === 'saved') {
